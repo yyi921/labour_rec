@@ -5,6 +5,7 @@ Run with: python manage.py shell < reconciliation/test_parsers.py
 from reconciliation.file_detector import FileDetector
 from reconciliation.parsers import TandaParser, IQBParser, JournalParser
 from reconciliation.models import Upload, PayPeriod
+from reconciliation.upload_handler import UploadHandler
 from django.contrib.auth.models import User
 import os
 
@@ -64,17 +65,16 @@ for name, filepath in test_files:
         }
     )
     print(f"Pay Period: {pay_period} ({'created' if created else 'existing'})")
-    
-    # Create upload record
-    upload = Upload.objects.create(
+
+    # Create upload record (with versioning - will supersede existing uploads)
+    upload = UploadHandler.create_upload(
         pay_period=pay_period,
         source_system=file_type,
         file_name=os.path.basename(filepath),
         file_path=filepath,
-        uploaded_by=user,
-        status='processing'
+        uploaded_by=user
     )
-    print(f"Upload ID: {upload.upload_id}")
+    print(f"Upload ID: {upload.upload_id} (v{upload.version})")
     
     # Parse based on file type
     try:
