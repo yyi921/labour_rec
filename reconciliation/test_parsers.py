@@ -1,6 +1,6 @@
 """
 Test script for file parsers
-Run with: python manage.py shell < reconciliation/test_parsers.py
+Run with: python manage.py shell -c "exec(open('reconciliation/test_parsers.py').read())"
 """
 from reconciliation.file_detector import FileDetector
 from reconciliation.parsers import TandaParser, IQBParser, JournalParser

@@ -1,6 +1,6 @@
 """
 Test script for file detection
-Run with: python manage.py shell < reconciliation/test_detector.py
+Run with: python manage.py shell -c "exec(open('reconciliation/test_detector.py').read())"
 """
 from reconciliation.file_detector import FileDetector
 import os
