@@ -11,7 +11,7 @@ from datetime import datetime
 class PayPeriod(models.Model):
     """Master table tracking pay periods"""
     period_id = models.CharField(primary_key=True, max_length=20)  # '2025-10-05' (ending date)
-    period_start = models.DateField()
+    period_start = models.DateField(null=True, blank=True)  # Nullable for Journal-only periods
     period_end = models.DateField()
     period_type = models.CharField(max_length=20, default='fortnightly')
     
