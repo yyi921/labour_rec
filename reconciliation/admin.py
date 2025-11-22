@@ -2,7 +2,8 @@ from django.contrib import admin
 from .models import (
     PayPeriod, Upload, TandaTimesheet, IQBDetail, JournalEntry,
     CostCenterSplit, ReconciliationRun, ReconciliationItem,
-    ExceptionResolution, LabourCostSummary, SageIntacctExport
+    ExceptionResolution, LabourCostSummary, SageIntacctExport,
+    EmployeeReconciliation, JournalReconciliation
 )
 
 @admin.register(PayPeriod)
@@ -66,3 +67,59 @@ class LabourCostSummaryAdmin(admin.ModelAdmin):
 class SageIntacctExportAdmin(admin.ModelAdmin):
     list_display = ['export_id', 'pay_period', 'status', 'record_count', 'total_amount', 'exported_at']
     list_filter = ['status']
+
+
+
+@admin.register(EmployeeReconciliation)
+class EmployeeReconciliationAdmin(admin.ModelAdmin):
+    list_display = [
+        'employee_id', 'employee_name', 'employment_type', 'is_salaried', 'pay_period',
+        'tanda_total_hours', 'iqb_total_hours', 'hours_variance',
+        'tanda_total_cost', 'auto_pay_amount', 'iqb_total_cost', 'iqb_superannuation', 'cost_variance',
+        'hours_match', 'cost_match', 'has_issues'
+    ]
+    list_filter = ['pay_period', 'employment_type', 'is_salaried', 'has_issues', 'hours_match', 'cost_match', 'recon_run']
+    search_fields = ['employee_id', 'employee_name']
+    readonly_fields = [
+        'pay_period', 'recon_run', 'employee_id', 'employee_name', 'employment_type',
+        'is_salaried', 'auto_pay_amount', 'tanda_earliest_shift',
+        'tanda_latest_shift', 'tanda_locations', 'cost_centers', 'tanda_leave_breakdown'
+    ]
+
+    fieldsets = (
+        ('Employee', {
+            'fields': ('pay_period', 'recon_run', 'employee_id', 'employee_name', 'employment_type', 'is_salaried', 'auto_pay_amount')
+        }),
+        ('Tanda Data (Worked)', {
+            'fields': (
+                'tanda_total_hours', 'tanda_total_cost', 'tanda_shift_count',
+                'tanda_normal_hours', 'tanda_leave_hours', 'tanda_leave_breakdown',
+                'tanda_earliest_shift', 'tanda_latest_shift', 'tanda_locations'
+            )
+        }),
+        ('IQB Data (Paid)', {
+            'fields': (
+                'iqb_total_hours', 'iqb_gross_pay', 'iqb_superannuation', 'iqb_total_cost',
+                'iqb_normal_pay', 'iqb_normal_hours',
+                'iqb_overtime_pay', 'iqb_overtime_hours',
+                'iqb_annual_leave_pay', 'iqb_annual_leave_hours',
+                'iqb_sick_leave_pay', 'iqb_sick_leave_hours',
+                'iqb_other_leave_pay', 'iqb_other_leave_hours',
+                'cost_centers'
+            )
+        }),
+        ('Reconciliation', {
+            'fields': (
+                'hours_variance', 'hours_variance_pct', 'hours_match',
+                'cost_variance', 'cost_variance_pct', 'cost_match',
+                'has_issues', 'issue_description'
+            )
+        }),
+    )
+
+
+@admin.register(JournalReconciliation)
+class JournalReconciliationAdmin(admin.ModelAdmin):
+    list_display = ['description', 'gl_account', 'journal_debit', 'journal_credit', 'journal_net', 'include_in_total_cost', 'is_mapped']
+    list_filter = ['recon_run', 'include_in_total_cost', 'is_mapped']
+    search_fields = ['description', 'gl_account']

@@ -1,0 +1,235 @@
+{% extends "reconciliation/base.html" %}
+{% load humanize %}
+
+{% block title %}Reconciliation Dashboard - {{ pay_period.period_id }}{% endblock %}
+
+{% block content %}
+<header>
+    <div class="breadcrumb">
+        <a href="{% url 'reconciliation:pay_period_list' %}">Pay Periods</a> / {{ pay_period.period_id }}
+    </div>
+    <h1>Reconciliation Dashboard</h1>
+    <p>
+        <strong>Pay Period:</strong> {{ pay_period.period_id }}
+        ({{ pay_period.period_start|date:"d M Y" }} - {{ pay_period.period_end|date:"d M Y" }})
+    </p>
+    <p>
+        <strong>Reconciliation Run:</strong> {{ recon_run.run_id }} |
+        <strong>Status:</strong> <span class="badge badge-success">{{ recon_run.status }}</span> |
+        <strong>Completed:</strong> {{ recon_run.completed_at|date:"d M Y H:i" }}
+    </p>
+</header>
+
+{% if error %}
+<div class="alert alert-warning">{{ error }}</div>
+{% else %}
+
+<!-- Overall Summary Stats -->
+<div class="summary-grid">
+    <div class="stat-box primary">
+        <div class="stat-label">Total Employees</div>
+        <div class="stat-value">{{ overall_summary.total_employees }}</div>
+    </div>
+    <div class="stat-box success">
+        <div class="stat-label">Hours Match</div>
+        <div class="stat-value">{{ overall_summary.hours_match_pct|floatformat:1 }}%</div>
+        <small>{{ overall_summary.hours_match_count }} / {{ overall_summary.total_employees }}</small>
+    </div>
+    <div class="stat-box success">
+        <div class="stat-label">Cost Match</div>
+        <div class="stat-value">{{ overall_summary.cost_match_pct|floatformat:1 }}%</div>
+        <small>{{ overall_summary.cost_match_count }} / {{ overall_summary.total_employees }}</small>
+    </div>
+    <div class="stat-box info">
+        <div class="stat-label">IQB Grand Total</div>
+        <div class="stat-value">${{ overall_summary.iqb_grand_total|floatformat:0 }}</div>
+        <small>(incl. Super)</small>
+    </div>
+</div>
+
+<!-- Table 1: Overall Summary -->
+<h2>1. Overall Reconciliation Summary</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Category</th>
+            <th class="number">Tanda Total</th>
+            <th class="number">IQB Total (excl. Super)</th>
+            <th class="number">IQB Superannuation</th>
+            <th class="number">$ Variance</th>
+            <th class="number">Tanda Hours</th>
+            <th class="number">IQB Hours</th>
+            <th class="number">Hours Variance</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Total</strong></td>
+            <td class="number">${{ overall_summary.tanda_total_cost|floatformat:2|intcomma }}</td>
+            <td class="number">${{ overall_summary.iqb_total_cost|floatformat:2|intcomma }}</td>
+            <td class="number">${{ overall_summary.iqb_superannuation|floatformat:2|intcomma }}</td>
+            <td class="number {% if overall_summary.cost_variance > 100 %}warning{% endif %}">
+                ${{ overall_summary.cost_variance|floatformat:2|intcomma }}
+            </td>
+            <td class="number">{{ overall_summary.tanda_total_hours|floatformat:2|intcomma }}</td>
+            <td class="number">{{ overall_summary.iqb_total_hours|floatformat:2|intcomma }}</td>
+            <td class="number {% if overall_summary.hours_variance > 10 %}warning{% endif %}">
+                {{ overall_summary.hours_variance|floatformat:2|intcomma }}
+            </td>
+        </tr>
+        <tr>
+            <td><strong>IQB Grand Total (with Super)</strong></td>
+            <td class="number" colspan="2">${{ overall_summary.iqb_grand_total|floatformat:2|intcomma }}</td>
+            <td colspan="5"></td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- Table 2: Summary by Employment Type -->
+<h2>2. Summary by Employment Type</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Employment Type</th>
+            <th class="number">Employees</th>
+            <th class="number">Tanda/Auto Pay $</th>
+            <th class="number">IQB $ (excl. Super)</th>
+            <th class="number">Super</th>
+            <th class="number">$ Variance</th>
+            <th class="number">Tanda Hours</th>
+            <th class="number">IQB Hours</th>
+            <th class="number">Hours Variance</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in employment_type_summary %}
+        <tr>
+            <td>{{ item.employment_type|default:"Unspecified" }}</td>
+            <td class="number">{{ item.employee_count|intcomma }}</td>
+            <td class="number">${{ item.expected_cost|floatformat:2|intcomma }}</td>
+            <td class="number">${{ item.iqb_total_cost|floatformat:2|intcomma }}</td>
+            <td class="number">${{ item.iqb_superannuation|floatformat:2|intcomma }}</td>
+            <td class="number {% if item.cost_variance > 100 %}warning{% endif %}">
+                ${{ item.cost_variance|floatformat:2|intcomma }}
+            </td>
+            <td class="number">{{ item.tanda_total_hours|floatformat:2|intcomma }}</td>
+            <td class="number">{{ item.iqb_total_hours|floatformat:2|intcomma }}</td>
+            <td class="number {% if item.hours_variance > 10 %}warning{% endif %}">
+                {{ item.hours_variance|floatformat:2|intcomma }}
+            </td>
+        </tr>
+        {% endfor %}
+        <tr style="border-top: 3px solid #2c3e50; font-weight: bold; background-color: #ecf0f1;">
+            <td><strong>TOTAL</strong></td>
+            <td class="number">{{ employment_type_totals.total_employees|intcomma }}</td>
+            <td class="number">${{ employment_type_totals.total_expected_cost|floatformat:2|intcomma }}</td>
+            <td class="number">${{ employment_type_totals.total_iqb_cost|floatformat:2|intcomma }}</td>
+            <td class="number">${{ employment_type_totals.total_iqb_super|floatformat:2|intcomma }}</td>
+            <td class="number">${{ employment_type_totals.total_cost_variance|floatformat:2|intcomma }}</td>
+            <td class="number">{{ employment_type_totals.total_tanda_hours|floatformat:2|intcomma }}</td>
+            <td class="number">{{ employment_type_totals.total_iqb_hours|floatformat:2|intcomma }}</td>
+            <td class="number">{{ employment_type_totals.total_hours_variance|floatformat:2|intcomma }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- Table 3: Journal vs IQB Comparison -->
+<h2>3. Journal vs IQB Comparison</h2>
+
+<div class="summary-card">
+    <h3>Summary</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th class="number">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>IQB Total Cost (excl. Super)</td>
+                <td class="number">${{ journal_comparison.iqb_total_cost|floatformat:2|intcomma }}</td>
+            </tr>
+            <tr>
+                <td>IQB Superannuation</td>
+                <td class="number">${{ journal_comparison.iqb_superannuation|floatformat:2|intcomma }}</td>
+            </tr>
+            <tr style="border-top: 2px solid #3498db;">
+                <td><strong>IQB Grand Total (with Super)</strong></td>
+                <td class="number"><strong>${{ journal_comparison.iqb_grand_total|floatformat:2|intcomma }}</strong></td>
+            </tr>
+            <tr>
+                <td><strong>Total Journal Cost (marked "Y")</strong></td>
+                <td class="number"><strong>${{ journal_comparison.journal_total_cost|floatformat:2|intcomma }}</strong></td>
+            </tr>
+            <tr style="border-top: 2px solid #e74c3c;">
+                <td><strong>Variance</strong></td>
+                <td class="number {% if journal_comparison.variance > 1000 %}warning{% else %}positive{% endif %}">
+                    <strong>${{ journal_comparison.variance|floatformat:2|intcomma }}</strong>
+                    ({{ journal_comparison.variance_pct|floatformat:2 }}%)
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<h3>Journal Entry Breakdown</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Description</th>
+            <th>GL Account</th>
+            <th class="number">Debit</th>
+            <th class="number">Credit</th>
+            <th class="number">Net Amount</th>
+            <th>In Total Cost?</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in journal_comparison.journal_items %}
+        <tr>
+            <td>{{ item.description }}</td>
+            <td>{{ item.gl_account }}</td>
+            <td class="number">${{ item.journal_debit|floatformat:2|intcomma }}</td>
+            <td class="number">${{ item.journal_credit|floatformat:2|intcomma }}</td>
+            <td class="number">${{ item.journal_net|floatformat:2|intcomma }}</td>
+            <td>
+                {% if item.include_in_total_cost %}
+                <span class="badge badge-success">Yes</span>
+                {% else %}
+                <span class="badge badge-info">No</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if item.is_mapped %}
+                <span class="badge badge-success">Mapped</span>
+                {% else %}
+                <span class="badge badge-danger">Unmapped</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        <tr style="border-top: 3px solid #2c3e50; font-weight: bold; background-color: #ecf0f1;">
+            <td colspan="2"><strong>TOTAL</strong></td>
+            <td class="number">${{ journal_comparison.journal_totals.total_debit|floatformat:2|intcomma }}</td>
+            <td class="number">${{ journal_comparison.journal_totals.total_credit|floatformat:2|intcomma }}</td>
+            <td class="number">${{ journal_comparison.journal_totals.total_net|floatformat:2|intcomma }}</td>
+            <td colspan="2"></td>
+        </tr>
+    </tbody>
+</table>
+
+{% if journal_comparison.unmapped_count > 0 %}
+<div class="alert alert-warning">
+    <strong>Warning:</strong> {{ journal_comparison.unmapped_count }} journal description(s) are not in the mapping file.
+</div>
+{% else %}
+<div class="alert alert-info">
+    <strong>Success:</strong> All journal descriptions are properly mapped.
+</div>
+{% endif %}
+
+{% endif %}
+
+{% endblock %}

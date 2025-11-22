@@ -1,0 +1,14 @@
+Transaction Type,Include in Hours,Include in Costs,Notes
+Annual Leave,Yes,Yes,Leave payment
+Auto Pay,Yes,Yes,Automatic payments
+Hours By Rate,Yes,Yes,Normal hourly payments
+Long Service Leave,Yes,Yes,LSL payments
+Non Standard Add Before,No,Yes,Allowances added before tax
+Other Leave,Yes,Yes,Other leave types
+Sick Leave,Yes,Yes,Sick leave payment
+Standard Add Before,No,Yes,Standard allowances before tax
+Super,No,Yes,Superannuation - cost only
+Term ETP - Taxable (Code: O),No,Yes,Termination payment
+Term Post 93 AL Gross,Yes,Yes,Termination annual leave
+Term Post 93 LL Gross,Yes,Yes,Termination long service leave
+User Defined Leave,Yes,Yes,Custom leave types

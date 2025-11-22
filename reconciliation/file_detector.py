@@ -132,23 +132,23 @@ class FileDetector:
     @staticmethod
     def _extract_tanda_period(df):
         """Extract period from Tanda timesheet"""
-        # Get the latest shift finish date
-        date_columns = [col for col in df.columns if 'Date Shift Finish' in col]
-        
+        # Get the latest shift start date (use start date, not finish date)
+        date_columns = [col for col in df.columns if 'Date Shift Start' in col]
+
         if date_columns:
             # Parse dates (handle various formats)
             dates = pd.to_datetime(df[date_columns[0]], format='%d/%m/%Y', errors='coerce')
             period_end = dates.max()
-            
+
             # Assume fortnight (14 days)
             period_start = period_end - timedelta(days=13)
-            
+
             return {
                 'period_end': period_end.date(),
                 'period_start': period_start.date(),
                 'period_id': period_end.date().isoformat()
             }
-        
+
         return None
     
     @staticmethod

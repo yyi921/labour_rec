@@ -233,14 +233,15 @@ class JournalParser:
         records = []
         
         for _, row in df.iterrows():
-            # Skip rows with no cost account
-            if pd.isna(row.get('Cost Account')):
-                continue
-            
             # Parse date
             date = JournalParser._parse_date(row.get('Date'))
             if not date:
                 continue  # Skip if no valid date
+
+            # Skip rows with no description (header rows, etc.)
+            description = str(row.get('Description', '')).strip()
+            if not description:
+                continue
             
             # Parse numeric values
             debit = JournalParser._parse_decimal(row.get('Debit'), 0)

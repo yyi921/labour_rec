@@ -392,3 +392,100 @@ class SageIntacctExport(models.Model):
     
     class Meta:
         ordering = ['-exported_at']
+
+class EmployeeReconciliation(models.Model):
+    """
+    Joint reconciliation view combining Tanda and IQB data by employee
+    Provides foundation for budget/forecast analysis
+    """
+    pay_period = models.ForeignKey(PayPeriod, on_delete=models.CASCADE, related_name='employee_reconciliations', null=True, blank=True)
+    recon_run = models.ForeignKey(ReconciliationRun, on_delete=models.CASCADE, related_name='employee_recons')
+
+    employee_id = models.CharField(max_length=20, db_index=True)
+    employee_name = models.CharField(max_length=200)
+    employment_type = models.CharField(max_length=100, blank=True)  # From IQB
+
+    # Auto Pay for salaried employees
+    is_salaried = models.BooleanField(default=False)
+    auto_pay_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    # Tanda data (actual worked)
+    tanda_total_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    tanda_total_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    tanda_shift_count = models.IntegerField(default=0)
+    tanda_earliest_shift = models.DateTimeField(null=True, blank=True)
+    tanda_latest_shift = models.DateTimeField(null=True, blank=True)
+    tanda_locations = models.JSONField(default=list)  # List of locations worked
+    
+    # Tanda breakdown by type
+    tanda_normal_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    tanda_leave_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    tanda_leave_breakdown = models.JSONField(default=dict)  # {'Annual Leave': 8, 'Sick Leave': 4}
+    
+    # IQB data (paid)
+    iqb_total_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    iqb_gross_pay = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    iqb_superannuation = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    iqb_total_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    
+    # IQB breakdown by transaction type
+    iqb_normal_pay = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    iqb_normal_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    iqb_overtime_pay = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    iqb_overtime_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    iqb_annual_leave_pay = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    iqb_annual_leave_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    iqb_sick_leave_pay = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    iqb_sick_leave_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    iqb_other_leave_pay = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    iqb_other_leave_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    # Cost centers worked (for multi-CC employees)
+    cost_centers = models.JSONField(default=list)  # ['470-6800', '910-9300']
+    
+    # Variances
+    hours_variance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    hours_variance_pct = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    cost_variance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    cost_variance_pct = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    
+    # Reconciliation status
+    hours_match = models.BooleanField(default=False)
+    cost_match = models.BooleanField(default=False)
+    has_issues = models.BooleanField(default=False)
+    issue_description = models.TextField(blank=True)
+    
+    class Meta:
+        unique_together = ['pay_period', 'employee_id']
+        indexes = [
+            models.Index(fields=['pay_period', 'has_issues']),
+            models.Index(fields=['recon_run', 'has_issues']),
+            models.Index(fields=['employee_id']),
+        ]
+
+    def __str__(self):
+        return f"{self.employee_id} - {self.employee_name} (Period: {self.pay_period.period_id})"
+
+
+class JournalReconciliation(models.Model):
+    """
+    Reconciliation of IQB vs Journal entries by description
+    """
+    recon_run = models.ForeignKey(ReconciliationRun, on_delete=models.CASCADE, related_name='journal_recons')
+
+    description = models.CharField(max_length=200, db_index=True)
+    gl_account = models.CharField(max_length=20, blank=True)
+    include_in_total_cost = models.BooleanField(default=False)
+    is_mapped = models.BooleanField(default=True)  # False if missing from mapping
+
+    # Journal amounts (debit - credit)
+    journal_debit = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    journal_credit = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    journal_net = models.DecimalField(max_digits=15, decimal_places=2, default=0)  # debit - credit
+
+    class Meta:
+        unique_together = ['recon_run', 'description']
+        ordering = ['description']
+
+    def __str__(self):
+        return f"{self.description}: ${self.journal_net:,.2f}"
