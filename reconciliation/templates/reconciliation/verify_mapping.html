@@ -1,0 +1,330 @@
+{% extends "reconciliation/base.html" %}
+{% load humanize %}
+
+{% block title %}Verify Tanda Location Mappings - {{ pay_period.period_id }}{% endblock %}
+
+{% block content %}
+<header>
+    <div class="breadcrumb">
+        <a href="{% url 'reconciliation:pay_period_list' %}">Pay Periods</a> /
+        <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}">{{ pay_period.period_id }}</a> /
+        Verify Mappings
+    </div>
+    <h1>Verify Tanda Location Mappings</h1>
+    <p>Pay Period: {{ pay_period.period_id }} ({{ pay_period.period_start|date:"d M Y" }} - {{ pay_period.period_end|date:"d M Y" }})</p>
+</header>
+
+{% if error %}
+<div class="alert alert-warning">{{ error }}</div>
+{% else %}
+
+<div class="summary-grid">
+    <div class="stat-box primary">
+        <div class="stat-label">Total Locations</div>
+        <div class="stat-value">{{ total_locations }}</div>
+    </div>
+    <div class="stat-box success">
+        <div class="stat-label">Mapped</div>
+        <div class="stat-value">{{ mapped_count }}</div>
+        <small>{{ mapped_pct }}%</small>
+    </div>
+    <div class="stat-box {% if unmapped_count > 0 %}warning{% else %}success{% endif %}">
+        <div class="stat-label">Unmapped</div>
+        <div class="stat-value">{{ unmapped_count }}</div>
+    </div>
+</div>
+
+{% if unmapped_count > 0 %}
+<h2>Unmapped Locations ({{ unmapped_count }})</h2>
+<p>Please provide cost account codes for the following location/team combinations:</p>
+
+<form id="mappingForm">
+    <table>
+        <thead>
+            <tr>
+                <th>Location - Team</th>
+                <th>Employees Affected</th>
+                <th>Cost Account Code</th>
+                <th>Suggested</th>
+            </tr>
+        </thead>
+        <tbody id="unmappedTable">
+            {% for loc in unmapped_locations %}
+            <tr>
+                <td>{{ loc.tanda_location }}</td>
+                <td class="number">{{ loc.employee_count }}</td>
+                <td>
+                    <input
+                        type="text"
+                        name="cost_account_{{ forloop.counter }}"
+                        data-location="{{ loc.tanda_location }}"
+                        placeholder="e.g., 910-9100"
+                        style="width: 150px; padding: 5px;"
+                        required
+                    />
+                </td>
+                <td>
+                    <select
+                        class="suggested-select"
+                        data-target="cost_account_{{ forloop.counter }}"
+                        style="padding: 5px;"
+                    >
+                        <option value="">-- Select Suggestion --</option>
+                        <option value="910-9100">910-9100 - Administration</option>
+                        <option value="910-9500">910-9500 - Marketing</option>
+                        <option value="910-7400">910-7400 - Reservations</option>
+                        <option value="450-5000">450-5000 - Food</option>
+                        <option value="470-6800">470-6800 - Accommodation</option>
+                        <option value="480-7000">480-7000 - Gaming</option>
+                    </select>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="margin-top: 20px;">
+        <button type="submit" class="btn btn-primary" id="saveBtn">
+            Save Mappings & Re-run Allocation
+        </button>
+        <button type="button" class="btn btn-secondary" onclick="window.location.href='{% url 'reconciliation:dashboard' pay_period.period_id %}'">
+            Cancel
+        </button>
+    </div>
+</form>
+
+<div id="result" style="margin-top: 20px;"></div>
+
+<script>
+// Auto-fill from suggestion dropdown
+document.querySelectorAll('.suggested-select').forEach(select => {
+    select.addEventListener('change', function() {
+        const targetName = this.dataset.target;
+        const targetInput = document.querySelector(`input[name="${targetName}"]`);
+        if (targetInput && this.value) {
+            targetInput.value = this.value;
+        }
+    });
+});
+
+// Handle form submission
+document.getElementById('mappingForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const saveBtn = document.getElementById('saveBtn');
+    const resultDiv = document.getElementById('result');
+
+    // Collect mappings
+    const mappings = [];
+    const inputs = document.querySelectorAll('input[name^="cost_account_"]');
+
+    inputs.forEach(input => {
+        const location = input.dataset.location;
+        const costAccount = input.value.trim();
+
+        if (location && costAccount) {
+            mappings.push({
+                tanda_location: location,
+                cost_account_code: costAccount
+            });
+        }
+    });
+
+    if (mappings.length === 0) {
+        resultDiv.innerHTML = '<div class="alert alert-warning">Please fill in at least one mapping.</div>';
+        return;
+    }
+
+    // Disable button
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+    resultDiv.innerHTML = '<div class="alert alert-info">Saving mappings and re-running cost allocation...</div>';
+
+    try {
+        const response = await fetch('{% url "reconciliation:save_location_mappings" pay_period.period_id %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ mappings: mappings })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <h3>Success!</h3>
+                    <p>Created: ${data.created_count} | Updated: ${data.updated_count}</p>
+                    <p><strong>Allocation Results:</strong></p>
+                    <ul>
+                        <li>Rules Created: ${data.allocation_result.rules_created}</li>
+                        <li>Valid: ${data.allocation_result.valid_rules}</li>
+                        <li>Invalid: ${data.allocation_result.invalid_rules}</li>
+                        <li>Still Unmapped: ${data.allocation_result.unmapped_count}</li>
+                    </ul>
+                    <p>Refreshing page to show updated status...</p>
+                </div>
+            `;
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            resultDiv.innerHTML = `<div class="alert alert-warning">Error: ${data.error}</div>`;
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Mappings & Re-run Allocation';
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="alert alert-warning">Error: ${error.message}</div>`;
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Mappings & Re-run Allocation';
+    }
+});
+</script>
+
+{% else %}
+<div class="alert alert-success">
+    <h3>All locations are mapped!</h3>
+    <p>All location/team combinations in this pay period have been successfully mapped to cost accounts.</p>
+    <p>You can now proceed with cost allocation.</p>
+</div>
+
+<div style="margin-top: 20px; display: flex; gap: 10px;">
+    <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">
+        Back to Dashboard
+    </a>
+    <button onclick="runCostAllocation()" class="btn btn-primary" id="runAllocationBtn">
+        Run Cost Allocation
+    </button>
+    <a href="{% url 'reconciliation:cost_allocation_view' pay_period.period_id %}" class="btn btn-info">
+        Cost Allocation View
+    </a>
+</div>
+
+<div id="allocationResult" style="margin-top: 20px;"></div>
+
+<script>
+async function runCostAllocation() {
+    const btn = document.getElementById('runAllocationBtn');
+    const resultDiv = document.getElementById('allocationResult');
+
+    btn.disabled = true;
+    btn.textContent = 'Running...';
+    resultDiv.innerHTML = '<div class="alert alert-info">Running cost allocation from both IQB and Tanda sources...</div>';
+
+    try {
+        const response = await fetch('{% url "reconciliation:run_cost_allocation" pay_period.period_id %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <h3>Cost Allocation Complete!</h3>
+                    <h4>IQB Allocation:</h4>
+                    <ul>
+                        <li>Rules Created: ${data.iqb_result.rules_created}</li>
+                        <li>Valid: ${data.iqb_result.valid_rules}</li>
+                        <li>Invalid: ${data.iqb_result.invalid_rules}</li>
+                    </ul>
+                    <h4>Tanda Allocation:</h4>
+                    <ul>
+                        <li>Rules Created: ${data.tanda_result.rules_created}</li>
+                        <li>Valid: ${data.tanda_result.valid_rules}</li>
+                        <li>Invalid: ${data.tanda_result.invalid_rules}</li>
+                        <li>Unmapped: ${data.tanda_result.unmapped_count || 0}</li>
+                    </ul>
+                    <p style="margin-top: 15px;">
+                        <a href="{% url 'reconciliation:cost_allocation_view' pay_period.period_id %}" class="btn btn-primary">
+                            View Cost Allocation Details
+                        </a>
+                    </p>
+                </div>
+            `;
+            btn.style.display = 'none';
+        } else {
+            resultDiv.innerHTML = `<div class="alert alert-warning">Error: ${data.error}</div>`;
+            btn.disabled = false;
+            btn.textContent = 'Run Cost Allocation';
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="alert alert-warning">Error: ${error.message}</div>`;
+        btn.disabled = false;
+        btn.textContent = 'Run Cost Allocation';
+    }
+}
+</script>
+{% endif %}
+
+<style>
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary {
+    background-color: #3498db;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+}
+
+.btn-secondary {
+    background-color: #95a5a6;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #7f8c8d;
+}
+
+.btn-info {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.btn-info:hover {
+    background-color: #138496;
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
+}
+</style>
+
+{% endif %}
+
+{% endblock %}

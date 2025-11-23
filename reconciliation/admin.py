@@ -3,7 +3,7 @@ from .models import (
     PayPeriod, Upload, TandaTimesheet, IQBDetail, JournalEntry,
     CostCenterSplit, ReconciliationRun, ReconciliationItem,
     ExceptionResolution, LabourCostSummary, SageIntacctExport,
-    EmployeeReconciliation, JournalReconciliation
+    EmployeeReconciliation, JournalReconciliation, LocationMapping
 )
 
 @admin.register(PayPeriod)
@@ -123,3 +123,11 @@ class JournalReconciliationAdmin(admin.ModelAdmin):
     list_display = ['description', 'gl_account', 'journal_debit', 'journal_credit', 'journal_net', 'include_in_total_cost', 'is_mapped']
     list_filter = ['recon_run', 'include_in_total_cost', 'is_mapped']
     search_fields = ['description', 'gl_account']
+
+
+@admin.register(LocationMapping)
+class LocationMappingAdmin(admin.ModelAdmin):
+    list_display = ['tanda_location', 'cost_account_code', 'department_code', 'department_name', 'is_active']
+    list_filter = ['department_code', 'department_name', 'is_active']
+    search_fields = ['tanda_location', 'cost_account_code']
+    list_editable = ['is_active']

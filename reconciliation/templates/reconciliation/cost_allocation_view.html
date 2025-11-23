@@ -1,0 +1,77 @@
+{% extends "reconciliation/base.html" %}
+
+{% block title %}Cost Allocation View - {{ pay_period.period_id }}{% endblock %}
+
+{% block content %}
+<header>
+    <div class="breadcrumb">
+        <a href="{% url 'reconciliation:pay_period_list' %}">Pay Periods</a> /
+        <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}">{{ pay_period.period_id }}</a> /
+        Cost Allocation
+    </div>
+    <h1>Cost Allocation View</h1>
+    <p>Pay Period: {{ pay_period.period_id }}</p>
+</header>
+
+<div class="alert alert-info">
+    <h3>{{ message }}</h3>
+    <p>This view will display detailed cost allocation information including:</p>
+    <ul>
+        <li>Employee-level allocation details</li>
+        <li>IQB vs Tanda allocation comparisons</li>
+        <li>Cost center breakdowns by department</li>
+        <li>Validation status and issues</li>
+        <li>Export capabilities</li>
+    </ul>
+</div>
+
+<div style="margin-top: 20px;">
+    <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">
+        Back to Dashboard
+    </a>
+    <a href="{% url 'reconciliation:verify_mapping' pay_period.period_id %}" class="btn btn-primary">
+        Verify Mappings
+    </a>
+</div>
+
+<style>
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-block;
+    margin-right: 10px;
+}
+
+.btn-primary {
+    background-color: #3498db;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+}
+
+.btn-secondary {
+    background-color: #95a5a6;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #7f8c8d;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 20px 0;
+}
+</style>
+
+{% endblock %}

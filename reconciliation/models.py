@@ -6,6 +6,7 @@ from django.db import models
 from django.contrib.auth.models import User
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 
 class PayPeriod(models.Model):
@@ -19,6 +20,7 @@ class PayPeriod(models.Model):
     has_tanda = models.BooleanField(default=False)
     has_iqb = models.BooleanField(default=False)
     has_journal = models.BooleanField(default=False)
+    has_cost_allocation = models.BooleanField(default=False)
     
     # Reconciliation status
     STATUS_CHOICES = [
@@ -489,3 +491,133 @@ class JournalReconciliation(models.Model):
 
     def __str__(self):
         return f"{self.description}: ${self.journal_net:,.2f}"
+    
+
+
+
+class CostAllocationRule(models.Model):
+    """
+    Cost allocation rules for employees
+    Can be sourced from: IQB, Tanda, or Manual Override
+    """
+    pay_period = models.ForeignKey(PayPeriod, on_delete=models.CASCADE, related_name='allocation_rules')
+    employee_code = models.CharField(max_length=20, db_index=True)
+    employee_name = models.CharField(max_length=200)
+    
+    # Source of allocation
+    SOURCE_CHOICES = [
+        ('iqb', 'IQB Default'),
+        ('tanda', 'Tanda Timesheet'),
+        ('override', 'Manual Override'),
+    ]
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='iqb')
+    
+    # Allocation details
+    allocations = models.JSONField(default=dict)
+    # Format: {
+    #   '449-5000': {'percentage': 0.33, 'amount': 1234.56, 'source': 'tanda'},
+    #   '454-5000': {'percentage': 0.67, 'amount': 2345.67, 'source': 'tanda'}
+    # }
+    
+    # Validation
+    total_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=100)
+    is_valid = models.BooleanField(default=False)
+    validation_errors = models.JSONField(default=list)
+    
+    # Tracking
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        'auth.User', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='allocation_updates'
+    )
+    
+    class Meta:
+        unique_together = ['pay_period', 'employee_code']
+        indexes = [
+            models.Index(fields=['pay_period', 'source']),
+            models.Index(fields=['employee_code']),
+        ]
+    
+    def __str__(self):
+        return f"{self.employee_code} - {self.employee_name} ({self.pay_period.period_id})"
+    
+    def validate_allocations(self):
+        """Validate that allocations sum to 100%"""
+        errors = []
+        
+        if not self.allocations:
+            errors.append("No allocations defined")
+            self.is_valid = False
+            self.validation_errors = errors
+            return False
+        
+        total_pct = sum(alloc['percentage'] for alloc in self.allocations.values())
+        self.total_percentage = Decimal(str(total_pct))
+
+        # Allow 0.05% tolerance for rounding
+        if abs(total_pct - 100) > 0.05:
+            errors.append(f"Allocations sum to {total_pct}%, not 100%")
+        
+        # Check for invalid cost accounts
+        for cost_account in self.allocations.keys():
+            if not cost_account or '-' not in cost_account:
+                errors.append(f"Invalid cost account format: {cost_account}")
+        
+        self.is_valid = len(errors) == 0
+        self.validation_errors = errors
+        return self.is_valid
+
+
+class LocationMapping(models.Model):
+    """
+    Maps Tanda location names to cost account codes
+    Example: 'TSV - OPH Chef' -> '449-5000'
+    """
+    tanda_location = models.CharField(max_length=200, unique=True)
+    cost_account_code = models.CharField(max_length=20)
+    department_code = models.CharField(max_length=10)  # e.g., '50' for Food
+    department_name = models.CharField(max_length=100)  # e.g., 'Food'
+    
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['tanda_location']
+    
+    def __str__(self):
+        return f"{self.tanda_location} -> {self.cost_account_code}"
+
+
+class DepartmentCostSummary(models.Model):
+    """
+    Department-level cost summary by GL account
+    Used for verification view
+    """
+    pay_period = models.ForeignKey(PayPeriod, on_delete=models.CASCADE, related_name='dept_summaries')
+    department_code = models.CharField(max_length=10)  # '30', '50', '70', etc.
+    department_name = models.CharField(max_length=100)  # 'Beverage', 'Food', 'Accommodation'
+    
+    # GL accounts
+    gl_account = models.CharField(max_length=20)  # '6345', '6370', '6300', etc.
+    gl_account_name = models.CharField(max_length=100)  # 'Salaries', 'Superannuation', 'Annual Leave'
+    
+    # Totals
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    employee_count = models.IntegerField(default=0)
+    
+    # Breakdown by cost center within department
+    cost_center_breakdown = models.JSONField(default=dict)
+    # Format: {'449-5000': 12345.67, '454-5000': 23456.78}
+    
+    class Meta:
+        unique_together = ['pay_period', 'department_code', 'gl_account']
+        indexes = [
+            models.Index(fields=['pay_period', 'department_code']),
+        ]
+    
+    def __str__(self):
+        return f"{self.department_name} - {self.gl_account_name} ({self.pay_period.period_id})"
