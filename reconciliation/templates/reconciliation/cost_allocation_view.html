@@ -1,4 +1,5 @@
 {% extends "reconciliation/base.html" %}
+{% load humanize %}
 
 {% block title %}Cost Allocation View - {{ pay_period.period_id }}{% endblock %}
 
@@ -10,40 +11,391 @@
         Cost Allocation
     </div>
     <h1>Cost Allocation View</h1>
-    <p>Pay Period: {{ pay_period.period_id }}</p>
+    <p>
+        <strong>Pay Period:</strong> {{ pay_period.period_id }}
+        ({{ pay_period.period_start|date:"d M Y" }} - {{ pay_period.period_end|date:"d M Y" }})
+    </p>
 </header>
 
-<div class="alert alert-info">
-    <h3>{{ message }}</h3>
-    <p>This view will display detailed cost allocation information including:</p>
-    <ul>
-        <li>Employee-level allocation details</li>
-        <li>IQB vs Tanda allocation comparisons</li>
-        <li>Cost center breakdowns by department</li>
-        <li>Validation status and issues</li>
-        <li>Export capabilities</li>
-    </ul>
+{% if error %}
+<div class="alert alert-warning">{{ error }}</div>
+{% else %}
+
+<!-- GL Summary Section -->
+<div class="gl-summary">
+    <h2>GL Account Summary</h2>
+    <p><small>Total should match IQB Grand Total from Dashboard</small></p>
+    <table class="summary-table">
+        <thead>
+            <tr>
+                <th>GL Account</th>
+                <th>Description</th>
+                <th class="number">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in gl_totals.items %}
+            <tr>
+                <td>{{ item.gl_account }}</td>
+                <td>{{ item.gl_name }}</td>
+                <td class="number">${{ item.total|floatformat:2|intcomma }}</td>
+            </tr>
+            {% endfor %}
+            <tr style="border-top: 3px solid #2c3e50; font-weight: bold; background-color: #ecf0f1;">
+                <td colspan="2"><strong>IQB GRAND TOTAL</strong></td>
+                <td class="number"><strong>${{ gl_totals.grand_total|floatformat:2|intcomma }}</strong></td>
+            </tr>
+        </tbody>
+    </table>
 </div>
 
-<div style="margin-top: 20px;">
-    <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">
-        Back to Dashboard
-    </a>
-    <a href="{% url 'reconciliation:verify_mapping' pay_period.period_id %}" class="btn btn-primary">
-        Verify Mappings
-    </a>
+<!-- View Toggle and Filters -->
+<div class="controls-section">
+    <div class="view-toggle">
+        <h3>View Mode</h3>
+        <div class="toggle-buttons">
+            <button class="toggle-btn {% if view_mode == 'percentage' %}active{% endif %}"
+                    onclick="changeView('percentage')">
+                % Allocation by Cost Center
+            </button>
+            <button class="toggle-btn {% if view_mode == 'dollar' %}active{% endif %}"
+                    onclick="changeView('dollar')">
+                $ Value by GL
+            </button>
+        </div>
+    </div>
+
+    <div class="filters">
+        <h3>Filters</h3>
+        <form method="GET" id="filterForm">
+            <input type="hidden" name="view" id="viewInput" value="{{ view_mode }}">
+
+            <div class="filter-group">
+                <label for="locationFilter">Sage Location:</label>
+                <select name="location" id="locationFilter" onchange="applyFilters()">
+                    <option value="">All Locations</option>
+                    {% for loc in locations %}
+                    <option value="{{ loc.location_id }}" {% if selected_location == loc.location_id %}selected{% endif %}>
+                        {{ loc.location_id }} - {{ loc.location_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="departmentFilter">Sage Department:</label>
+                <select name="department" id="departmentFilter" onchange="applyFilters()">
+                    <option value="">All Departments</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept.department_id }}" {% if selected_department == dept.department_id %}selected{% endif %}>
+                        {{ dept.department_id }} - {{ dept.department_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="button" onclick="clearFilters()" class="btn btn-secondary">Clear Filters</button>
+        </form>
+    </div>
 </div>
+
+<!-- Employee Allocation Table -->
+<div class="allocation-section">
+    <h2>Employee Cost Allocations</h2>
+    <p><small>Total Employees: {{ employees|length }}</small></p>
+
+    <div style="margin-bottom: 15px;">
+        <button onclick="saveAllocations()" class="btn btn-primary">Save Changes</button>
+        <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+
+    <table class="allocation-table">
+        <thead>
+            <tr>
+                <th>Employee Code</th>
+                <th>Employee Name</th>
+                <th class="number">Total Cost</th>
+                <th>IQB Allocation</th>
+                <th>Tanda Allocation</th>
+                <th>Override Input</th>
+                <th>Source Selection</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for emp in employees %}
+            <tr data-employee="{{ emp.employee_code }}">
+                <td>{{ emp.employee_code }}</td>
+                <td>{{ emp.employee_name }}</td>
+                <td class="number">${{ emp.total_cost|floatformat:2|intcomma }}</td>
+
+                <!-- IQB Allocation -->
+                <td class="allocation-cell">
+                    {% if view_mode == 'percentage' %}
+                        {% for cost_account, details in emp.iqb_allocation.items %}
+                        <div class="allocation-line">
+                            {{ cost_account }}: {{ details.percentage|floatformat:2 }}%
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        {% for cost_account, details in emp.iqb_allocation.items %}
+                        <div class="allocation-line">
+                            {{ cost_account }}: ${{ details.amount|floatformat:2|intcomma }}
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </td>
+
+                <!-- Tanda Allocation -->
+                <td class="allocation-cell">
+                    {% if emp.has_tanda %}
+                        {% if view_mode == 'percentage' %}
+                            {% for cost_account, details in emp.tanda_allocation.items %}
+                            <div class="allocation-line">
+                                {{ cost_account }}: {{ details.percentage|floatformat:2 }}%
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            {% for cost_account, details in emp.tanda_allocation.items %}
+                            <div class="allocation-line">
+                                {{ cost_account }}: ${{ details.amount|floatformat:2|intcomma }}
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% else %}
+                        <span class="no-data">No Tanda Timesheets Found</span>
+                    {% endif %}
+                </td>
+
+                <!-- Override Input -->
+                <td>
+                    <input type="text"
+                           class="override-input"
+                           id="override-{{ emp.employee_code }}"
+                           placeholder="421-5000: 60, 422-5000: 40"
+                           value="{% if emp.override_allocation %}{% for cost_account, details in emp.override_allocation.items %}{{ cost_account }}: {{ details.percentage|floatformat:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}">
+                    <div class="validation-error" id="error-{{ emp.employee_code }}"></div>
+                </td>
+
+                <!-- Source Selection -->
+                <td class="source-selection">
+                    <label>
+                        <input type="radio"
+                               name="source-{{ emp.employee_code }}"
+                               value="iqb"
+                               {% if emp.current_source == 'iqb' %}checked{% endif %}
+                               onchange="updateSource('{{ emp.employee_code }}', 'iqb')">
+                        IQB
+                    </label>
+                    <label>
+                        <input type="radio"
+                               name="source-{{ emp.employee_code }}"
+                               value="tanda"
+                               {% if emp.current_source == 'tanda' %}checked{% endif %}
+                               {% if not emp.has_tanda %}disabled{% endif %}
+                               onchange="updateSource('{{ emp.employee_code }}', 'tanda')">
+                        Tanda
+                    </label>
+                    <label>
+                        <input type="radio"
+                               name="source-{{ emp.employee_code }}"
+                               value="override"
+                               {% if emp.current_source == 'override' %}checked{% endif %}
+                               onchange="updateSource('{{ emp.employee_code }}', 'override')">
+                        Override
+                    </label>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="margin-top: 15px;">
+        <button onclick="saveAllocations()" class="btn btn-primary">Save Changes</button>
+        <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+</div>
+
+{% endif %}
 
 <style>
+/* GL Summary */
+.gl-summary {
+    margin: 30px 0;
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.summary-table {
+    width: 600px;
+    margin-top: 10px;
+}
+
+/* Controls Section */
+.controls-section {
+    background-color: #ffffff;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.view-toggle {
+    margin-bottom: 20px;
+}
+
+.toggle-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.toggle-btn {
+    padding: 12px 24px;
+    border: 2px solid #3498db;
+    background-color: white;
+    color: #3498db;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.toggle-btn:hover {
+    background-color: #e8f4f8;
+}
+
+.toggle-btn.active {
+    background-color: #3498db;
+    color: white;
+}
+
+.filters {
+    border-top: 1px solid #dee2e6;
+    padding-top: 20px;
+}
+
+.filter-group {
+    display: inline-block;
+    margin-right: 20px;
+    margin-bottom: 10px;
+}
+
+.filter-group label {
+    display: inline-block;
+    margin-right: 8px;
+    font-weight: 500;
+}
+
+.filter-group select {
+    padding: 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 250px;
+}
+
+/* Allocation Section */
+.allocation-section {
+    margin: 30px 0;
+}
+
+.allocation-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    font-size: 13px;
+}
+
+.allocation-table th,
+.allocation-table td {
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    text-align: left;
+}
+
+.allocation-table th {
+    background-color: #2c3e50;
+    color: white;
+    font-weight: 600;
+}
+
+.allocation-table tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.allocation-table tbody tr:hover {
+    background-color: #e9ecef;
+}
+
+.allocation-cell {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+}
+
+.allocation-line {
+    margin: 2px 0;
+}
+
+.no-data {
+    color: #6c757d;
+    font-style: italic;
+}
+
+.override-input {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+}
+
+.override-input:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+}
+
+.validation-error {
+    color: #e74c3c;
+    font-size: 11px;
+    margin-top: 3px;
+    min-height: 15px;
+}
+
+.source-selection {
+    white-space: nowrap;
+}
+
+.source-selection label {
+    display: block;
+    margin: 4px 0;
+    cursor: pointer;
+}
+
+.source-selection input[type="radio"] {
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+.source-selection input[type="radio"]:disabled {
+    cursor: not-allowed;
+}
+
+/* Buttons */
 .btn {
     padding: 10px 20px;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 500;
     text-decoration: none;
     display: inline-block;
     margin-right: 10px;
+    transition: all 0.3s ease;
 }
 
 .btn-primary {
@@ -53,6 +405,8 @@
 
 .btn-primary:hover {
     background-color: #2980b9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .btn-secondary {
@@ -62,16 +416,195 @@
 
 .btn-secondary:hover {
     background-color: #7f8c8d;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-.alert-info {
-    background-color: #d1ecf1;
-    border: 1px solid #bee5eb;
-    color: #0c5460;
+.alert {
     padding: 15px;
     border-radius: 4px;
     margin: 20px 0;
 }
+
+.alert-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+
+.number {
+    text-align: right;
+}
 </style>
+
+<script>
+// Store employee selections in session storage to persist across view/filter changes
+const STORAGE_KEY = 'cost_allocation_selections_{{ pay_period.period_id }}';
+
+// Load saved selections on page load
+window.addEventListener('DOMContentLoaded', function() {
+    loadSelections();
+});
+
+function loadSelections() {
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
+
+    try {
+        const selections = JSON.parse(saved);
+
+        // Restore radio button selections
+        for (const [empCode, source] of Object.entries(selections.sources || {})) {
+            const radio = document.querySelector(`input[name="source-${empCode}"][value="${source}"]`);
+            if (radio) radio.checked = true;
+        }
+
+        // Restore override inputs
+        for (const [empCode, override] of Object.entries(selections.overrides || {})) {
+            const input = document.getElementById(`override-${empCode}`);
+            if (input && override) input.value = override;
+        }
+    } catch (e) {
+        console.error('Error loading selections:', e);
+    }
+}
+
+function saveSelections() {
+    const selections = {
+        sources: {},
+        overrides: {}
+    };
+
+    // Save all radio selections
+    document.querySelectorAll('input[type="radio"]:checked').forEach(radio => {
+        const match = radio.name.match(/source-(.+)/);
+        if (match) {
+            selections.sources[match[1]] = radio.value;
+        }
+    });
+
+    // Save all override inputs
+    document.querySelectorAll('.override-input').forEach(input => {
+        const match = input.id.match(/override-(.+)/);
+        if (match && input.value.trim()) {
+            selections.overrides[match[1]] = input.value.trim();
+        }
+    });
+
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(selections));
+}
+
+function changeView(viewMode) {
+    saveSelections();
+    document.getElementById('viewInput').value = viewMode;
+    document.getElementById('filterForm').submit();
+}
+
+function applyFilters() {
+    saveSelections();
+    document.getElementById('filterForm').submit();
+}
+
+function clearFilters() {
+    saveSelections();
+    document.getElementById('locationFilter').value = '';
+    document.getElementById('departmentFilter').value = '';
+    document.getElementById('filterForm').submit();
+}
+
+function updateSource(empCode, source) {
+    saveSelections();
+}
+
+function validateOverride(input) {
+    // Format: "421-5000: 60, 422-5000: 40" or "421-5000: 60%, 422-5000: 40%"
+    const value = input.trim();
+    if (!value) return { valid: true, allocations: {} };
+
+    const allocations = {};
+    const parts = value.split(',');
+
+    for (const part of parts) {
+        const match = part.trim().match(/^(\d{3}-\d{4}):\s*(\d+\.?\d*)%?$/);
+        if (!match) {
+            return { valid: false, error: 'Invalid format. Use: 421-5000: 60, 422-5000: 40' };
+        }
+
+        const costAccount = match[1];
+        const percentage = parseFloat(match[2]);
+
+        if (percentage < 0 || percentage > 100) {
+            return { valid: false, error: 'Percentages must be between 0 and 100' };
+        }
+
+        allocations[costAccount] = percentage;
+    }
+
+    const total = Object.values(allocations).reduce((sum, pct) => sum + pct, 0);
+    if (Math.abs(total - 100) > 0.1) {
+        return { valid: false, error: `Total is ${total.toFixed(1)}%, must be 100%` };
+    }
+
+    return { valid: true, allocations };
+}
+
+function saveAllocations() {
+    // Collect all changes
+    const changes = [];
+    let hasErrors = false;
+
+    document.querySelectorAll('[data-employee]').forEach(row => {
+        const empCode = row.getAttribute('data-employee');
+        const sourceRadio = row.querySelector(`input[name="source-${empCode}"]:checked`);
+        const overrideInput = row.querySelector(`#override-${empCode}`);
+        const errorDiv = row.querySelector(`#error-${empCode}`);
+
+        const source = sourceRadio ? sourceRadio.value : 'iqb';
+
+        // Clear previous errors
+        errorDiv.textContent = '';
+        errorDiv.style.display = 'none';
+
+        // Validate override if selected
+        if (source === 'override') {
+            const validation = validateOverride(overrideInput.value);
+            if (!validation.valid) {
+                errorDiv.textContent = validation.error;
+                errorDiv.style.display = 'block';
+                hasErrors = true;
+                return;
+            }
+
+            changes.push({
+                employee_code: empCode,
+                source: source,
+                override: validation.allocations
+            });
+        } else {
+            changes.push({
+                employee_code: empCode,
+                source: source
+            });
+        }
+    });
+
+    if (hasErrors) {
+        alert('Please fix validation errors before saving');
+        return;
+    }
+
+    if (changes.length === 0) {
+        alert('No changes to save');
+        return;
+    }
+
+    // Save selections before navigating
+    saveSelections();
+
+    // TODO: Send to review page
+    console.log('Changes to save:', changes);
+    alert(`Ready to save ${changes.length} employee allocation(s). Review page will be implemented next.`);
+}
+</script>
 
 {% endblock %}

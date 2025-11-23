@@ -621,3 +621,97 @@ class DepartmentCostSummary(models.Model):
     
     def __str__(self):
         return f"{self.department_name} - {self.gl_account_name} ({self.pay_period.period_id})"
+
+
+class SageLocation(models.Model):
+    """
+    Sage Location master data
+    Used for filtering in Cost Allocation View
+    """
+    location_id = models.CharField(max_length=10, primary_key=True)  # '421', '422', '910', etc.
+    location_name = models.CharField(max_length=200)  # 'Marmor', 'Terasu', 'Shared Services', etc.
+    parent_id = models.CharField(max_length=10, blank=True)
+    parent_name = models.CharField(max_length=200, blank=True)
+    manager = models.CharField(max_length=200, blank=True)
+    parent_entity = models.CharField(max_length=10, blank=True)
+    entity_base_currency = models.CharField(max_length=10, default='AUD')
+
+    class Meta:
+        ordering = ['location_id']
+
+    def __str__(self):
+        return f"{self.location_id} - {self.location_name}"
+
+
+class SageDepartment(models.Model):
+    """
+    Sage Department master data
+    Used for filtering in Cost Allocation View
+    """
+    department_id = models.CharField(max_length=10, primary_key=True)  # '50', '70', '90', etc.
+    department_name = models.CharField(max_length=200)  # 'Food', 'Accommodation', 'Finance', etc.
+    parent_id = models.CharField(max_length=10, blank=True)
+    parent_name = models.CharField(max_length=200, blank=True)
+    manager = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ['department_id']
+
+    def __str__(self):
+        return f"{self.department_id} - {self.department_name}"
+
+
+class PayCompCodeMapping(models.Model):
+    """
+    Mapping of Pay Comp/Add Ded Codes to GL Accounts
+    Example: 'Normal' -> 6345 (Labour - Salaries)
+    """
+    pay_comp_code = models.CharField(max_length=50, primary_key=True)
+    gl_account = models.CharField(max_length=20)
+    gl_name = models.CharField(max_length=200)
+
+    class Meta:
+        ordering = ['pay_comp_code']
+
+    def __str__(self):
+        return f"{self.pay_comp_code} -> {self.gl_account} ({self.gl_name})"
+
+
+class FinalizedAllocation(models.Model):
+    """
+    Finalized cost allocation by Location, Department, and GL Account
+    This is the snapshot used for journal generation
+    Only one allocation exists per pay period - gets overridden when changes are made
+    """
+    pay_period = models.ForeignKey(PayPeriod, on_delete=models.CASCADE, related_name='finalized_allocations')
+
+    # Location and Department from cost account code (e.g., 421-5000)
+    location_id = models.CharField(max_length=10)  # '421'
+    location_name = models.CharField(max_length=200)  # 'Marmor'
+    department_id = models.CharField(max_length=10)  # '50'
+    department_name = models.CharField(max_length=200)  # 'Food'
+    cost_account_code = models.CharField(max_length=20)  # '421-5000'
+
+    # GL Account
+    gl_account = models.CharField(max_length=20)  # '6345'
+    gl_name = models.CharField(max_length=200)  # 'Labour - Salaries'
+
+    # Amount
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+
+    # Metadata
+    employee_count = models.IntegerField(default=0)  # How many employees contribute to this
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['pay_period', 'cost_account_code', 'gl_account']
+        indexes = [
+            models.Index(fields=['pay_period', 'location_id']),
+            models.Index(fields=['pay_period', 'department_id']),
+            models.Index(fields=['pay_period', 'gl_account']),
+        ]
+        ordering = ['location_id', 'department_id', 'gl_account']
+
+    def __str__(self):
+        return f"{self.pay_period.period_id} - {self.cost_account_code} - {self.gl_account}: ${self.amount}"

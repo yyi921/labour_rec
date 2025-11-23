@@ -40,19 +40,19 @@ class CostAllocationEngine:
     def build_allocations(self, source='iqb'):
         """
         Build cost allocation rules for all employees
-        
+
         Args:
             source: 'iqb' (default from IQB) or 'tanda' (from Tanda timesheets)
-        
+
         Returns:
             dict: Summary of allocations created
         """
         if not self.iqb_upload:
             raise ValueError("No IQB data available")
-        
-        # Clear existing rules for this period
-        CostAllocationRule.objects.filter(pay_period=self.pay_period).delete()
-        
+
+        # Clear existing rules for this period and source only
+        CostAllocationRule.objects.filter(pay_period=self.pay_period, source=source).delete()
+
         if source == 'iqb':
             return self._build_from_iqb()
         elif source == 'tanda':

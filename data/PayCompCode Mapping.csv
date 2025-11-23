@@ -1,0 +1,64 @@
+﻿Pay Comp/Add Ded Code,GL Account,GL Name
+Normal,6345,Labour - Salaries
+22T,6345,Labour - Salaries
+E1020025,6345,Labour - Salaries
+E1020050b,6345,Labour - Salaries
+TCAS,6345,Labour - Salaries
+26T,6345,Labour - Salaries
+OLPen,6345,Labour - Salaries
+E1020050,6345,Labour - Salaries
+E1020075,6345,Labour - Salaries
+Double,6345,Labour - Salaries
+call1.5,6345,Labour - Salaries
+call2.0,6345,Labour - Salaries
+TPoJun83,6345,Labour - Salaries
+Time/Half,6345,Labour - Salaries
+E1020050c,6345,Labour - Salaries
+ALC,6345,Labour - Salaries
+Penalty,6345,Labour - Salaries
+E3000100,6345,Labour - Salaries
+E3000050a,6345,Labour - Salaries
+BP,6345,Labour - Salaries
+Annual,2310,Payroll Liab - Annual Leave
+LLV,2310,Payroll Liab - Annual Leave
+TPo93ALG,2310,Payroll Liab - Annual Leave
+TPo93LLG,2310,Payroll Liab - Annual Leave
+E3500,6312,Labour - Allowances
+Tool A,6312,Labour - Allowances
+E2080b,6312,Labour - Allowances
+E2080c,6312,Labour - Allowances
+E2080d,6312,Labour - Allowances
+E2031,6312,Labour - Allowances
+E2255a,6312,Labour - Allowances
+Sick,6355,Labour - Sick Leave
+Other,6355,Labour - Sick Leave
+Super,6370,Labour - Superannuation
+LSL,2330,Payroll Liab - Long Service Leave
+NetPay,2350,Payroll Liab - Net Wages
+Tax,2360,Payroll Liab - PAYG Withholding
+6,2360,Payroll Liab - PAYG Withholding
+66,2360,Payroll Liab - PAYG Withholding
+DA12,2391,Payroll Liab - Super Sal Sacrifice
+HSS,2391,Payroll Liab - Super Sal Sacrifice
+SSMyNorth,2391,Payroll Liab - Super Sal Sacrifice
+AUSS,2391,Payroll Liab - Super Sal Sacrifice
+ColSS,2391,Payroll Liab - Super Sal Sacrifice
+SSMLC,2391,Payroll Liab - Super Sal Sacrifice
+SSPrime,2391,Payroll Liab - Super Sal Sacrifice
+SSUni,2391,Payroll Liab - Super Sal Sacrifice
+DA20,2391,Payroll Liab - Super Sal Sacrifice
+REMMVAT,2325,Payroll Liabilities - Leasing
+RemMVPT,2325,Payroll Liabilities - Leasing
+Rent,4880,Revenue - Rental
+Child,2351,Payroll Liab - Other Deductions
+SPER,2351,Payroll Liab - Other Deductions
+PP,2321,Payroll Liab - Paid Parental
+TRN,6375,Labour - Training & Education
+TSVUnion,2351,Payroll Liab - Other Deductions
+TSVUnionFT,2351,Payroll Liab - Other Deductions
+TSVUnionJr,2351,Payroll Liab - Other Deductions
+TSVSC,2351,Payroll Liab - Other Deductions
+WCNS,2320,Payroll Liab - WorkCover
+WCS,2320,Payroll Liab - WorkCover
+VAR,1067,Debtors - POS
+UDLeave,6372,Labour - Time in Lieu

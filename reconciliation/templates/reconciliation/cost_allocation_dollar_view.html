@@ -1,0 +1,384 @@
+{% extends "reconciliation/base.html" %}
+{% load humanize %}
+{% load custom_filters %}
+
+{% block title %}Cost Allocation - $ Value by GL - {{ pay_period.period_id }}{% endblock %}
+
+{% block content %}
+<header>
+    <div class="breadcrumb">
+        <a href="{% url 'reconciliation:pay_period_list' %}">Pay Periods</a> /
+        <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}">{{ pay_period.period_id }}</a> /
+        Cost Allocation - $ View
+    </div>
+    <h1>Cost Allocation - $ Value by GL</h1>
+    <p>
+        <strong>Pay Period:</strong> {{ pay_period.period_id }}
+        ({{ pay_period.period_start|date:"d M Y" }} - {{ pay_period.period_end|date:"d M Y" }})
+    </p>
+</header>
+
+{% if error %}
+<div class="alert alert-warning">{{ error }}</div>
+{% else %}
+
+<!-- View Toggle and Filters -->
+<div class="controls-section">
+    <div class="view-toggle">
+        <h3>View Mode</h3>
+        <div class="toggle-buttons">
+            <button class="toggle-btn" onclick="changeView('percentage')">
+                % Allocation by Cost Center
+            </button>
+            <button class="toggle-btn active" onclick="changeView('dollar')">
+                $ Value by GL
+            </button>
+        </div>
+    </div>
+
+    <div class="filters">
+        <h3>Filters</h3>
+        <form method="GET" id="filterForm">
+            <input type="hidden" name="view" id="viewInput" value="dollar">
+
+            <div class="filter-group">
+                <label for="locationFilter">Sage Location:</label>
+                <select name="location" id="locationFilter" onchange="applyFilters()">
+                    <option value="">All Locations</option>
+                    {% for loc in locations %}
+                    <option value="{{ loc.location_id }}" {% if selected_location == loc.location_id %}selected{% endif %}>
+                        {{ loc.location_id }} - {{ loc.location_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="departmentFilter">Sage Department:</label>
+                <select name="department" id="departmentFilter" onchange="applyFilters()">
+                    <option value="">All Departments</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept.department_id }}" {% if selected_department == dept.department_id %}selected{% endif %}>
+                        {{ dept.department_id }} - {{ dept.department_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="button" onclick="clearFilters()" class="btn btn-secondary">Clear Filters</button>
+        </form>
+    </div>
+</div>
+
+<!-- Employee GL Matrix -->
+<div class="matrix-section">
+    <h2>Employee Cost Allocation by GL Account</h2>
+    <p><small>Total Employees: {{ employees|length }} | Grand Total: ${{ grand_total|floatformat:2|intcomma }}</small></p>
+
+    <div class="table-wrapper">
+        <table class="gl-matrix-table">
+            <thead>
+                <tr>
+                    <th class="sticky-col">Employee Code</th>
+                    <th class="sticky-col2">Employee Name</th>
+                    <th class="sticky-col3">Source</th>
+                    {% for gl in gl_columns %}
+                    <th class="number gl-header">
+                        {{ gl.account }}<br>
+                        <small>{{ gl.name }}</small>
+                    </th>
+                    {% endfor %}
+                    <th class="number total-col">TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in employees %}
+                <tr>
+                    <td class="sticky-col">{{ emp.employee_code }}</td>
+                    <td class="sticky-col2">{{ emp.employee_name }}</td>
+                    <td class="sticky-col3">
+                        <span class="source-badge source-{{ emp.source }}">{{ emp.source|upper }}</span>
+                    </td>
+                    {% for gl in gl_columns %}
+                    <td class="number">
+                        {% if gl.account in emp.gl_amounts %}
+                            ${{ emp.gl_amounts|get_item:gl.account|floatformat:2|intcomma }}
+                        {% else %}
+                            $0.00
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                    <td class="number total-col"><strong>${{ emp.total|floatformat:2|intcomma }}</strong></td>
+                </tr>
+                {% endfor %}
+
+                <!-- TOTALS ROW -->
+                <tr class="totals-row">
+                    <td class="sticky-col" colspan="3"><strong>TOTAL</strong></td>
+                    {% for gl in gl_columns %}
+                    <td class="number"><strong>${{ gl_totals|get_item:gl.account|floatformat:2|intcomma }}</strong></td>
+                    {% endfor %}
+                    <td class="number total-col"><strong>${{ grand_total|floatformat:2|intcomma }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div style="margin: 30px 0;">
+    <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+{% endif %}
+
+<style>
+.controls-section {
+    background-color: #ffffff;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.view-toggle {
+    margin-bottom: 20px;
+}
+
+.toggle-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.toggle-btn {
+    padding: 12px 24px;
+    border: 2px solid #3498db;
+    background-color: white;
+    color: #3498db;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.toggle-btn:hover {
+    background-color: #e8f4f8;
+}
+
+.toggle-btn.active {
+    background-color: #3498db;
+    color: white;
+}
+
+.filters {
+    border-top: 1px solid #dee2e6;
+    padding-top: 20px;
+}
+
+.filter-group {
+    display: inline-block;
+    margin-right: 20px;
+    margin-bottom: 10px;
+}
+
+.filter-group label {
+    display: inline-block;
+    margin-right: 8px;
+    font-weight: 500;
+}
+
+.filter-group select {
+    padding: 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 250px;
+}
+
+.matrix-section {
+    margin: 30px 0;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    margin-top: 15px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+.gl-matrix-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background-color: white;
+}
+
+.gl-matrix-table th,
+.gl-matrix-table td {
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.gl-matrix-table th {
+    background-color: #2c3e50;
+    color: white;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.gl-header {
+    min-width: 120px;
+}
+
+.gl-header small {
+    font-weight: normal;
+    font-size: 11px;
+    opacity: 0.9;
+}
+
+.sticky-col {
+    position: sticky;
+    left: 0;
+    background-color: white;
+    z-index: 5;
+    min-width: 100px;
+}
+
+.sticky-col2 {
+    position: sticky;
+    left: 100px;
+    background-color: white;
+    z-index: 5;
+    min-width: 200px;
+}
+
+.sticky-col3 {
+    position: sticky;
+    left: 300px;
+    background-color: white;
+    z-index: 5;
+    min-width: 80px;
+    text-align: center;
+}
+
+.gl-matrix-table thead .sticky-col,
+.gl-matrix-table thead .sticky-col2,
+.gl-matrix-table thead .sticky-col3 {
+    background-color: #2c3e50;
+    z-index: 15;
+}
+
+.totals-row {
+    border-top: 3px solid #2c3e50;
+    background-color: #ecf0f1;
+    font-weight: bold;
+}
+
+.totals-row .sticky-col,
+.totals-row .sticky-col2,
+.totals-row .sticky-col3 {
+    background-color: #ecf0f1;
+}
+
+.total-col {
+    background-color: #f8f9fa;
+    border-left: 2px solid #2c3e50;
+}
+
+.gl-matrix-table tbody tr:hover td {
+    background-color: #e9ecef;
+}
+
+.gl-matrix-table tbody tr:hover .sticky-col,
+.gl-matrix-table tbody tr:hover .sticky-col2,
+.gl-matrix-table tbody tr:hover .sticky-col3 {
+    background-color: #e9ecef;
+}
+
+.number {
+    text-align: right;
+}
+
+.source-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.source-iqb {
+    background-color: #3498db;
+    color: white;
+}
+
+.source-tanda {
+    background-color: #2ecc71;
+    color: white;
+}
+
+.source-override {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+    margin-right: 10px;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary {
+    background-color: #95a5a6;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #7f8c8d;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 4px;
+    margin: 20px 0;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+</style>
+
+<script>
+function changeView(viewMode) {
+    document.getElementById('viewInput').value = viewMode;
+    document.getElementById('filterForm').submit();
+}
+
+function applyFilters() {
+    document.getElementById('filterForm').submit();
+}
+
+function clearFilters() {
+    document.getElementById('locationFilter').value = '';
+    document.getElementById('departmentFilter').value = '';
+    document.getElementById('filterForm').submit();
+}
+</script>
+
+{% endblock %}
