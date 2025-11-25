@@ -715,3 +715,21 @@ class FinalizedAllocation(models.Model):
 
     def __str__(self):
         return f"{self.pay_period.period_id} - {self.cost_account_code} - {self.gl_account}: ${self.amount}"
+
+
+class ValidationResult(models.Model):
+    """
+    Store validation results for each upload
+    Tracks whether the upload passed all validation tests
+    """
+    upload = models.OneToOneField(Upload, on_delete=models.CASCADE, related_name='validation_result')
+    passed = models.BooleanField(default=False)
+    validation_data = models.JSONField()  # Stores full validation results
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        status = "PASSED" if self.passed else "FAILED"
+        return f"{self.upload.file_name} - {status}"

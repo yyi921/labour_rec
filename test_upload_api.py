@@ -9,9 +9,9 @@ BASE_URL = 'http://127.0.0.1:8000'
 
 # Test files
 test_files = [
-    ('Tanda', r'C:\Users\yuany\OneDrive\Desktop\labour_reconciliation\media\test_data\Tanda_Timesheet Report by Hours, $, Export Name and Location (16).csv'),
-    ('IQB', r'C:\Users\yuany\OneDrive\Desktop\labour_reconciliation\media\test_data\Micropay_TSV IQB-RET002 FNE 20251102 FN2.csv'),
-    ('Journal', r'C:\Users\yuany\OneDrive\Desktop\labour_reconciliation\media\test_data\Micropay_TSV GL Batch FNE 20250907 FN2.csv'),
+    ('Tanda', r'C:\Users\yuany\OneDrive\Desktop\labour_reconciliation\media\test_data\Tanda_Timesheet Report by Hours, $, Export Name and Location.csv'),
+    ('IQB', r'C:\Users\yuany\OneDrive\Desktop\labour_reconciliation\media\test_data\Micropay_TSV RET002 FNE 20251116 FN1.csv'),
+    ('Journal', r'C:\Users\yuany\OneDrive\Desktop\labour_reconciliation\media\test_data\Micropay_TSV GL Batch FNE 20251116 FN1.csv'),
 ]
 
 print("=" * 80)
@@ -35,22 +35,22 @@ for name, filepath in test_files:
     
     if response.status_code == 200:
         data = response.json()
-        print(f"✓ Upload successful!")
+        print(f"[OK] Upload successful!")
         print(f"  File Type: {data['upload']['file_type']}")
         print(f"  Records: {data['upload']['records_imported']}")
         print(f"  Period: {data['period']['period_id']}")
         print(f"  Upload ID: {data['upload']['upload_id']}")
-        
+
     elif response.status_code == 409:
         data = response.json()
-        print(f"⚠ Duplicate detected")
+        print(f"[WARN] Duplicate detected")
         print(f"  Existing file: {data['existing_upload']['file_name']}")
         print(f"  Version: {data['existing_upload']['version']}")
         print(f"  Uploaded: {data['existing_upload']['uploaded_at']}")
         print(f"  Override URL: {BASE_URL}{data['actions']['override']}")
-        
+
     else:
-        print(f"✗ Error: {response.json()}")
+        print(f"[ERROR] Error: {response.json()}")
     
     print("=" * 80)
 

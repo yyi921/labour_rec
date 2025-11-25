@@ -3,7 +3,8 @@ from .models import (
     PayPeriod, Upload, TandaTimesheet, IQBDetail, JournalEntry,
     CostCenterSplit, ReconciliationRun, ReconciliationItem,
     ExceptionResolution, LabourCostSummary, SageIntacctExport,
-    EmployeeReconciliation, JournalReconciliation, LocationMapping
+    EmployeeReconciliation, JournalReconciliation, LocationMapping,
+    ValidationResult
 )
 
 @admin.register(PayPeriod)
@@ -131,3 +132,10 @@ class LocationMappingAdmin(admin.ModelAdmin):
     list_filter = ['department_code', 'department_name', 'is_active']
     search_fields = ['tanda_location', 'cost_account_code']
     list_editable = ['is_active']
+
+
+@admin.register(ValidationResult)
+class ValidationResultAdmin(admin.ModelAdmin):
+    list_display = ['upload', 'passed', 'created_at']
+    list_filter = ['passed', 'created_at']
+    readonly_fields = ['upload', 'passed', 'validation_data', 'created_at']

@@ -11,9 +11,10 @@ from django.contrib.auth.models import User
 import os
 import uuid
 
-from reconciliation.models import Upload, PayPeriod
+from reconciliation.models import Upload, PayPeriod, ValidationResult
 from reconciliation.file_detector import FileDetector
 from reconciliation.parsers import TandaParser, IQBParser, JournalParser
+from reconciliation.data_validator import DataValidator
 
 
 def get_or_create_default_user():
@@ -175,12 +176,24 @@ def smart_upload(request):
             upload.record_count = record_count
             upload.status = 'completed'
             upload.save()
-            
+
             # Update pay period status
             if pay_period.has_tanda and pay_period.has_iqb and pay_period.has_journal:
                 pay_period.status = 'uploaded'
             pay_period.save()
-            
+
+            # Step 8: Run data validation
+            validation_results = DataValidator.validate_upload(upload)
+
+            # Save validation results
+            ValidationResult.objects.update_or_create(
+                upload=upload,
+                defaults={
+                    'passed': validation_results['passed'],
+                    'validation_data': validation_results
+                }
+            )
+
             return Response({
                 'status': 'success',
                 'message': f'{file_type} uploaded and processed successfully',
@@ -200,6 +213,10 @@ def smart_upload(request):
                     'has_tanda': pay_period.has_tanda,
                     'has_iqb': pay_period.has_iqb,
                     'has_journal': pay_period.has_journal
+                },
+                'validation': {
+                    'passed': validation_results['passed'],
+                    'validation_url': f'/validation/{upload.upload_id}/'
                 }
             }, status=status.HTTP_200_OK)
             
@@ -327,7 +344,19 @@ def override_upload(request, upload_id):
         new_upload.record_count = record_count
         new_upload.status = 'completed'
         new_upload.save()
-        
+
+        # Run data validation
+        validation_results = DataValidator.validate_upload(new_upload)
+
+        # Save validation results
+        ValidationResult.objects.update_or_create(
+            upload=new_upload,
+            defaults={
+                'passed': validation_results['passed'],
+                'validation_data': validation_results
+            }
+        )
+
         return Response({
             'status': 'success',
             'message': 'Upload overridden successfully',
@@ -342,7 +371,11 @@ def override_upload(request, upload_id):
                 'records_imported': record_count,
                 'status': new_upload.status
             },
-            'reason': reason
+            'reason': reason,
+            'validation': {
+                'passed': validation_results['passed'],
+                'validation_url': f'/validation/{new_upload.upload_id}/'
+            }
         }, status=status.HTTP_200_OK)
         
     except Exception as e:

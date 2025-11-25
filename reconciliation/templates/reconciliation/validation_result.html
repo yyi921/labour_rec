@@ -1,0 +1,380 @@
+{% extends "reconciliation/base.html" %}
+
+{% block title %}Data Validation Results - {{ upload.file_name }}{% endblock %}
+
+{% block content %}
+<header>
+    <div class="breadcrumb">
+        <a href="{% url 'reconciliation:pay_period_list' %}">Pay Periods</a> /
+        <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}">{{ pay_period.period_id }}</a> /
+        Validation Results
+    </div>
+    <h1>Data Validation Results</h1>
+    <div class="upload-info">
+        <p><strong>File:</strong> {{ upload.file_name }}</p>
+        <p><strong>File Type:</strong> {{ upload.source_system }}</p>
+        <p><strong>Pay Period:</strong> {{ pay_period.period_id }}</p>
+        <p><strong>Records Imported:</strong> {{ upload.record_count|default:"N/A" }}</p>
+        <p><strong>Uploaded:</strong> {{ upload.uploaded_at|date:"d M Y H:i" }}</p>
+    </div>
+</header>
+
+{% if error %}
+<div class="alert alert-warning">{{ error }}</div>
+{% else %}
+
+<!-- Overall Status -->
+<div class="validation-status {% if validation_passed %}status-pass{% else %}status-fail{% endif %}">
+    {% if validation_passed %}
+        <div class="status-icon">✓</div>
+        <h2>VALIDATION PASSED</h2>
+        <p>All validation tests passed successfully. You can proceed to the Reconciliation Dashboard.</p>
+    {% else %}
+        <div class="status-icon">✗</div>
+        <h2>VALIDATION FAILED</h2>
+        <p>Some validation tests failed. Please review the errors below and re-upload the corrected file.</p>
+    {% endif %}
+</div>
+
+<!-- Validation Tests -->
+<div class="validation-tests">
+    <h2>Validation Test Results</h2>
+
+    {% for test in validations %}
+    <div class="test-card {% if test.passed %}test-pass{% else %}test-fail{% endif %}">
+        <div class="test-header">
+            <div class="test-status-icon">
+                {% if test.passed %}✓{% else %}✗{% endif %}
+            </div>
+            <div class="test-info">
+                <h3>{{ test.test_name }}</h3>
+                <p class="test-description">{{ test.description }}</p>
+            </div>
+            <div class="test-badge">
+                {% if test.passed %}
+                    <span class="badge badge-success">PASS</span>
+                {% else %}
+                    <span class="badge badge-error">FAIL</span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if not test.passed %}
+        <div class="test-errors">
+            <h4>Errors Found:</h4>
+            {% for error in test.errors %}
+            <div class="error-detail">
+                {% if error.message %}
+                    <p class="error-message">{{ error.message }}</p>
+                {% endif %}
+
+                {% if error.invalid_location %}
+                    <p><strong>Invalid Location Code:</strong> {{ error.invalid_location }}</p>
+                    <p><strong>Found in Cost Accounts:</strong></p>
+                    <ul class="error-list">
+                        {% for account in error.cost_accounts %}
+                        <li>{{ account }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% if error.total_count > 10 %}
+                    <p class="error-note">Showing first 10 of {{ error.total_count }} occurrences</p>
+                    {% endif %}
+                {% endif %}
+
+                {% if error.invalid_department %}
+                    <p><strong>Invalid Department Code:</strong> {{ error.invalid_department }}</p>
+                    <p><strong>Found in Cost Accounts:</strong></p>
+                    <ul class="error-list">
+                        {% for account in error.cost_accounts %}
+                        <li>{{ account }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% if error.total_count > 10 %}
+                    <p class="error-note">Showing first 10 of {{ error.total_count }} occurrences</p>
+                    {% endif %}
+                {% endif %}
+
+                {% if error.missing_accounts %}
+                    <p><strong>Missing Cost Account Codes:</strong></p>
+                    <ul class="error-list">
+                        {% for account in error.missing_accounts %}
+                        <li>{{ account }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% if error.total_count > 20 %}
+                    <p class="error-note">Showing first 20 of {{ error.total_count }} occurrences</p>
+                    {% endif %}
+                {% endif %}
+
+                {% if error.missing_codes %}
+                    <p><strong>Missing Codes:</strong></p>
+                    <ul class="error-list">
+                        {% for code in error.missing_codes %}
+                        <li>{{ code }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% if error.total_count > 20 %}
+                    <p class="error-note">Showing first 20 of {{ error.total_count }} occurrences</p>
+                    {% endif %}
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Action Buttons -->
+<div class="action-buttons">
+    {% if validation_passed %}
+        <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-primary">
+            Go to Reconciliation Dashboard
+        </a>
+    {% else %}
+        <a href="{% url 'reconciliation:pay_period_list' %}" class="btn btn-warning">
+            Back to Upload - Re-upload Corrected File
+        </a>
+    {% endif %}
+    <a href="{% url 'reconciliation:pay_period_list' %}" class="btn btn-secondary">
+        Back to Pay Periods
+    </a>
+</div>
+
+{% endif %}
+
+<style>
+.upload-info {
+    background-color: #f8f9fa;
+    border-left: 4px solid #3498db;
+    padding: 15px;
+    margin: 20px 0;
+}
+
+.upload-info p {
+    margin: 5px 0;
+}
+
+.validation-status {
+    text-align: center;
+    padding: 40px;
+    margin: 30px 0;
+    border-radius: 8px;
+    border: 3px solid;
+}
+
+.status-pass {
+    background-color: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+
+.status-fail {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+}
+
+.status-icon {
+    font-size: 60px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.validation-status h2 {
+    margin: 15px 0;
+    font-size: 28px;
+}
+
+.validation-tests {
+    margin: 30px 0;
+}
+
+.test-card {
+    background-color: white;
+    border: 2px solid;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 15px 0;
+}
+
+.test-pass {
+    border-color: #28a745;
+}
+
+.test-fail {
+    border-color: #dc3545;
+}
+
+.test-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.test-status-icon {
+    font-size: 32px;
+    font-weight: bold;
+    min-width: 40px;
+}
+
+.test-pass .test-status-icon {
+    color: #28a745;
+}
+
+.test-fail .test-status-icon {
+    color: #dc3545;
+}
+
+.test-info {
+    flex: 1;
+}
+
+.test-info h3 {
+    margin: 0 0 5px 0;
+    font-size: 20px;
+}
+
+.test-description {
+    color: #6c757d;
+    margin: 0;
+    font-size: 14px;
+}
+
+.test-badge {
+    min-width: 80px;
+    text-align: right;
+}
+
+.badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.badge-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-error {
+    background-color: #dc3545;
+    color: white;
+}
+
+.test-errors {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #dee2e6;
+}
+
+.test-errors h4 {
+    color: #721c24;
+    margin-bottom: 15px;
+}
+
+.error-detail {
+    background-color: #f8f9fa;
+    border-left: 4px solid #dc3545;
+    padding: 15px;
+    margin: 15px 0;
+}
+
+.error-message {
+    font-weight: 600;
+    color: #721c24;
+    margin-bottom: 10px;
+}
+
+.error-list {
+    background-color: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 10px 10px 10px 30px;
+    margin: 10px 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.error-list li {
+    margin: 5px 0;
+    font-family: monospace;
+}
+
+.error-note {
+    font-size: 13px;
+    color: #6c757d;
+    font-style: italic;
+    margin-top: 5px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    margin: 40px 0;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: #28a745;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.btn-warning:hover {
+    background-color: #e0a800;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 4px;
+    margin: 20px 0;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+</style>
+
+{% endblock %}

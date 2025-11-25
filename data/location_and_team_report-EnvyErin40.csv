@@ -1,0 +1,782 @@
+Location Name,Team Name,Cost Centre,Location Code,Location Address,Public Holiday region,Mobile login radius,Timezone
+Cage,Front Window,470-6800,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Cage,Manager - Cage,470-6800,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Cage,Cashier,470-6800,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Cage,Count Cashier,470-6800,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Cage,Main Bank,470-6800,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Cage,Count Manager - Soft - CL7,470-6800,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Cage,Shift Manager - CL7,470-6800,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Cage,Uncategorised Shifts,910-9000,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Cage,Inductions,470-6800,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Cage,Cage Certificate Training,470-6800,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Cage,Front Window - Orpheus,470-6800,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Cage,Front Window - CL4,470-6800,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Cage,Count Cashier - CL3,470-6800,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Cage,Main Bank - CL5,470-6800,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Cage,Front Window - Orpheus CL4,470-6800,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Cage,Main Bank - CL6,470-6800,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Cage,Cage Operations Manager,470-6800,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Cage,Training,470-6800,Ca,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Casino Compliance,Compliance Administrator,910-9100,CC,"67 Sir Leslie Thiess Dr, Townsville, QLD, 4810, AUSTRALIA",au_qld,100,Australia/Brisbane
+Casino Compliance,Induction,910-9100,CC,"67 Sir Leslie Thiess Dr, Townsville, QLD, 4810, AUSTRALIA",au_qld,100,Australia/Brisbane
+Compliance & Risk,Compliance Administrator,910-9100,Com,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",au_qld,100,Australia/Brisbane
+Compliance & Risk,Induction,910-9100,Com,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",au_qld,100,Australia/Brisbane
+Compliance & Risk,Emergency Management & WHS Officer,910-9100,Com,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",au_qld,100,Australia/Brisbane
+Compliance & Risk,Senior Anti Money Laundering Administrator,910-9100,Com,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",au_qld,100,Australia/Brisbane
+Compliance & Risk,Patron Care Officer,910-9100,Com,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",au_qld,100,Australia/Brisbane
+Compliance & Risk,Anti Money Laundering Administrator,910-9100,Com,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",au_qld,100,Australia/Brisbane
+Compliance & Risk,Patron Care Manager,910-9100,Com,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",au_qld,100,Australia/Brisbane
+Compliance & Risk,WHS & Rehabilitation Co-ordinator,910-9100,Com,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",au_qld,100,Australia/Brisbane
+Compliance & Risk,Anti Money Laundering Analyst,910-9100,Com,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",au_qld,100,Australia/Brisbane
+Contractors - Tecc,Cleaner,,Contra,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+Culinary,TSV - EO Apprentice,460-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - EO Chef,460-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - EO Cook,460-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - IRD Apprentice,488-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - IRD Chef,488-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - IRD Cook,488-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - MS Chef,454-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - MS Apprentice,454-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - PH Apprentice,450-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - PH Chef,450-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - PH Cook,450-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - PA Apprentice,SPL-PAST,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - PA Chef,SPL-PAST,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - PZ4 Chef,SPL-PIZA,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - PZ4 Apprentice,SPL-PIZA,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - PZ4 Cook,SPL-PIZA,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - PR Apprentice,SPL-PROD,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - PR Chef,SPL-PROD,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - PR Cook,SPL-PROD,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - QD Apprentice,444-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - QD Chef,444-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - QD Cook,444-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - Spin Chef,458-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - Spin Cook,458-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - OPH Cook,449-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,1 Chef De Partie,SPL-CULI,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,1 Executive Sous Chef,SPL-CULI,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - MS Cook,454-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - PA Cook,SPL-PAST,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - Splash Chef,446-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - Splash Apprentice,446-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - Splash Cook,446-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,1 Northern Escape Collection,100-1000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,1. Inductions,SPL-CULI,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,1 Culinary Certificate Training,SPL-CULI,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,1 Culinary - Gaming,SPL-CULI,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - EO Training,460-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - IRD Training,488-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - MS Training,454-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - PA Training,SPL-PAST,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - PH Training,450-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - PR Training,SPL-PROD,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - QD Training,444-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - Splash Training,446-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - Spin Apprentice,458-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - Spin Training,458-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - OPH Apprentice,449-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - OPH Chef,449-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - OPH Training,449-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TSV - PZ4 Training,SPL-PIZA,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,1 Apprentice,SPL-CULI,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,1 Cook Grade 1,SPL-CULI,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,1 Cook Grade 2,SPL-CULI,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,1 Commi,SPL-CULI,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,1 Demi,SPL-CULI,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,1 Senior Chef De Partie,SPL-CULI,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,1 Junior Sous Chef,SPL-CULI,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,1 Sous Chef,SPL-CULI,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,1 Head Chef,SPL-CULI,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,1 Executive Chef,SPL-CULI,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TECC - Chef,700-2000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TECC - Cook,700-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TECC - Apprentice,700-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,TECC - Training,700-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - Marmor Apprentice,421-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - Marmor Chef,421-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - Marmor - Cook,421-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - Marmor Training,421-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - Terasu Cook,422-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - Terasu Apprentice,422-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - Terasu Chef,422-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - Terasu Training,422-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - Rooftop Chef,423-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - Rooftop Apprentice,423-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - Rooftop Cook,423-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - Rooftop Training,423-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - IRD Chef,427-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - IRD Cook,427-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - IRD Apprentice,427-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - IRD Training,427-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - Pool Side Chef,424-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - Pool Side Apprentice,424-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - Pool Side Cook,424-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,A - Pool Side Training,424-5000,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Culinary,Uncategorised Shifts,ERROR! Uncategorised Shift,C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+"Data, Performance and Technical Services",EGM Product Manager,470-6500,DPTS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+"Data, Performance and Technical Services",Casino Technician - EGM,470-6500,DPTS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+"Data, Performance and Technical Services",Casino Technician - Table Games,470-6600,DPTS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+"Data, Performance and Technical Services",Induction,470-6600,DPTS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+"Data, Performance and Technical Services",Casino Data Analyst,SPL-Host,DPTS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+"Data, Performance and Technical Services",Junior Data Analyst,SPL-Host,DPTS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,zzzSenior Orpheus Host,470-6500,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,Admin Gaming,470-6500,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,EGM Attendant,470-6500,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,Promo Host,470-6500,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,Training - EGM,470-6500,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,zzzOrpheus Host,470-6500,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,Magnetic Door,470-6500,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,Promo Assistant,470-6500,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,Area Manager,470-6500,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,Manager,470-6500,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,Uncategorised Shifts,470-6500,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,EGM Supervisor,470-6500,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,EGM Certificate Training,470-6500,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,Induction,470-6500,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,zzzMGF Project R&M,910-4100,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,zzzGaming Promotions Supervisor,470-6500,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,Training,470-6500,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Electronic Gaming,EGM Operations Manager,470-6500,EGM,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Engineering,Call Out,910-4000,E,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Engineering,Electrician,910-4000,E,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Engineering,Gardener,910-4000,E,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Engineering,Ville - Handy Person,910-4000,E,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Engineering,Painter,910-4000,E,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Engineering,Plumber,910-4000,E,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Engineering,Refrigeration Mechanic,910-4000,E,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Engineering,Uncategorised Shifts,910-4000,E,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Engineering,Electrician Apprentice - 1st Year,910-4000,E,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Engineering,Induction,910-4000,E,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Engineering,Engineering Operations Manager,910-4000,E,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Engineering,ARDO - Handy Person,910-4000,E,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Engineering,Horticulturist,910-4000,E,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Venue Manager,460-2000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,F&B Attendant - Set,460-3000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,F&B Attendant - Service,460-3000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Shift Leader - HL5,460-3000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Service in Other Departments,460-2000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Induction,460-3000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Certificate Training,460-3000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Training,460-3000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Soph Drinks - HL3,460-3000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Soph Drinks,460-3000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Team Leader - HL4,460-3000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Flying Fish - Gaming,470-6700,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Quads,460-3000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Stocktake,460-3000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Uncategorised Shifts,ERROR! Uncategorised Shift,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Duty Manager,460-2000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Assistant Venue Manager,460-2000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,zzz - Ardo Training - Marmor,421-3000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,zzz - Ardo Training - Terasu,422-2000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,zzz - Ardo Training - Rooftop,423-3000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Flying Fish - Shared,910-9000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Flying Fish - Other,470-6700,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,RSA Marshall - HL5,460-3000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Event Operations,Barista - HL3,460-3000,EO,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+F&B Management,Operations Manager The Ville,SPL-VMGR,F&B Ma,"67 Sir Leslie Thiess Dr, Townsville, QLD, 4810, AUSTRALIA",,100,
+Front of House - Ardo,Ardo - Assistant Manager - HL5,430-7000,FOH-A,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - Ardo,Ardo - Snr Asst Front Office Mgr,430-7000,FOH-A,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - Ardo,Ardo - Induction,430-7000,FOH-A,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - Ardo,Ardo - FOH Certificate Training,430-7000,FOH-A,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - Ardo,zzzArdo - Night Porter - FD,430-7000,FOH-A,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - Ardo,Ardo - Training,430-7000,FOH-A,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - Ardo,Ardo - Front Desk Supervisor - HL5,430-7000,FOH-A,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - Ardo,Ardo - Guest Service Agent - HL3,430-7000,FOH-A,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - Ardo,Ardo - Night Manager,430-7000,FOH-A,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - Ardo,Ardo - Porter - FD,430-7000,FOH-A,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - Ardo,Uncategorised Shifts,430-7000,FOH-A,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - Ardo,Ardo - Guest Service Manager,430-7000,FOH-A,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,Ville - Night Porter - FD,480-7000,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,Ville - Porter - FD,480-7000,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,Ville - Front Office Manager,480-7000,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,Ville - Assistant Manager - HL5,480-7000,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,z - GSA - Reservations,910-7400,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,Ville - Guest Services Agent,480-7000,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,Ville - Night Manager,480-7000,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,Ville - Front Desk Supervisor - HL5,480-7000,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,z - Reservation Revenue Manager,910-7400,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,Uncategorised Shifts,480-7000,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,Ville - Training,480-7000,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,z - GSA – Switchboard,480-7000,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,Ville - Induction,480-7000,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,Ville - FOH Certificate Training,480-7000,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,z - Senior Reservations Agent,910-7400,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,Ville - GSA - HL3,480-7000,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,z - GSA - Reservations - GC,910-7400,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,z - Snr Asst Front Office Mgr - ARDO,430-7000,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,Ville - Snr Asst Front Office Mgr,480-7000,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,Front Drive Supervisor,480-7000,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Front of House - The Ville,The Ville - Guest Service Manager,480-7000,FOH-V,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ardo - Cleaner Afternoon,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ville - Cleaner Afternoon,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ville - Cleaner BOH,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ville - Cleaner Day,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ville - Cleaner Extra,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ville - Cleaner Hygiene,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ville - Cleaner Morning,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ville - Cleaner Night,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ville - Cleaner Facilities,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ville - Shift Leader - Cleaners,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ville - Trainer - Cleaners - HL3,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ville - Training - Cleaners,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ardo - Cleaner BOH,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ardo - Cleaner Day,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ardo - Cleaner Extra,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ardo - Cleaner Facilities,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ardo - Cleaner Hygiene,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ardo - Cleaner Morning,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ardo - Cleaner Night,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ardo - Shift Leader - Cleaners,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ardo - Trainer - Cleaners - HL3,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ardo - Training - Cleaners,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Staff Accommodation Cleaning,910-4400,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ville - Induction,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ardo - Induction,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ville - Hotel Area Cleaning,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ville - Certificate Training,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ardo - Certificate Training,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ville - Supervisor - Cleaners - HL5,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ardo - Supervisor - Cleaners - HL5,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ardo - Hotel Area Cleaning,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ville - Cleaner,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,Ardo - Cleaner,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Cleaners,TECC - Cleaner,910-7200,HSK-C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Laundry,Laundry Attendant,910-7300,HSK-L,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Laundry,Supervisor - Laundry - HL5,910-7300,HSK-L,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Laundry,Dry Cleaner - HL3,910-7300,HSK-L,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Laundry,Floater,910-7300,HSK-L,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Laundry,Presser,910-7300,HSK-L,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Laundry,Sewing Attendant,910-7300,HSK-L,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Laundry,Trainer - Laundry - HL3,910-7300,HSK-L,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Laundry,Training - Laundry,910-7300,HSK-L,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Laundry,Wardrobe - AM,910-7300,HSK-L,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Laundry,Wardrobe - PM,910-7300,HSK-L,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Laundry,Wash room,910-7300,HSK-L,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Laundry,Wash Ironer,910-7300,HSK-L,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Laundry,Induction,910-7300,HSK-L,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Laundry,Certificate Training,910-7300,HSK-L,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Laundry,Laundry Runner,910-7300,HSK-L,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ardo - Room Attendant,430-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ville - Room Attendant,480-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ville - Induction,480-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ville - Certificate Training,480-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ville - Training - Rooms,480-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,zzz - Ville - Runner - HL3,480-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ville - Trainer - Rooms - HL3,480-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ville - Mini Bar - HL2,486-3000,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ville - Trainer - Mini Bar - HL3,486-3000,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Staff Accommodation Cleaning,910-4400,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ville - Co-Ordinator - HL4,480-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ville - Team Leader - Rooms - HL4,480-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ville - Supervisor - Rooms - HL5,480-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Executive Housekeeper,480-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ville - Assistant Housekeeping Mgr,910-7300,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ardo - Assistant Housekeeping Mgr,430-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ardo - Certificate Training,430-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ardo - Co-Ordinator - HL4,430-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ardo - Induction,430-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,zzz - Ardo - Runner - HL3,430-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ardo - Mini Bar - HL2,426-3000,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ardo - Supervisor - Rooms - HL5,430-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ardo - Team Leader - Rooms - HL4,430-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ardo - Trainer - Mini Bar - HL3,430-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ardo - Trainer - Rooms - HL3,430-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ardo - Training - Rooms,430-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Mgmt Heather Brent View only,,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ville - Runner,480-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+HSK - Rooms,Ardo - Runner,430-7100,HSK-R,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+In Room Dining,Ville - IRD - HL2,488-3000,IRD,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+In Room Dining,Ville - Induction,488-3000,IRD,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+In Room Dining,Ville - IRD - HL3,488-3000,IRD,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+In Room Dining,Uncategorised Shifts,488-5000,IRD,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+In Room Dining,Venue Manager,488-3000,IRD,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+In Room Dining,Ville - Shift Leader - HL5,488-3000,IRD,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+In Room Dining,Ville - Orpheus Runner - HL2,449-3000,IRD,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+In Room Dining,Ville - Floater - HL2,488-3000,IRD,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+In Room Dining,Ville - Floater - HL3,488-3000,IRD,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+In Room Dining,Ville - Training,488-3000,IRD,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+In Room Dining,Ardo - IRD - HL3,427-3000,IRD,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+In Room Dining,Ardo - IRD - HL2,427-3000,IRD,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+In Room Dining,Ardo - Floater - HL3,427-3000,IRD,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+In Room Dining,Ardo - Floater - HL2,427-3000,IRD,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+In Room Dining,Ardo - Induction,427-3000,IRD,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+In Room Dining,Ardo - Training,427-3000,IRD,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+In Room Dining,Duty Manager,488-3000,IRD,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,Executive Chef,SPL-CHEF,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,Finance - Manager,910-9000,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,IT - Manager,910-9400,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,Hotel & F&B - General Manager,SPL-HOTE,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,"GM - Marketing, Sales and VIP Services",SPL-MARK,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,GM - Food & Beverage,470-6500,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,Compliance - Manager,910-9000,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,Chief Executive Officer - CEO,910-9000,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,Employee Relations Manager,910-9200,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,Security - Manager,910-4200,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,Property Service - Manager,910-4000,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,Casino Operations Manager,470-6600,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,Surveillance - Manager,910-4300,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,VIP Services - Manager,SPL-HOST,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,GM - Finance & IT,910-9000,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,GM - Compliance,910-9100,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,GM - Marketing & Community,910-9500,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Management - The Ville,Corporate Governance Officer,,MTV,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marketing,Marketing Executive - L&E,910-9500,M,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marketing,zzz -Senior Graphic Designer,910-9500,M,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marketing,zzz - Entertainment Executive,460-2000,M,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marketing,zzz -Marketing Coordinator,910-9500,M,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marketing,Marketing Executive - Gaming,910-9500,M,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marketing,Senior Marketing Manager,910-9500,M,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marketing,Induction,910-9500,M,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marketing,Marketing Manager - Gaming,910-9500,M,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marketing,Graphic Designer,910-9500,M,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marketing,Marketing Manager - Leisure & Entertainment,SPL-MARK,M,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marketing,Marketing Executive,,M,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marketing - Sales,"Sales Manager-The Ville, Ardo & TECC",460-2000,MS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+Marketing - Sales,Event Co-ordinator,460-2000,MS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+Marketing - Sales,Senior Event Co-ordinator,460-2000,MS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+Marketing - TECC,Event Manager - TECC,700-2000,MT,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+Marketing - TECC,Sales and Contracts Manager - TECC,700-2000,MT,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+Marketing - TECC,Box Office and Administration Executive,700-2000,MT,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+Marketing - TECC,Ticketing & Event Administrator,700-2000,MT,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+Marmor,Assistant Venue Manager,421-3000,Mar,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marmor,Venue Manager,421-3000,Mar,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marmor,Section - HL2,421-3000,Mar,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marmor,Induction,421-3000,Mar,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marmor,Training,421-3000,Mar,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marmor,Barback - HL2,421-3000,Mar,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marmor,Bartender - HL3,421-3000,Mar,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marmor,Cashier,421-3000,Mar,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marmor,Certificate Training,421-3000,Mar,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marmor,Host,421-3000,Mar,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marmor,Runner,421-3000,Mar,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marmor,Senior Sommelier,421-3000,Mar,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marmor,Bar Manager,421-3000,Mar,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marmor,Duty Manager,421-3000,Mar,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marmor,F&B Reservation Agent - HL3,421-3000,Mar,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Marmor,Sommelier,421-3000,Mar,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,zzz - F&B Attendant - HL2,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,Venue Manager,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,Shift Leader - HL5,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,zzz - Cashier - HL2,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,Bartender - HL3,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,Induction,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,Certificate Training,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,Assistant Venue Manager,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,zzz - Bartender,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,Cashier - HL2,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,F&B Attendant,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,Training.,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,Trainer - HL3,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,Section,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,Host,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,Runner,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,Pass,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,Stocktake,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,Barback - HL2,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,zzz - Ardo Training - Marmor,421-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,zzz - Ardo Training - Terasu,422-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,zzz - Ardo Training - Rooftop,423-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,Uncategorised Shifts,ERROR! Uncategorised Shift,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Miss Songs,Service In other Departments,454-3000,MS ,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Morris Group Transfer - Beechmont,Beechmont - Chef,800-4000,Beech,,au_qld,100,
+Morris Group Transfer - Mt Mulligan,Mt Mulligan - Chef,800-3000,Mt Mul,,au_qld,100,
+Morris Group Transfer - Orpheus,Orpheus - Chef,800-2000,MGOrph,,au_qld,100,
+Morris Group Transfer - Orpheus,Pelorus - Housekeeping,800-2000,MGOrph,,au_qld,100,
+Morris Group Transfer - Portsea,Portsea - Chef,800-1000,MG-P,"3746 Point Nepean Road, Sorrento, VIC, 3943, AUSTRALIA",au_vic,100,Australia/Melbourne
+Morris Group Transfer - Portsea,Portsea - F&B - HL2,800-1000,MG-P,"3746 Point Nepean Road, Sorrento, VIC, 3943, AUSTRALIA",au_vic,100,Australia/Melbourne
+Morris Group Transfer - Portsea,Portsea - Bartender - HL3,800-1000,MG-P,"3746 Point Nepean Road, Sorrento, VIC, 3943, AUSTRALIA",au_vic,100,Australia/Melbourne
+Palm House,Venue Manager,SPL-PALM,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,Bartender - HL3,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,Floor-Breakfast - HL2,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,Duty Managers - HL5,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,Current PT&FT Staff list,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,Floor-Dinner - HL2,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,Cashier - HL2,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,IRD - HL3,488-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,Induction,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,Certificate Training,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,Barista - HL3,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,Buffet &Buss,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,Host,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,Coffee Runner - HL2,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,Drinks Runner - HL2,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,Training.,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,zzz - Barista,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,zzz - Bartender,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,zzz - Cashier,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,zzz - IRD,488-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,zzz - Floor-Breakfast,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,zzz - Floor-Dinner,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,Uncategorised Shifts,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,T Bar or Barista,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,T Cashier,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,Assistant Venue Manager,SPL-PALM,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,IRD Shift Leader - HL5,488-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,zzz - Ardo Training - Marmor,427-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,zzz - Ardo Training - Terasu,422-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,zzz - Ardo Training - Rooftop,423-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,zzz - Ardo Training - IRD,427-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Palm House,Stocktake,450-3000,PH,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Payroll & Scheduling,Payroll Manager,910-9000,PAS,"67 Sir Leslie Thiess Drive, Townsville City, QLD, 4810, AUSTRALIA",,100,
+Payroll & Scheduling,Payroll & Scheduling Officer,910-9000,PAS,"67 Sir Leslie Thiess Drive, Townsville City, QLD, 4810, AUSTRALIA",,100,
+Payroll & Scheduling,Accounts Payable Officer,910-9000,PAS,"67 Sir Leslie Thiess Drive, Townsville City, QLD, 4810, AUSTRALIA",,100,
+People and Culture,zzzHuman Resources,910-9200,P&C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+People and Culture,Uncategorised Shifts,910-9000,P&C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+People and Culture,zzzRecruitment Administrator,910-9200,P&C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+People and Culture,Training Officer,910-9200,P&C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+People and Culture,School Based Trainee,SPL-CULI,P&C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+People and Culture,People & Culture Business Partner,910-9200,P&C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+People and Culture,Learning and Development Co-ordinator,910-9200,P&C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+People and Culture,Recruitment & HR Co-ordinator,910-9200,P&C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+People and Culture,WHS & Rehabilitation Co-ordinator,910-9200,P&C,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Purchasing,Stores Supervisor,910-9300,Pu,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Purchasing,Stores Manager,910-9300,Pu,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Purchasing,Ville - Storesperson,910-9300,Pu,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Purchasing,Induction,910-9300,Pu,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Purchasing,Senior Storeperson,910-9300,Pu,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Purchasing,Uncategorised Shifts,910-9300,Pu,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Purchasing,Purchasing Certificate Training,910-9300,Pu,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Purchasing,Stores Assistant Manager,910-9300,Pu,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Purchasing,Ardo - Storesperson,910-9300,Pu,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Purchasing,Procurement Officer,910-9300,Pu,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,Barback - HL2,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,Bartender - HL3,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,Cashier - HL2,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,Floor - HL2,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,Venue Manager,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,Uncategorised Shifts,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,zzz - Duty Manager,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,Induction,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,Certificate Training,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,zzz - Barback,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,zzz - Bartender,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,zzz - Cashier,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,Shift Leader - HL5,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,Training.,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,Assistant Venue Manager,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,zzz - TT IT Transfer,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,zzz - Barista,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,Barista - HL3,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,F&B Runner,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,zzz - Ardo Training - Marmor,421-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,zzz - Ardo Training - Terasu,422-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,zzz - Ardo Training - Rooftop,423-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,RSA Marshall - HL5,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,Stocktake,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Quarterdeck,Host,444-3000,QTR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Reservation,Induction,910-7400,RES,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Reservation,Training,910-7400,RES,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Reservation,Switchboard Agent,910-7400,RES,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Reservation,Reservation Agent - GC,910-7400,RES,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Reservation,Revenue Manager,910-7400,RES,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Reservation,zzzReservation Agent,910-7400,RES,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Reservation,Reservation Supervisor - HL5,910-7400,RES,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Reservation,Uncategorised Shifts,,RES,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Reservation,Reservations - Operations,910-7400,RES,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Reservation,zzz Reservations - F & B,910-7400,RES,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Reservation,Reservations - Audit,910-7400,RES,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Reservation,Reservations Duty Manager,910-7400,RES,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Reservation,Reservation Commission - Audit,910-7400,RES,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Reservation,Group Reservation Agent,910-7400,RES,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,RTB - Venue Manager,423-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,RTB - Assistant Venue Manager,423-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,RTB - Duty Manager,423-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,RTB - Host,423-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,RTB - Bartender - HL3,423-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,RTB - Barback - HL2,423-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,RTB - Section - HL2,423-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,RTB - Runner - HL2,423-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,RTB - Training,423-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,RTB - Certificate Training,423-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,RTB - Induction,423-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,zzzIRD - Supervisor,427-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,zzzIRD - Shift Leader - HL5,427-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,zzzIRD - Attendant - HL3,427-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,zzzIRD - Training,427-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,zzzIRD - Certificate Training,427-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,zzzIRD - Induction,427-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,RTB - Bar Manager,423-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,RTB - Pool Service HL3,423-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,RTB - Senior Sommelier,423-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,zzzIRD - Attendant - HL2,427-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,RTB - Barista - HL3,423-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Rooftop Bar,RTB - RSA Marshall - HL5,423-3000,RTB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Security,Security Manager,910-4200,SC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Security,Security & Safety Officer - External,910-4200,SC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Security,PPT - Security Officer,910-4200,SC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Security,Trainee,910-4200,SC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Security,Senior Security Officer,910-4200,SC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Security,Casual - Security Officer,910-4200,SC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Security,Security Shift Manager - CL7,910-4200,SC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Security,Induction,910-4200,SC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Security,Training.,910-4200,SC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Security,Certified Training,910-4200,SC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Security,Uncategorised Shifts,910-4200,SC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Security,Security Officer - Paid Break,910-4200,SC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Security,Fire & Emergency Coordinator,910-4200,SC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Shared Services,Revenue Auditor - Hotel,910-9000,SS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Shared Services,Assistant Accountant,910-9000,SS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Shared Services,zzz-Payroll Manager,910-9000,SS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Shared Services,zzz IT,910-9400,SS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Shared Services,Induction,910-9000,SS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Shared Services,zzzExecutive Assistant to the CEO,910-9000,SS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Shared Services,zzz -Payroll Officer,910-9000,SS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Shared Services,zzzAccounts Payable,910-9000,SS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Shared Services,zzzPayroll and Assistant Accountant,910-9000,SS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Shared Services,zzz Compliance Adminstrator,910-9000,SS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Shared Services,Accountant,910-9000,SS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Shared Services,Uncategorised Shifts,ERROR! Uncategorised Shift,SS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Shared Services,Revenue Audit Supervisor,910-9000,SS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Shared Services,Revenue Auditor - Casino,910-9000,SS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Shared Services,zzzRevenue Auditor - TVRC,910-9000,SS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Shared Services,Revenue Audit - A,910-9000,SS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Spin,Floor - HL2,458-3000,S,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Spin,Cashier - HL2,458-3000,S,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Spin,zzz -Duty Manager,458-3000,S,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Spin,Barista - HL3,458-3000,S,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Spin,Training.,458-3000,S,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Spin,zzz - Cashier,458-3000,S,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Spin,zzz - Floor,458-3000,S,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Spin,zzz - Barista,458-3000,S,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Spin,Uncategorised Shifts,458-3000,S,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Spin,Induction,458-3000,S,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Spin,Shift Leader - HL5,458-3000,S,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Spin,zzz -Ardo Training - Marmor,421-3000,S,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Spin,zzz - Ardo Training - Terasu,422-3000,S,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Spin,zzz- Ardo Training - Rooftop,423-2000,S,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,Shift Leader - HL5,446-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,Cabana Service - HL3,446-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,Bartender - HL3,446-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,Induction,446-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,Certificate Training,446-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,zzz - Bartender,446-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,zzz - Cabana Service,446-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,Host,446-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,Pool Deck,446-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,Assistant Venue Manager,446-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,zzz- Lifeguard,446-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,Lifeguard - HL4,446-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,zzz - Special Event,446-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,Special Event - HL3,446-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,Training,446-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,zzz - Ardo Training - Pool Side,427-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,RSA Marshall - HL5,446-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Splash Bar,Stocktake,446-3000,SB,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,Bar BOSS - HL2,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,TAB - HL3,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,Floor - HL2,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,F&B VIP Gaming Manager,SPL-VMGR,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,Shift Leader - HL5,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,Uncategorised Shifts,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,Bar Back - HL3,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,F&B Attendant,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,zzz - Duty Manager,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,Floor - Tables - HL2,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,Floor - Magnetic,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,Certificate Training,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,Induction,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,Training.,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,Casino Bars Training,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,zzz - Bar BOSS,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,zzz - Bar Back,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,zzz - Floor,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,zzz - Floor T&C,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,zzz - Floor Tables,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,zzz - TAB,SPL-TABG,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,zzz - Bartender,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,Bartender - HL3,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,Stocktake,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,Service In Other Departments,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,Assistant Venue Manager,449-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,zzz - Ardo Training - Marmor,421-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,zzz - Ardo Training - Terasu,422-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,zzz - Ardo Training - Rooftop,423-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Sports Bar,RSA Marshall - HL5,442-3000,SP,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,STW - PH - Hot,450-5000,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,STW - PH - Cold,450-5000,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,E O - Events Nights,460-5000,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,STW - PH,450-5000,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,STW - MS,454-5000,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,STW - Spin,458-5000,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,P D - PH Day,450-5000,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,"STW - MS, SP & QD",SPL-STEW,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,STW - Events,460-5000,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,STW - SP & MS,SPL-STEW,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,STW - QD,444-5000,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,Q D - QD Day,444-5000,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,Training - Stewarding,SPL-STEW,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,Uncategorised Shifts,SPL-STEW,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,Shift Leader - Stewarding,SPL-STEW,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,Chief Steward,SPL-STEW,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,Induction,SPL-STEW,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,Steward Certificate Training,SPL-STEW,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,STW - Marmor,421-5000,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,STW - Terasu,422-5000,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,STW - Rooftop,423-5000,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Stewarding,STW - TECC,700-5000,Ste,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Surveillance,Manager,910-4300,SU,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Surveillance,Operator,910-4300,SU,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Surveillance,Senior Operator,910-4300,SU,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Surveillance,Shift Manager,910-4300,SU,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Surveillance,Surveillance Technician,910-4300,SU,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Surveillance,Induction,910-4300,SU,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Surveillance,Uncategorised Shifts,910-4300,SU,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Surveillance,Training,910-4300,SU,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,TECC - F&B Service,700-3000,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,zzz-F&B Setup Supervisor,700-2900,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,F&B Venue Manager,700-2100,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,Ticket Collector / Usher,700-2000,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,TECC - Venue Attendant,700-2300,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,zzz-Facility & Events Service Coordinator,700-2100,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,TECC - Cleaner,700-2600,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,zzz-TECC - Shift Supervisor (HD),700-2800,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,Uncategorised Shifts,700-2000,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,Venue Manager - TECC,700-2100,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,Induction,700-2400,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,TECC - Set up,700-2500,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,zzz - F&B Attendant - TECC Corporate,700-2400,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,FOH Supervisor (HD),700-2700,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,Box Office - Gr3,700-2200,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,zzz - Ardo Training - Marmor,421-3000,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,zzz - Ardo Training - Rooftop,423-3000,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,zzz - Ardo Training - Terasu,422-3000,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,Team Leader,700-2300,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+TECC,RSA Marshall - HL5,700-2700,T,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Table Games,Baccarat - Host,470-6600,TG,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Table Games,Blackjack - Host,470-6600,TG,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Table Games,Roulette - Host,470-6600,TG,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Table Games,Supervisor - Table Games CL7,470-6600,TG,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Table Games,Gaming Supervisors,470-6600,TG,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Table Games,Training - Table Games,470-6600,TG,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Table Games,Tables Certificate Training,470-6600,TG,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Table Games,Table Games Shift Manager,470-6600,TG,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Table Games,Induction,470-6600,TG,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Table Games,Supervisor - Table Games CL6,470-6600,TG,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Table Games,Uncategorised Shifts,470-6600,TG,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Table Games,Table Games Operations Manager,470-6600,TG,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Terasu,Assistant Venue Manager,422-3000,Ter,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Terasu,Venue Manager,422-3000,Ter,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Terasu,Duty Manager,422-3000,Ter,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Terasu,Host,422-3000,Ter,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Terasu,Cashier,422-3000,Ter,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Terasu,Bartender - HL3,422-3000,Ter,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Terasu,Barback - HL2,422-3000,Ter,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Terasu,Section HL2,422-3000,Ter,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Terasu,Runner,422-3000,Ter,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Terasu,Training,422-3000,Ter,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Terasu,Induction,422-3000,Ter,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Terasu,Certificate Training,422-3000,Ter,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Terasu,Bar Manager,422-3000,Ter,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Terasu,Pass,422-3000,Ter,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Terasu,Trainer - HL3,422-3000,Ter,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Magnetic Room,Bartender - HL3,448-3000,MGR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Magnetic Room,Shift Leader - HL5,448-3000,MGR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Magnetic Room,Bar BOSS - HL2,448-3000,MGR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Magnetic Room,Certificate Training,448-3000,MGR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Magnetic Room,Induction,448-3000,MGR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Magnetic Room,Training.,448-3000,MGR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Magnetic Room,zzz - Duty Manager,448-3000,MGR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Magnetic Room,zzz - Venue Manager,448-3000,MGR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Magnetic Room,zzz - Bar BOSS,448-3000,MGR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Magnetic Room,zzz - Bartender,448-3000,MGR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Magnetic Room,Shift Leader (No RMLV) - HL4,448-3000,MGR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Orpheus Room,Floor - HL2,449-3000,OPR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Orpheus Room,Bar BOSS - HL2,449-3000,OPR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Orpheus Room,Certificate Training,449-3000,OPR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Orpheus Room,Induction,449-3000,OPR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Orpheus Room,Training.,449-3000,OPR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Orpheus Room,zzz - Duty Manager,449-3000,OPR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Orpheus Room,F&B Attendant,449-3000,OPR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Orpheus Room,Shift Leader - HL5,449-3000,OPR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Orpheus Room,Venue Manager,449-3000,OPR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Orpheus Room,Bartender - HL3,449-3000,OPR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Orpheus Room,zzz - Bar BOSS,449-3000,OPR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Orpheus Room,zzz - Bartender,449-3000,OPR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Orpheus Room,zzz - Floor,449-3000,OPR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Orpheus Room,Stocktake,449-3000,OPR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP - Orpheus Room,Assistant Venue Manager,449-3000,OPR,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+VIP Services,VIP Services Executive,470-6700,VS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",au_qld,100,Australia/Brisbane
+VIP Services,VIP Services Executive - Domestic,470-6700,VS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",au_qld,100,Australia/Brisbane
+VIP Services,Induction,470-6700,VS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",au_qld,100,Australia/Brisbane
+VIP Services,Certified Training,470-6700,VS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",au_qld,100,Australia/Brisbane
+VIP Services,Gaming Development Executive,470-6700,VS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",au_qld,100,Australia/Brisbane
+VIP Services,VIP Services Manager,470-6700,VS,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",au_qld,100,Australia/Brisbane
+VIP Services - Concierge,Concierge Driver,470-6700,VSC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+VIP Services - Concierge,VIP Services - Concierge Manager,470-6700,VSC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+VIP Services - Concierge,Senior Concierge Host,470-6700,VSC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+VIP Services - Concierge,Concierge Desk,470-6700,VSC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+VIP Services - Concierge,Inductions,470-6700,VSC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+VIP Services - Concierge,VIP - Training,470-6700,VSC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+VIP Services - Concierge,Domestic Host,470-6700,VSC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+VIP Services - Concierge,VIP - Certificate Training,470-6700,VSC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+VIP Services - Concierge,Domestic Concierge,470-6700,VSC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+VIP Services - Concierge,Concierge Host,470-6700,VSC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+VIP Services - Concierge,VIP Services Guest Experience Executive,470-6700,VSC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+VIP Services - Concierge,VIP Services Coordinator,470-6700,VSC,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,
+Work Experience,Quarterdeck WE,,WE,"67 Sir Leslie Thiess Dr, Townsville City QLD 4810, Aus",,100,
+Work Experience,Events WE,,WE,"67 Sir Leslie Thiess Dr, Townsville City QLD 4810, Aus",,100,
+Work Experience,Spin WE,,WE,"67 Sir Leslie Thiess Dr, Townsville City QLD 4810, Aus",,100,
+Work Experience,Sports Bar WE,,WE,"67 Sir Leslie Thiess Dr, Townsville City QLD 4810, Aus",,100,
+Work Experience,Stewarding WE,,WE,"67 Sir Leslie Thiess Dr, Townsville City QLD 4810, Aus",,100,
+Work Experience,Front Office WE,,WE,"67 Sir Leslie Thiess Dr, Townsville City QLD 4810, Aus",,100,
+Work Experience,Culinary WE,,WE,"67 Sir Leslie Thiess Dr, Townsville City QLD 4810, Aus",,100,
+Work Experience,Splash Bar WE,,WE,"67 Sir Leslie Thiess Dr, Townsville City QLD 4810, Aus",,100,
+Work Experience,Housekeeping,,WE,"67 Sir Leslie Thiess Dr, Townsville City QLD 4810, Aus",,100,
+Work Experience,Laundry,,WE,"67 Sir Leslie Thiess Dr, Townsville City QLD 4810, Aus",,100,
+Work Experience,Palm House,,WE,"67 Sir Leslie Thiess Dr, Townsville City QLD 4810, Aus",,100,
+ZZZ - TEST,TEST,,ZT,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus","au,au_qld",99,Australia/Brisbane
+ZZZ Housekeeping,Cleaner Morning,910-7200,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Shift Leader,480-7100,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Housekeeping Supervisor - HL5,910-7200,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Trainer - Cleaners,910-7200,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Assistant Housekeeping Manager,910-7300,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Dry Cleaner,910-7300,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Laundry Attendant,910-7300,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Presser,910-7300,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Trainer - Laundry,910-7300,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Wardrobe AM,910-7300,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Wash Ironer,910-7300,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Wash room,910-7300,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Shift Leader - Laundry,910-7300,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Sewing Attendant,910-7300,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Mini Bar,486-3000,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Room Attendant,480-7100,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Executive Housekeeper,480-7100,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Runner,480-7100,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Trainer - Rooms,480-7100,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Co-Ordinator - HL4,480-7100,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Wardrobe PM,910-7300,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Cleaner Day,910-7200,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Cleaner Afternoon,910-7200,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Cleaner Hygiene,910-7200,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Cleaner Night,910-7200,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Uncategorised Shifts,480-7100,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Training - Laundry,910-7300,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Training - Cleaners,910-7200,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Training - Housekeeping,480-7100,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Cleaner Extra,910-7200,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Floater,910-7300,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Cleaner Hotel,910-7200,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Facilities Cleaner,910-7200,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Induction,480-7100,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Housekeeping Certificate Training,480-7100,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Trainer - Cleaners - HL3,910-7200,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Trainer - Laundry HL3,910-7300,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Trainer - Rooms HL3,480-7100,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Dry Cleaner - HL3,910-7300,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,HSK Supervisor - HL5,480-7100,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Runner - HL3,480-7100,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Trainer - Mini Bar,486-3000,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Trainer - Minibar - HL3,486-3000,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Shift Leader - Laundry - HL3,910-7300,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Laundry Supervisor - HL5,910-7300,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,HSK Team Leader - HL4,480-7100,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Staff Accommodation Cleaning,910-4400,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Mini Bar - HL2,486-3000,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Cleaner BOH,910-7200,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+ZZZ Housekeeping,Cleaner,910-7200,ZZZHSK,"67 Sir Leslie Thiess Dr, Townsville QLD 4810, Aus",,100,Australia/Brisbane
+Compliance & Risk,Financial Crime Manager,910-9100,,,,,Australia/Brisbane
+Marketing,Sales - Sales Executive,910-9500,,,,,Australia/Brisbane
+Reservation,Business Development Manager,910-7400,,,,,Australia/Brisbane
