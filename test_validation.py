@@ -4,7 +4,7 @@ Test script for data validation functionality
 import os
 import django
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'labour_reconciliation.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from reconciliation.models import Upload, ValidationResult

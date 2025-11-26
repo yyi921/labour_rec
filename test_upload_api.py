@@ -41,6 +41,15 @@ for name, filepath in test_files:
         print(f"  Period: {data['period']['period_id']}")
         print(f"  Upload ID: {data['upload']['upload_id']}")
 
+        # Display validation results
+        if 'validation' in data:
+            validation = data['validation']
+            validation_status = "✓ PASSED" if validation['passed'] else "✗ FAILED"
+            print(f"  Validation: {validation_status}")
+            print(f"  Validation URL: {BASE_URL}{validation['validation_url']}")
+            print(f"\n  View validation results at:")
+            print(f"  {BASE_URL}{validation['validation_url']}")
+
     elif response.status_code == 409:
         data = response.json()
         print(f"[WARN] Duplicate detected")

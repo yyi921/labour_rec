@@ -98,10 +98,11 @@ class DataValidator:
 
     @staticmethod
     def _validate_cost_account_locations(upload):
-        """Validate that location codes in Cost Account Codes exist in SageLocation"""
+        """Validate that location codes in Cost Account Codes exist in SageLocation
+        Note: SPL accounts (split accounts) are excluded from this check"""
         test_result = {
             'test_name': 'Cost Account Code - Location Validation',
-            'description': 'Check if location codes (first 3 digits) match Sage Location master data',
+            'description': 'Check if location codes (first 3 digits) match Sage Location master data (excludes SPL split accounts)',
             'passed': True,
             'errors': []
         }
@@ -115,6 +116,10 @@ class DataValidator:
         invalid_locations = {}
         for cost_account in cost_accounts:
             if not cost_account or '-' not in cost_account:
+                continue
+
+            # Skip SPL (split) accounts - they will be validated in Split_Data check
+            if cost_account.startswith('SPL'):
                 continue
 
             location_code = cost_account.split('-')[0]
@@ -137,10 +142,11 @@ class DataValidator:
 
     @staticmethod
     def _validate_cost_account_departments(upload):
-        """Validate that department codes in Cost Account Codes exist in SageDepartment"""
+        """Validate that department codes in Cost Account Codes exist in SageDepartment
+        Note: SPL accounts (split accounts) are excluded from this check"""
         test_result = {
             'test_name': 'Cost Account Code - Department Validation',
-            'description': 'Check if department codes (first 2 digits after dash) match Sage Department master data',
+            'description': 'Check if department codes (first 2 digits after dash) match Sage Department master data (excludes SPL split accounts)',
             'passed': True,
             'errors': []
         }
@@ -154,6 +160,10 @@ class DataValidator:
         invalid_departments = {}
         for cost_account in cost_accounts:
             if not cost_account or '-' not in cost_account:
+                continue
+
+            # Skip SPL (split) accounts - they will be validated in Split_Data check
+            if cost_account.startswith('SPL'):
                 continue
 
             parts = cost_account.split('-')
