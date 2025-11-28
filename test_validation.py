@@ -39,7 +39,7 @@ def test_validation(upload_id):
         print(f"\nValidation Tests:\n")
 
         for test in results['validations']:
-            status = "✓ PASS" if test['passed'] else "✗ FAIL"
+            status = "[PASS]" if test['passed'] else "[FAIL]"
             print(f"{status} - {test['test_name']}")
             print(f"   {test['description']}")
 
