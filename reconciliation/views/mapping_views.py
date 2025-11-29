@@ -12,11 +12,168 @@ from django.conf import settings
 
 from reconciliation.models import (
     PayPeriod, LocationMapping, TandaTimesheet, Upload, CostAllocationRule,
-    IQBDetail, SageLocation, SageDepartment, PayCompCodeMapping, FinalizedAllocation
+    IQBDetail, SageLocation, SageDepartment, PayCompCodeMapping, FinalizedAllocation,
+    EmployeePayPeriodSnapshot
 )
 from reconciliation.cost_allocation import CostAllocationEngine
 from django.db.models import Sum, Count, Q
 from decimal import Decimal
+
+
+def _load_employee_locations():
+    """Load employee locations from master_employee_file.csv
+    Returns dict of {employee_code: location}"""
+    csv_path = os.path.join(settings.BASE_DIR, 'data', 'master_employee_file.csv')
+
+    if not os.path.exists(csv_path):
+        return {}
+
+    employee_locations = {}
+    with open(csv_path, 'r', encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            code = row.get('Code', '').strip()
+            location = row.get('Location', '').strip()
+            if code and location:
+                employee_locations[code] = location
+
+    return employee_locations
+
+
+def _auto_create_tanda_mappings(tanda_upload):
+    """
+    Automatically create Tanda location mappings based on master_employee_file.csv
+    Maps Tanda location names to cost account codes using employee default accounts
+    """
+    from reconciliation.models import LocationMapping, TandaTimesheet, SageLocation, SageDepartment
+
+    # Load master employee file to get default cost accounts by location
+    csv_path = os.path.join(settings.BASE_DIR, 'data', 'master_employee_file.csv')
+    if not os.path.exists(csv_path):
+        return
+
+    # Build location -> default cost account mapping from master file
+    location_default_accounts = {}
+    with open(csv_path, 'r', encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            location = row.get('Location', '').strip()
+            default_account = row.get('Default Cost Account', '').strip()
+
+            if location and default_account and location not in location_default_accounts:
+                # Use the first employee's default account for this location
+                location_default_accounts[location] = default_account
+
+    # Get all unique Tanda location names from this upload
+    tanda_locations = TandaTimesheet.objects.filter(
+        upload=tanda_upload
+    ).values_list('location_name', flat=True).distinct()
+
+    # Get all existing mappings
+    existing_mappings = set(LocationMapping.objects.filter(
+        is_active=True
+    ).values_list('tanda_location', flat=True))
+
+    # Create missing mappings
+    created_count = 0
+    for tanda_location in tanda_locations:
+        if not tanda_location or tanda_location in existing_mappings:
+            continue
+
+        # Find the default cost account for this location
+        cost_account = location_default_accounts.get(tanda_location)
+
+        if cost_account and '-' in cost_account:
+            # Parse location and department from cost account
+            parts = cost_account.split('-')
+            location_id = parts[0]
+            dept_id = parts[1][:2] if len(parts[1]) >= 2 else ''
+
+            # Get location and department names
+            sage_location = SageLocation.objects.filter(location_id=location_id).first()
+            sage_dept = SageDepartment.objects.filter(department_id=dept_id).first()
+
+            location_name = sage_location.location_name if sage_location else ''
+            dept_name = sage_dept.department_name if sage_dept else ''
+
+            # Create the mapping
+            LocationMapping.objects.create(
+                tanda_location=tanda_location,
+                cost_account_code=cost_account,
+                department_code=dept_id,
+                department_name=dept_name,
+                is_active=True
+            )
+            created_count += 1
+
+    return created_count
+
+
+def _expand_spl_allocations(allocation):
+    """
+    Expand SPL (split) accounts in allocation to their target accounts
+
+    Args:
+        allocation: dict of {cost_account: {'percentage': float, 'amount': float}}
+
+    Returns:
+        dict of {cost_account: {'percentage': float, 'amount': float}} with SPL accounts expanded
+    """
+    from reconciliation.models import CostCenterSplit
+    from decimal import Decimal
+
+    if not allocation:
+        return {}
+
+    expanded = {}
+
+    # Get all SPL split rules
+    split_rules = {}
+    for split in CostCenterSplit.objects.all():
+        if split.source_account not in split_rules:
+            split_rules[split.source_account] = []
+        split_rules[split.source_account].append({
+            'target': split.target_account,
+            'percentage': float(split.percentage)
+        })
+
+    # Process each allocation
+    for cost_account, details in allocation.items():
+        percentage = details.get('percentage', 0)
+        amount = details.get('amount', 0)
+
+        # Check if this is an SPL account
+        if cost_account.startswith('SPL') and cost_account in split_rules:
+            # Expand this SPL account to its targets
+            for rule in split_rules[cost_account]:
+                target_account = rule['target']
+                split_pct = rule['percentage']
+
+                # Calculate the percentage that goes to this target
+                target_percentage = percentage * split_pct
+                target_amount = amount * split_pct
+
+                # Add to or update the target account
+                if target_account in expanded:
+                    expanded[target_account]['percentage'] += target_percentage
+                    expanded[target_account]['amount'] += target_amount
+                else:
+                    expanded[target_account] = {
+                        'percentage': target_percentage,
+                        'amount': target_amount
+                    }
+        else:
+            # Not an SPL account, keep as-is
+            if cost_account in expanded:
+                expanded[cost_account]['percentage'] += percentage
+                expanded[cost_account]['amount'] += amount
+            else:
+                expanded[cost_account] = {
+                    'percentage': percentage,
+                    'amount': amount
+                }
+
+    return expanded
 
 
 def verify_tanda_mapping(request, pay_period_id):
@@ -35,178 +192,77 @@ def verify_tanda_mapping(request, pay_period_id):
     if not tanda_upload:
         return render(request, 'reconciliation/verify_mapping.html', {
             'pay_period': pay_period,
-            'error': 'No Tanda timesheet data found for this pay period'
+            'error': 'No Tanda timesheet data found for this period'
         })
 
-    # Get all unique location/team combinations from Tanda
-    tanda_locations = TandaTimesheet.objects.filter(
+    # Get all unique Tanda locations from uploaded data
+    tanda_locations = list(TandaTimesheet.objects.filter(
         upload=tanda_upload
-    ).values('location_name', 'team_name').distinct()
+    ).values('location_name').distinct().order_by('location_name'))
 
-    # Check mapping status for each
-    mapping_status = []
-    unmapped_locations = []
+    # Get existing mappings
+    mapped_locations = set(LocationMapping.objects.filter(
+        is_active=True
+    ).values_list('tanda_location', flat=True))
 
+    # Mark which locations need mapping
     for loc in tanda_locations:
-        location_name = loc['location_name']
-        team_name = loc['team_name']
-        tanda_location = f"{location_name} - {team_name}"
+        loc['is_mapped'] = loc['location_name'] in mapped_locations
+        if loc['is_mapped']:
+            mapping = LocationMapping.objects.get(tanda_location=loc['location_name'])
+            loc['cost_account'] = mapping.cost_account_code
+            loc['department'] = mapping.department_name
 
-        # Check if mapping exists
-        try:
-            mapping = LocationMapping.objects.get(
-                tanda_location=tanda_location,
-                is_active=True
-            )
-            mapping_status.append({
-                'tanda_location': tanda_location,
-                'location_name': location_name,
-                'team_name': team_name,
-                'cost_account_code': mapping.cost_account_code,
-                'department_name': mapping.department_name,
-                'is_mapped': True
-            })
-        except LocationMapping.DoesNotExist:
-            # Find employee count for this location
-            employee_count = TandaTimesheet.objects.filter(
-                upload=tanda_upload,
-                location_name=location_name,
-                team_name=team_name
-            ).values('employee_id').distinct().count()
+    # Count employees affected by unmapped locations
+    unmapped_locations = [loc['location_name'] for loc in tanda_locations if not loc['is_mapped']]
+    affected_count = TandaTimesheet.objects.filter(
+        upload=tanda_upload,
+        location_name__in=unmapped_locations
+    ).values('employee_id').distinct().count() if unmapped_locations else 0
 
-            unmapped_locations.append({
-                'tanda_location': tanda_location,
-                'location_name': location_name,
-                'team_name': team_name,
-                'cost_account_code': '',
-                'department_name': '',
-                'is_mapped': False,
-                'employee_count': employee_count
-            })
-
-    total_locations = len(mapping_status) + len(unmapped_locations)
-    mapped_count = len(mapping_status)
-    mapped_pct = (mapped_count / total_locations * 100) if total_locations > 0 else 0
-
-    context = {
+    return render(request, 'reconciliation/verify_mapping.html', {
         'pay_period': pay_period,
-        'total_locations': total_locations,
-        'mapped_count': mapped_count,
-        'mapped_pct': round(mapped_pct, 1),
+        'tanda_locations': tanda_locations,
         'unmapped_count': len(unmapped_locations),
-        'unmapped_locations': unmapped_locations,
-        'mapping_status': mapping_status[:20],  # Show first 20 for reference
-    }
-
-    return render(request, 'reconciliation/verify_mapping.html', context)
+        'affected_employees': affected_count,
+    })
 
 
 @csrf_exempt
-@require_http_methods(["POST"])
-def save_location_mappings(request, pay_period_id):
+@require_http_methods(['POST'])
+def save_location_mapping(request):
     """
-    Save new location mappings and update CSV file
+    AJAX endpoint to save a new Tanda location mapping
     """
     try:
         data = json.loads(request.body)
-        mappings = data.get('mappings', [])
+        tanda_location = data.get('tanda_location')
+        cost_account_code = data.get('cost_account_code')
+        department_code = data.get('department_code')
+        department_name = data.get('department_name')
 
-        if not mappings:
-            return JsonResponse({'error': 'No mappings provided'}, status=400)
+        if not all([tanda_location, cost_account_code, department_code, department_name]):
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
 
-        # Validate mappings
-        for mapping in mappings:
-            if not mapping.get('tanda_location') or not mapping.get('cost_account_code'):
-                return JsonResponse({'error': 'Invalid mapping data'}, status=400)
-
-        # Add to database
-        created_count = 0
-        for mapping in mappings:
-            location_name, team_name = mapping['tanda_location'].split(' - ', 1)
-
-            # Extract department info from cost account
-            cost_account = mapping['cost_account_code']
-            if '-' in cost_account:
-                dept_code = cost_account.split('-')[0][-2:]  # Last 2 digits
-            else:
-                dept_code = '00'
-
-            dept_names = {
-                '10': 'Administration', '20': 'Marketing', '30': 'Beverage',
-                '40': 'Entertainment', '50': 'Food', '60': 'Gaming',
-                '70': 'Accommodation', '80': 'Security', '90': 'Other', '00': 'Other'
+        # Create or update mapping
+        mapping, created = LocationMapping.objects.update_or_create(
+            tanda_location=tanda_location,
+            defaults={
+                'cost_account_code': cost_account_code,
+                'department_code': department_code,
+                'department_name': department_name,
+                'is_active': True
             }
-            dept_name = dept_names.get(dept_code, 'Other')
-
-            # Create or update LocationMapping
-            obj, created = LocationMapping.objects.update_or_create(
-                tanda_location=mapping['tanda_location'],
-                defaults={
-                    'cost_account_code': cost_account,
-                    'department_code': dept_code,
-                    'department_name': dept_name,
-                    'is_active': True
-                }
-            )
-            if created:
-                created_count += 1
-
-        # Update CSV file
-        csv_path = os.path.join(settings.BASE_DIR, 'data', 'location_and_team_report.csv')
-
-        # Read existing CSV
-        existing_data = []
-        headers = []
-        if os.path.exists(csv_path):
-            with open(csv_path, 'r', newline='', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                headers = reader.fieldnames
-                existing_data = list(reader)
-
-        # Add new mappings to CSV
-        for mapping in mappings:
-            location_name, team_name = mapping['tanda_location'].split(' - ', 1)
-
-            # Check if already exists
-            exists = any(
-                row.get('Location Name') == location_name and
-                row.get('Team Name') == team_name
-                for row in existing_data
-            )
-
-            if not exists:
-                existing_data.append({
-                    'Location Name': location_name,
-                    'Team Name': team_name,
-                    'Cost Centre': mapping['cost_account_code'],
-                    'Location Code': '',
-                    'Location Address': '',
-                    'Public Holiday region': '',
-                    'Mobile login radius': '',
-                    'Timezone': 'Australia/Brisbane'
-                })
-
-        # Write back to CSV
-        if headers:
-            with open(csv_path, 'w', newline='', encoding='utf-8') as f:
-                writer = csv.DictWriter(f, fieldnames=headers)
-                writer.writeheader()
-                writer.writerows(existing_data)
-
-        # Re-run cost allocation
-        pay_period = PayPeriod.objects.get(period_id=pay_period_id)
-        engine = CostAllocationEngine(pay_period)
-        result = engine.build_allocations(source='tanda')
+        )
 
         return JsonResponse({
             'success': True,
-            'created_count': created_count,
-            'updated_count': len(mappings) - created_count,
-            'allocation_result': {
-                'rules_created': result['rules_created'],
-                'valid_rules': result['valid_rules'],
-                'invalid_rules': result['invalid_rules'],
-                'unmapped_count': len(result.get('mapping_errors', []))
+            'created': created,
+            'mapping': {
+                'tanda_location': mapping.tanda_location,
+                'cost_account_code': mapping.cost_account_code,
+                'department_code': mapping.department_code,
+                'department_name': mapping.department_name,
             }
         })
 
@@ -214,8 +270,6 @@ def save_location_mappings(request, pay_period_id):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-@csrf_exempt
-@require_http_methods(["POST"])
 def run_cost_allocation(request, pay_period_id):
     """
     Run cost allocation for both IQB and Tanda sources
@@ -263,6 +317,26 @@ def cost_allocation_view(request, pay_period_id):
     if view_mode == 'dollar':
         return _render_dollar_view(request, pay_period, location_filter, department_filter)
 
+    # Default behavior: if no filters applied, show empty list (for performance)
+    # User must select location/department to load data
+    if not location_filter and not department_filter:
+        # Get filter options
+        locations = SageLocation.objects.all().order_by('location_id')
+        departments = SageDepartment.objects.all().order_by('department_id')
+
+        context = {
+            'pay_period': pay_period,
+            'employees': [],
+            'gl_totals': {'items': [], 'grand_total': 0},
+            'locations': locations,
+            'departments': departments,
+            'selected_location': location_filter,
+            'selected_department': department_filter,
+            'view_mode': view_mode,
+            'show_filter_message': True,
+        }
+        return render(request, 'reconciliation/cost_allocation_view.html', context)
+
     # Get all employees with allocation rules
     employees_data = []
 
@@ -284,6 +358,10 @@ def cost_allocation_view(request, pay_period_id):
         is_active=True
     ).first()
 
+    # Auto-create Tanda location mappings if needed
+    if tanda_upload:
+        _auto_create_tanda_mappings(tanda_upload)
+
     # Get IQB upload for cost calculations
     iqb_upload = Upload.objects.filter(
         pay_period=pay_period,
@@ -296,6 +374,9 @@ def cost_allocation_view(request, pay_period_id):
             'pay_period': pay_period,
             'error': 'No IQB data available for this pay period'
         })
+
+    # Load employee locations from master file
+    employee_locations = _load_employee_locations()
 
     # Build employee data
     for rule in all_rules:
@@ -347,11 +428,32 @@ def cost_allocation_view(request, pay_period_id):
 
         # Determine current source from the rule
         current_source = rule.source
-        current_allocation = rule.allocations
+
+        # Get employee location from master file
+        emp_location = employee_locations.get(emp_code, '')
+
+        # Determine default source based on location (for Task 3)
+        default_source = 'tanda' if emp_location in ['Culinary', 'Stewarding'] else 'iqb'
+
+        # Get the current allocation based on the selected source
+        # Use freshly calculated allocations instead of stale rule.allocations
+        if current_source == 'iqb':
+            current_allocation = iqb_allocation
+        elif current_source == 'tanda':
+            current_allocation = tanda_allocation if tanda_allocation else iqb_allocation
+        elif current_source == 'override':
+            current_allocation = override_rule.allocations if override_rule else iqb_allocation
+        else:
+            current_allocation = iqb_allocation
+
+        # Calculate expanded allocation for override input pre-population
+        # Expand any SPL accounts to show the actual target allocations
+        expanded_allocation = _expand_spl_allocations(current_allocation) if current_allocation else {}
 
         employees_data.append({
             'employee_code': emp_code,
             'employee_name': rule.employee_name,
+            'employee_location': emp_location,
             'total_cost': float(total_cost),
             'gl_costs': gl_costs,
             'iqb_allocation': iqb_allocation,
@@ -360,6 +462,8 @@ def cost_allocation_view(request, pay_period_id):
             'override_allocation': override_rule.allocations if override_rule else None,
             'current_source': current_source,
             'current_allocation': current_allocation,
+            'default_source': default_source,
+            'expanded_allocation': expanded_allocation,
         })
 
     # Calculate GL totals for verification
@@ -394,26 +498,129 @@ def _map_to_gl_accounts(pay_comp_breakdown):
         for mapping in PayCompCodeMapping.objects.all()
     }
 
+    # Also check for normalized codes (strip leading zeros)
+    normalized_mappings = {}
+    for code, gl in pay_comp_mappings.items():
+        if code.isdigit():
+            normalized_mappings[code.lstrip('0') or '0'] = gl
+
     gl_costs = {}
     for item in pay_comp_breakdown:
         pay_comp_code = item['pay_comp_code']
         amount = item['total'] or 0
 
-        # Map pay_comp_code to GL account
-        gl_account = pay_comp_mappings.get(pay_comp_code, '6345')  # Default to 6345
-        gl_costs[gl_account] = gl_costs.get(gl_account, 0) + float(amount)
+        # Try exact match first
+        gl_account = pay_comp_mappings.get(pay_comp_code)
+
+        # If not found and code is numeric, try normalized
+        if not gl_account and pay_comp_code.isdigit():
+            normalized_code = pay_comp_code.lstrip('0') or '0'
+            gl_account = normalized_mappings.get(normalized_code)
+
+        if gl_account:
+            if gl_account in gl_costs:
+                gl_costs[gl_account] += amount
+            else:
+                gl_costs[gl_account] = amount
 
     return gl_costs
 
 
+def _calculate_iqb_allocation(iqb_upload, emp_code, include_transaction_types, total_cost):
+    """
+    Calculate allocation based on IQB cost account codes
+    Returns dict of {cost_account: {percentage: float, amount: float}}
+    """
+    # Get cost accounts and their amounts for this employee
+    cost_account_breakdown = IQBDetail.objects.filter(
+        upload=iqb_upload,
+        employee_code=emp_code,
+        transaction_type__in=include_transaction_types
+    ).values('cost_account_code').annotate(
+        total=Sum('amount')
+    )
+
+    allocation = {}
+    # Convert total_cost to float to avoid Decimal/float mix
+    total_cost_float = float(total_cost) if total_cost else 0
+
+    for item in cost_account_breakdown:
+        cost_account = item['cost_account_code']
+        amount = float(item['total'] or 0)
+
+        if not cost_account or total_cost_float == 0:
+            continue
+
+        percentage = (amount / total_cost_float) * 100
+
+        allocation[cost_account] = {
+            'percentage': percentage,
+            'amount': amount
+        }
+
+    return allocation
+
+
+def _calculate_tanda_allocation(tanda_upload, emp_code, total_cost):
+    """
+    Calculate allocation based on Tanda timesheets and location mapping
+    Returns dict of {cost_account: {percentage: float, amount: float}}
+    """
+    # Get all Tanda records for this employee
+    tanda_records = TandaTimesheet.objects.filter(
+        upload=tanda_upload,
+        employee_id=emp_code
+    ).values('location_name').annotate(
+        total_hours=Sum('shift_hours')
+    )
+
+    if not tanda_records:
+        return None
+
+    # Get location mappings
+    location_mappings = {
+        mapping.tanda_location: mapping.cost_account_code
+        for mapping in LocationMapping.objects.filter(is_active=True)
+    }
+
+    # Calculate total hours
+    total_hours = sum(float(item['total_hours'] or 0) for item in tanda_records)
+
+    if total_hours == 0:
+        return None
+
+    # Convert total_cost to float to avoid Decimal/float mix
+    total_cost_float = float(total_cost) if total_cost else 0
+
+    allocation = {}
+    for item in tanda_records:
+        location = item['location_name']
+        hours = float(item['total_hours'] or 0)
+
+        cost_account = location_mappings.get(location)
+        if not cost_account:
+            continue
+
+        percentage = (hours / total_hours) * 100
+        amount = (percentage / 100) * total_cost_float
+
+        if cost_account in allocation:
+            allocation[cost_account]['percentage'] += percentage
+            allocation[cost_account]['amount'] += amount
+        else:
+            allocation[cost_account] = {
+                'percentage': percentage,
+                'amount': amount
+            }
+
+    return allocation
+
+
 def _employee_matches_filter_by_cost_account(iqb_upload, emp_code, include_transaction_types, location_filter, department_filter):
     """
-    Check if employee has any IQB cost account codes matching the location/department filter
-    Cost account format: "421-5000" where:
-    - 421 = Sage Location ID
-    - 50 = Sage Department ID (first 2 digits of 5000)
+    Check if employee has any cost account codes matching the location/department filter
     """
-    # Get all cost account codes for this employee from IQB
+    # Get all cost accounts for this employee
     cost_accounts = IQBDetail.objects.filter(
         upload=iqb_upload,
         employee_code=emp_code,
@@ -425,227 +632,23 @@ def _employee_matches_filter_by_cost_account(iqb_upload, emp_code, include_trans
             continue
 
         parts = cost_account.split('-')
-        if len(parts) != 2:
-            continue
+        location_code = parts[0]
+        dept_code = parts[1][:2] if len(parts[1]) >= 2 else ''
 
-        location_code = parts[0]  # "421"
-        dept_code = parts[1][:2] if len(parts[1]) >= 2 else ''  # "50" from "5000"
+        # Check if matches filter
+        location_match = not location_filter or location_code == location_filter
+        department_match = not department_filter or dept_code == department_filter
 
-        # Check location filter
-        if location_filter and location_code != location_filter:
-            continue
-
-        # Check department filter
-        if department_filter and dept_code != department_filter:
-            continue
-
-        # If we get here, employee matches the filter
-        return True
+        if location_match and department_match:
+            return True
 
     return False
 
 
-def _calculate_iqb_allocation(iqb_upload, emp_code, include_transaction_types, total_cost):
-    """
-    Calculate IQB allocation for an employee based on cost account codes
-    Returns dict in same format as stored allocations
-    Logic: Amount assigned to that cost account code / total amount for employee
-    """
-    # Get all IQB details for this employee
-    iqb_details = IQBDetail.objects.filter(
-        upload=iqb_upload,
-        employee_code=emp_code,
-        transaction_type__in=include_transaction_types
-    ).values('cost_account_code').annotate(
-        total_amount=Sum('amount')
-    )
-
-    if not iqb_details:
-        return {}
-
-    # Calculate total
-    grand_total = float(sum(item['total_amount'] or 0 for item in iqb_details))
-    if grand_total == 0:
-        return {}
-
-    # Build allocation dict
-    allocations = {}
-
-    for item in iqb_details:
-        cost_account = item['cost_account_code']
-        amount = float(item['total_amount'] or 0)
-
-        if not cost_account:
-            continue
-
-        percentage = (amount / grand_total) * 100 if grand_total > 0 else 0
-
-        allocations[cost_account] = {
-            'percentage': round(percentage, 2),
-            'amount': amount,
-            'source': 'iqb'
-        }
-
-    return allocations
-
-
-def _calculate_tanda_allocation(tanda_upload, emp_code, total_cost):
-    """
-    Calculate Tanda allocation for an employee based on timesheet hours/costs
-    Returns dict in same format as stored allocations
-    """
-    from reconciliation.models import TandaTimesheet, LocationMapping
-
-    # Get employee's Tanda data
-    tanda_data = TandaTimesheet.objects.filter(
-        upload=tanda_upload,
-        employee_id=emp_code
-    ).values('location_name', 'team_name').annotate(
-        total_hours=Sum('shift_hours'),
-        total_cost=Sum('shift_cost')
-    )
-
-    if not tanda_data:
-        return None
-
-    # Calculate total (convert to float to avoid Decimal issues)
-    grand_total_cost = float(sum(item['total_cost'] or 0 for item in tanda_data))
-    if grand_total_cost == 0:
-        return None
-
-    # Build allocation dict
-    allocations = {}
-    unmapped_found = False
-
-    for item in tanda_data:
-        location_name = item['location_name']
-        team_name = item['team_name']
-        cost = float(item['total_cost'] or 0)
-
-        # Combine location and team to match LocationMapping format
-        tanda_location = f"{location_name} - {team_name}"
-
-        # Look up cost account
-        try:
-            mapping = LocationMapping.objects.get(tanda_location=tanda_location)
-            cost_account = mapping.cost_account_code
-
-            percentage = (cost / grand_total_cost) * 100 if grand_total_cost > 0 else 0
-            amount = float(total_cost) * (percentage / 100)
-
-            if cost_account in allocations:
-                allocations[cost_account]['percentage'] += percentage
-                allocations[cost_account]['amount'] += amount
-            else:
-                allocations[cost_account] = {
-                    'percentage': round(percentage, 2),
-                    'amount': float(amount),
-                    'hours': float(item['total_hours'] or 0),
-                    'source': 'tanda'
-                }
-        except LocationMapping.DoesNotExist:
-            unmapped_found = True
-            continue
-
-    if unmapped_found or not allocations:
-        return None
-
-    # Round percentages
-    for cost_account in allocations:
-        allocations[cost_account]['percentage'] = round(allocations[cost_account]['percentage'], 2)
-
-    return allocations
-
-
 def _calculate_gl_totals(iqb_upload):
     """
-    Calculate total by GL account across all employees
-    Should match IQB Grand Total from dashboard
-    Uses pay_comp_code from IQB and maps to GL accounts
-    Only includes transactions where transaction_type has "Include in Costs" = "Yes"
+    Calculate total amount by GL account for verification
     """
-    # Get list of transaction types to include (from iqb_transaction_types.csv)
-    include_transaction_types = [
-        'Annual Leave',
-        'Auto Pay',
-        'Hours By Rate',
-        'Long Service Leave',
-        'Non Standard Add Before',
-        'Other Leave',
-        'Sick Leave',
-        'Standard Add Before',
-        'Super',
-        'Term ETP - Taxable (Code: O)',
-        'Term Post 93 AL Gross',
-        'Term Post 93 LL Gross',
-        'User Defined Leave',
-    ]
-
-    # Get totals by pay_comp_code for included transaction types
-    pay_comp_breakdown = IQBDetail.objects.filter(
-        upload=iqb_upload,
-        transaction_type__in=include_transaction_types
-    ).values('pay_comp_code').annotate(
-        total=Sum('amount')
-    )
-
-    # Map to GL accounts
-    gl_costs = _map_to_gl_accounts(pay_comp_breakdown)
-
-    # Get GL names from mapping
-    gl_name_mapping = {
-        mapping.gl_account: mapping.gl_name
-        for mapping in PayCompCodeMapping.objects.all()
-    }
-
-    gl_totals = []
-    grand_total = 0
-
-    for gl_account, amount in sorted(gl_costs.items()):
-        # Get the first GL name for this account (there may be duplicates)
-        gl_name = gl_name_mapping.get(gl_account, 'Other')
-
-        gl_totals.append({
-            'gl_account': gl_account,
-            'gl_name': gl_name,
-            'total': amount
-        })
-        grand_total += amount
-
-    return {
-        'items': gl_totals,
-        'grand_total': grand_total
-    }
-
-
-def _calculate_and_save_finalized_allocations(pay_period):
-    """
-    Calculate finalized allocations based on current source selections
-    and save to FinalizedAllocation model for journal generation
-    """
-    # Clear existing finalized allocations
-    FinalizedAllocation.objects.filter(pay_period=pay_period).delete()
-
-    # Get IQB upload
-    iqb_upload = Upload.objects.filter(
-        pay_period=pay_period,
-        source_system='Micropay_IQB',
-        is_active=True
-    ).first()
-
-    if not iqb_upload:
-        return
-
-    # Get Tanda upload
-    tanda_upload = Upload.objects.filter(
-        pay_period=pay_period,
-        source_system='Tanda_Timesheet',
-        is_active=True
-    ).first()
-
-    # Get all allocation rules
-    all_rules = CostAllocationRule.objects.filter(pay_period=pay_period)
-
     # Transaction types to include
     include_transaction_types = [
         'Annual Leave', 'Auto Pay', 'Hours By Rate', 'Long Service Leave',
@@ -654,65 +657,16 @@ def _calculate_and_save_finalized_allocations(pay_period):
         'Term Post 93 AL Gross', 'Term Post 93 LL Gross', 'User Defined Leave',
     ]
 
-    # Track allocations by cost_account + GL
-    allocations_dict = {}  # Key: (cost_account, gl_account), Value: {amount, employee_count}
+    # Get all pay_comp_code totals
+    pay_comp_totals = IQBDetail.objects.filter(
+        upload=iqb_upload,
+        transaction_type__in=include_transaction_types
+    ).values('pay_comp_code').annotate(
+        total=Sum('amount')
+    )
 
-    # Process each employee
-    for rule in all_rules:
-        emp_code = rule.employee_code
-
-        # Get employee's GL breakdown
-        pay_comp_breakdown = IQBDetail.objects.filter(
-            upload=iqb_upload,
-            employee_code=emp_code,
-            transaction_type__in=include_transaction_types
-        ).values('pay_comp_code').annotate(
-            total=Sum('amount')
-        )
-
-        # Map to GL accounts
-        gl_costs = _map_to_gl_accounts(pay_comp_breakdown)
-
-        # Get employee's total cost
-        total_cost = sum(item['total'] or 0 for item in pay_comp_breakdown)
-
-        # Get the appropriate allocation based on source
-        if rule.source == 'iqb':
-            allocation = _calculate_iqb_allocation(iqb_upload, emp_code, include_transaction_types, total_cost)
-        elif rule.source == 'tanda' and tanda_upload:
-            allocation = _calculate_tanda_allocation(tanda_upload, emp_code, total_cost)
-        elif rule.source == 'override':
-            allocation = rule.allocations
-        else:
-            allocation = _calculate_iqb_allocation(iqb_upload, emp_code, include_transaction_types, total_cost)
-
-        if not allocation:
-            continue
-
-        # For each cost account in the allocation
-        for cost_account, alloc_details in allocation.items():
-            percentage = alloc_details.get('percentage', 0)
-
-            # Distribute each GL cost across cost accounts based on allocation percentage
-            for gl_account, gl_amount in gl_costs.items():
-                allocated_amount = gl_amount * (percentage / 100)
-
-                key = (cost_account, gl_account)
-                if key in allocations_dict:
-                    allocations_dict[key]['amount'] += allocated_amount
-                    allocations_dict[key]['employee_count'] += 1
-                else:
-                    allocations_dict[key] = {
-                        'amount': allocated_amount,
-                        'employee_count': 1
-                    }
-
-    # Save to database
-    from reconciliation.models import SageLocation, SageDepartment
-
-    # Get location and department lookups
-    locations = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}
-    departments = {dept.department_id: dept.department_name for dept in SageDepartment.objects.all()}
+    # Map to GL accounts
+    gl_totals_dict = _map_to_gl_accounts(pay_comp_totals)
 
     # Get GL names
     gl_name_mapping = {
@@ -720,29 +674,22 @@ def _calculate_and_save_finalized_allocations(pay_period):
         for mapping in PayCompCodeMapping.objects.all()
     }
 
-    for (cost_account, gl_account), data in allocations_dict.items():
-        if '-' not in cost_account:
-            continue
+    # Build result
+    items = []
+    grand_total = 0
+    for gl_account in sorted(gl_totals_dict.keys()):
+        amount = gl_totals_dict[gl_account]
+        grand_total += amount
+        items.append({
+            'gl_account': gl_account,
+            'gl_name': gl_name_mapping.get(gl_account, 'Other'),
+            'total': amount
+        })
 
-        parts = cost_account.split('-')
-        if len(parts) != 2:
-            continue
-
-        location_id = parts[0]
-        department_id = parts[1][:2] if len(parts[1]) >= 2 else ''
-
-        FinalizedAllocation.objects.create(
-            pay_period=pay_period,
-            location_id=location_id,
-            location_name=locations.get(location_id, f'Location {location_id}'),
-            department_id=department_id,
-            department_name=departments.get(department_id, f'Department {department_id}'),
-            cost_account_code=cost_account,
-            gl_account=gl_account,
-            gl_name=gl_name_mapping.get(gl_account, 'Other'),
-            amount=Decimal(str(data['amount'])),
-            employee_count=data['employee_count']
-        )
+    return {
+        'items': items,
+        'grand_total': grand_total
+    }
 
 
 def _render_dollar_view(request, pay_period, location_filter, department_filter):
@@ -750,6 +697,24 @@ def _render_dollar_view(request, pay_period, location_filter, department_filter)
     Render the $ Value by GL view using saved finalized allocations
     Shows employees as rows, GL accounts as columns
     """
+    # Default behavior: if no filters applied, show empty list (for performance)
+    if not location_filter and not department_filter:
+        locations = SageLocation.objects.all().order_by('location_id')
+        departments = SageDepartment.objects.all().order_by('department_id')
+
+        context = {
+            'pay_period': pay_period,
+            'employees': [],
+            'gl_accounts': [],
+            'locations': locations,
+            'departments': departments,
+            'selected_location': location_filter,
+            'selected_department': department_filter,
+            'view_mode': 'dollar',
+            'show_filter_message': True,
+        }
+        return render(request, 'reconciliation/cost_allocation_dollar_view.html', context)
+
     # Get IQB upload
     iqb_upload = Upload.objects.filter(
         pay_period=pay_period,
@@ -769,6 +734,9 @@ def _render_dollar_view(request, pay_period, location_filter, department_filter)
         source_system='Tanda_Timesheet',
         is_active=True
     ).first()
+
+    # Load employee locations from master file
+    employee_locations = _load_employee_locations()
 
     # Get all allocation rules
     all_rules = CostAllocationRule.objects.filter(pay_period=pay_period)
@@ -850,7 +818,7 @@ def _render_dollar_view(request, pay_period, location_filter, department_filter)
 
             # Allocate the percentage of each GL cost
             for gl_account, gl_amount in gl_costs.items():
-                allocated_amount = gl_amount * (percentage / 100)
+                allocated_amount = float(gl_amount) * (percentage / 100)
 
                 if gl_account in allocated_gl:
                     allocated_gl[gl_account] += allocated_amount
@@ -864,9 +832,13 @@ def _render_dollar_view(request, pay_period, location_filter, department_filter)
             else:
                 gl_totals[gl_account] = amount
 
+        # Get employee location from master file
+        emp_location = employee_locations.get(emp_code, '')
+
         employees_data.append({
             'employee_code': emp_code,
             'employee_name': rule.employee_name,
+            'employee_location': emp_location,
             'gl_amounts': allocated_gl,
             'total': sum(allocated_gl.values()),
             'source': rule.source,
@@ -911,3 +883,356 @@ def _render_dollar_view(request, pay_period, location_filter, department_filter)
     }
 
     return render(request, 'reconciliation/cost_allocation_dollar_view.html', context)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def save_cost_allocations(request, pay_period_id):
+    """
+    Save cost allocations to EmployeePayPeriodSnapshot
+    Groups allocations by employee + location + department
+    """
+    try:
+        pay_period = PayPeriod.objects.get(period_id=pay_period_id)
+        data = json.loads(request.body)
+        changes = data.get('changes', [])
+
+        if not changes:
+            return JsonResponse({'error': 'No changes to save'}, status=400)
+
+        # Get IQB upload for GL breakdown
+        iqb_upload = Upload.objects.filter(
+            pay_period=pay_period,
+            source_system='Micropay_IQB',
+            is_active=True
+        ).first()
+
+        if not iqb_upload:
+            return JsonResponse({'error': 'No IQB data available'}, status=400)
+
+        # Get location and department lookups
+        location_lookup = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}
+        department_lookup = {dept.department_id: dept.department_name for dept in SageDepartment.objects.all()}
+
+        # Transaction types to include
+        include_transaction_types = [
+            'Annual Leave', 'Auto Pay', 'Hours By Rate', 'Long Service Leave',
+            'Non Standard Add Before', 'Other Leave', 'Sick Leave',
+            'Standard Add Before', 'Super', 'Term ETP - Taxable (Code: O)',
+            'Term Post 93 AL Gross', 'Term Post 93 LL Gross', 'User Defined Leave',
+        ]
+
+        saved_count = 0
+
+        # Process each employee
+        for change in changes:
+            emp_code = change.get('employee_code')
+            source = change.get('source')
+            override_allocation = change.get('override', {})
+
+            # Get employee name
+            emp_name = CostAllocationRule.objects.filter(
+                pay_period=pay_period,
+                employee_code=emp_code
+            ).first()
+            if not emp_name:
+                continue
+            emp_name = emp_name.employee_name
+
+            # Get employee's GL breakdown
+            pay_comp_breakdown = IQBDetail.objects.filter(
+                upload=iqb_upload,
+                employee_code=emp_code,
+                transaction_type__in=include_transaction_types
+            ).values('pay_comp_code').annotate(
+                total=Sum('amount')
+            )
+
+            gl_costs = _map_to_gl_accounts(pay_comp_breakdown)
+            total_cost = sum(gl_costs.values())
+
+            # Get the allocation based on source
+            if source == 'override':
+                allocation = override_allocation
+            elif source == 'iqb':
+                allocation = _calculate_iqb_allocation(iqb_upload, emp_code, include_transaction_types, total_cost)
+            elif source == 'tanda':
+                tanda_upload = Upload.objects.filter(
+                    pay_period=pay_period,
+                    source_system='Tanda_Timesheet',
+                    is_active=True
+                ).first()
+                if tanda_upload:
+                    allocation = _calculate_tanda_allocation(tanda_upload, emp_code, total_cost)
+                else:
+                    allocation = _calculate_iqb_allocation(iqb_upload, emp_code, include_transaction_types, total_cost)
+            else:
+                continue
+
+            if not allocation:
+                continue
+
+            # Expand SPL allocations
+            expanded_allocation = _expand_spl_allocations(allocation)
+
+            # Build cost_allocation JSON structure: { '449': { '50': 33.33, '30': 16.67 } }
+            cost_allocation_json = {}
+
+            for cost_account, details in expanded_allocation.items():
+                if not cost_account or '-' not in cost_account:
+                    continue
+
+                # Parse location and department from cost account
+                parts = cost_account.split('-')
+                location_id = parts[0]
+                dept_id = parts[1][:2] if len(parts[1]) >= 2 else ''
+
+                if location_id not in cost_allocation_json:
+                    cost_allocation_json[location_id] = {}
+
+                if dept_id not in cost_allocation_json[location_id]:
+                    cost_allocation_json[location_id][dept_id] = 0
+
+                cost_allocation_json[location_id][dept_id] += float(details.get('percentage', 0))
+
+            # Map GL accounts to model fields
+            gl_field_mapping = {
+                # Payroll Liability Accounts
+                '2310': 'gl_2310_annual_leave',
+                '2317': 'gl_2317_long_service_leave',
+                '2318': 'gl_2318_toil_liability',
+                '2320': 'gl_2320_sick_leave',
+                # Labour Expense Accounts
+                '6302': 'gl_6302',
+                '6305': 'gl_6305',
+                '6309': 'gl_6309',
+                '6310': 'gl_6310',
+                '6312': 'gl_6312',
+                '6315': 'gl_6315',
+                '6325': 'gl_6325',
+                '6330': 'gl_6330',
+                '6331': 'gl_6331',
+                '6332': 'gl_6332',
+                '6335': 'gl_6335',
+                '6338': 'gl_6338',
+                '6340': 'gl_6340',
+                '6345': 'gl_6345_salaries',
+                '6350': 'gl_6350',
+                '6355': 'gl_6355_sick_leave',
+                '6370': 'gl_6370_superannuation',
+                '6372': 'gl_6372_toil',
+                '6375': 'gl_6375',
+                '6380': 'gl_6380',
+            }
+
+            # Build GL values
+            gl_values = {}
+            for gl_account, gl_amount in gl_costs.items():
+                if gl_account in gl_field_mapping:
+                    gl_values[gl_field_mapping[gl_account]] = Decimal(str(gl_amount))
+
+            # Delete existing snapshot for this employee/pay period
+            EmployeePayPeriodSnapshot.objects.filter(
+                pay_period=pay_period,
+                employee_code=emp_code
+            ).delete()
+
+            # Create single snapshot for this employee
+            EmployeePayPeriodSnapshot.objects.create(
+                pay_period=pay_period,
+                employee_code=emp_code,
+                employee_name=emp_name,
+                cost_allocation=cost_allocation_json,
+                allocation_source=source,
+                total_cost=Decimal(str(total_cost)),
+                **gl_values
+            )
+
+            # Update or create CostAllocationRule to persist the source selection
+            CostAllocationRule.objects.update_or_create(
+                pay_period=pay_period,
+                employee_code=emp_code,
+                defaults={
+                    'employee_name': emp_name,
+                    'source': source,
+                    'allocations': expanded_allocation
+                }
+            )
+
+            saved_count += 1
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully saved {saved_count} allocation snapshots',
+            'saved_count': saved_count
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def save_all_allocations(request, pay_period_id):
+    """
+    Save cost allocations for ALL employees in the pay period
+    Uses the source selection from CostAllocationRule
+    """
+    try:
+        pay_period = PayPeriod.objects.get(period_id=pay_period_id)
+
+        # Get IQB upload for GL breakdown
+        iqb_upload = Upload.objects.filter(
+            pay_period=pay_period,
+            source_system='Micropay_IQB',
+            is_active=True
+        ).first()
+
+        if not iqb_upload:
+            return JsonResponse({'error': 'No IQB data available'}, status=400)
+
+        # Get all employees with allocation rules for this pay period
+        all_rules = CostAllocationRule.objects.filter(pay_period=pay_period)
+
+        if not all_rules.exists():
+            return JsonResponse({'error': 'No cost allocation rules found for this pay period'}, status=400)
+
+        # Transaction types to include
+        include_transaction_types = [
+            'Annual Leave', 'Auto Pay', 'Hours By Rate', 'Long Service Leave',
+            'Non Standard Add Before', 'Other Leave', 'Sick Leave',
+            'Standard Add Before', 'Super', 'Term ETP - Taxable (Code: O)',
+            'Term Post 93 AL Gross', 'Term Post 93 LL Gross', 'User Defined Leave',
+        ]
+
+        saved_count = 0
+
+        # Process each employee using their source from CostAllocationRule
+        for rule in all_rules:
+            emp_code = rule.employee_code
+            emp_name = rule.employee_name
+            source = rule.source  # Get the source from the rule
+
+            # Get employee's GL breakdown
+            pay_comp_breakdown = IQBDetail.objects.filter(
+                upload=iqb_upload,
+                employee_code=emp_code,
+                transaction_type__in=include_transaction_types
+            ).values('pay_comp_code').annotate(
+                total=Sum('amount')
+            )
+
+            gl_costs = _map_to_gl_accounts(pay_comp_breakdown)
+            total_cost = sum(gl_costs.values())
+
+            # Get the allocation based on source
+            if source == 'override':
+                allocation = rule.allocations  # Use stored override allocation
+            elif source == 'iqb':
+                allocation = _calculate_iqb_allocation(iqb_upload, emp_code, include_transaction_types, total_cost)
+            elif source == 'tanda':
+                tanda_upload = Upload.objects.filter(
+                    pay_period=pay_period,
+                    source_system='Tanda_Timesheet',
+                    is_active=True
+                ).first()
+                if tanda_upload:
+                    allocation = _calculate_tanda_allocation(tanda_upload, emp_code, total_cost)
+                else:
+                    allocation = _calculate_iqb_allocation(iqb_upload, emp_code, include_transaction_types, total_cost)
+            else:
+                continue
+
+            if not allocation:
+                continue
+
+            # Expand SPL allocations
+            expanded_allocation = _expand_spl_allocations(allocation)
+
+            # Build cost_allocation JSON structure
+            cost_allocation_json = {}
+
+            for cost_account, details in expanded_allocation.items():
+                if not cost_account or '-' not in cost_account:
+                    continue
+
+                # Parse location and department from cost account
+                parts = cost_account.split('-')
+                location_id = parts[0]
+                dept_id = parts[1][:2] if len(parts[1]) >= 2 else ''
+
+                if location_id not in cost_allocation_json:
+                    cost_allocation_json[location_id] = {}
+
+                if dept_id not in cost_allocation_json[location_id]:
+                    cost_allocation_json[location_id][dept_id] = 0
+
+                cost_allocation_json[location_id][dept_id] += float(details.get('percentage', 0))
+
+            # Map GL accounts to model fields
+            gl_field_mapping = {
+                # Payroll Liability Accounts
+                '2310': 'gl_2310_annual_leave',
+                '2317': 'gl_2317_long_service_leave',
+                '2318': 'gl_2318_toil_liability',
+                '2320': 'gl_2320_sick_leave',
+                # Labour Expense Accounts
+                '6302': 'gl_6302',
+                '6305': 'gl_6305',
+                '6309': 'gl_6309',
+                '6310': 'gl_6310',
+                '6312': 'gl_6312',
+                '6315': 'gl_6315',
+                '6325': 'gl_6325',
+                '6330': 'gl_6330',
+                '6331': 'gl_6331',
+                '6332': 'gl_6332',
+                '6335': 'gl_6335',
+                '6338': 'gl_6338',
+                '6340': 'gl_6340',
+                '6345': 'gl_6345_salaries',
+                '6350': 'gl_6350',
+                '6355': 'gl_6355_sick_leave',
+                '6370': 'gl_6370_superannuation',
+                '6372': 'gl_6372_toil',
+                '6375': 'gl_6375',
+                '6380': 'gl_6380',
+            }
+
+            # Build GL values
+            gl_values = {}
+            for gl_account, gl_amount in gl_costs.items():
+                if gl_account in gl_field_mapping:
+                    gl_values[gl_field_mapping[gl_account]] = Decimal(str(gl_amount))
+
+            # Delete existing snapshot for this employee/pay period
+            EmployeePayPeriodSnapshot.objects.filter(
+                pay_period=pay_period,
+                employee_code=emp_code
+            ).delete()
+
+            # Create single snapshot for this employee
+            EmployeePayPeriodSnapshot.objects.create(
+                pay_period=pay_period,
+                employee_code=emp_code,
+                employee_name=emp_name,
+                cost_allocation=cost_allocation_json,
+                allocation_source=source,
+                total_cost=Decimal(str(total_cost)),
+                **gl_values
+            )
+
+            saved_count += 1
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully saved {saved_count} allocation snapshots',
+            'saved_count': saved_count
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)

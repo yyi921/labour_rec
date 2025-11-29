@@ -88,10 +88,16 @@ class DataValidator:
                 results['passed'] = False
 
         elif upload.source_system == 'Tanda_Timesheet':
-            # Test: Employee Code validation
+            # Test 1: Employee Code validation
             employee_validation = DataValidator._validate_employee_codes_tanda(upload)
             results['validations'].append(employee_validation)
             if not employee_validation['passed']:
+                results['passed'] = False
+
+            # Test 2: Location Mapping validation
+            location_mapping_validation = DataValidator._validate_tanda_location_mapping(upload)
+            results['validations'].append(location_mapping_validation)
+            if not location_mapping_validation['passed']:
                 results['passed'] = False
 
         return results
@@ -190,16 +196,20 @@ class DataValidator:
 
     @staticmethod
     def _validate_cost_account_in_split_data(upload):
-        """Validate that cost account codes exist in LocationMapping (Split_Data)"""
+        """Validate that SPL (split) account codes exist in CostCenterSplit (Split_Data)
+        Only validates accounts starting with 'SPL' prefix"""
         test_result = {
             'test_name': 'Cost Account Code - Split Data Validation',
-            'description': 'Check if cost account codes exist in LocationMapping/Split_Data',
+            'description': 'Check if SPL split account codes exist in Split_Data (CostCenterSplit)',
             'passed': True,
             'errors': []
         }
 
-        # Get all valid cost account codes from LocationMapping
-        valid_cost_accounts = set(LocationMapping.objects.values_list('cost_account_code', flat=True))
+        # Import CostCenterSplit
+        from reconciliation.models import CostCenterSplit
+
+        # Get all valid SPL source accounts from CostCenterSplit
+        valid_spl_accounts = set(CostCenterSplit.objects.values_list('source_account', flat=True).distinct())
 
         # Get unique cost account codes from IQB
         cost_accounts = IQBDetail.objects.filter(upload=upload).values_list('cost_account_code', flat=True).distinct()
@@ -209,13 +219,17 @@ class DataValidator:
             if not cost_account:
                 continue
 
-            if cost_account not in valid_cost_accounts:
+            # Only validate SPL (split) accounts
+            if not cost_account.startswith('SPL'):
+                continue
+
+            if cost_account not in valid_spl_accounts:
                 missing_accounts.append(cost_account)
 
         if missing_accounts:
             test_result['passed'] = False
             test_result['errors'].append({
-                'message': 'Cost account codes not found in Split_Data/LocationMapping',
+                'message': 'SPL split account codes not found in Split_Data/LocationMapping',
                 'missing_accounts': missing_accounts[:20],  # First 20 examples
                 'total_count': len(missing_accounts)
             })
@@ -224,16 +238,25 @@ class DataValidator:
 
     @staticmethod
     def _validate_pay_comp_codes(upload):
-        """Validate that Pay Comp/Add Ded Codes exist in PayCompCodeMapping"""
+        """Validate that Pay Comp/Add Ded Codes exist in PayCompCodeMapping
+        Note: Leading zeros are stripped from codes before comparison"""
         test_result = {
             'test_name': 'Pay Comp/Add Ded Code Validation',
-            'description': 'Check if pay_comp_code values match PayCompCode Mapping',
+            'description': 'Check if pay_comp_code values match PayCompCode Mapping (leading zeros stripped)',
             'passed': True,
             'errors': []
         }
 
-        # Get all valid pay comp codes
+        # Get all valid pay comp codes and create normalized lookup
         valid_pay_comp_codes = set(PayCompCodeMapping.objects.values_list('pay_comp_code', flat=True))
+        # Add normalized versions (strip leading zeros from numeric codes)
+        normalized_valid_codes = set()
+        for code in valid_pay_comp_codes:
+            if code:
+                normalized_valid_codes.add(code)
+                # If code is numeric, add version with leading zeros stripped
+                if code.isdigit():
+                    normalized_valid_codes.add(code.lstrip('0') or '0')
 
         # Get unique pay comp codes from IQB
         pay_comp_codes = IQBDetail.objects.filter(upload=upload).values_list('pay_comp_code', flat=True).distinct()
@@ -243,7 +266,12 @@ class DataValidator:
             if not pay_comp_code:
                 continue
 
-            if pay_comp_code not in valid_pay_comp_codes:
+            # Check both original and normalized version (strip leading zeros if numeric)
+            check_code = pay_comp_code
+            if pay_comp_code.isdigit():
+                check_code = pay_comp_code.lstrip('0') or '0'
+
+            if pay_comp_code not in valid_pay_comp_codes and check_code not in normalized_valid_codes:
                 missing_codes.append(pay_comp_code)
 
         if missing_codes:
@@ -335,6 +363,45 @@ class DataValidator:
                 'message': 'Employee codes not found in master employee file',
                 'missing_codes': missing_codes[:20],
                 'total_count': len(missing_codes)
+            })
+
+        return test_result
+
+    @staticmethod
+    def _validate_tanda_location_mapping(upload):
+        """Validate that all Tanda locations are mapped in LocationMapping"""
+        test_result = {
+            'test_name': 'Tanda Location Mapping Validation',
+            'description': 'Check if all Tanda location names have active mappings in LocationMapping',
+            'passed': True,
+            'errors': []
+        }
+
+        # Get all active location mappings
+        valid_tanda_locations = set(
+            LocationMapping.objects.filter(is_active=True).values_list('tanda_location', flat=True)
+        )
+
+        # Get unique location names from Tanda upload
+        from reconciliation.models import TandaTimesheet
+        tanda_locations = TandaTimesheet.objects.filter(
+            upload=upload
+        ).values_list('location_name', flat=True).distinct()
+
+        unmapped_locations = []
+        for location in tanda_locations:
+            if not location:
+                continue
+
+            if location not in valid_tanda_locations:
+                unmapped_locations.append(location)
+
+        if unmapped_locations:
+            test_result['passed'] = False
+            test_result['errors'].append({
+                'message': 'Tanda locations not found in LocationMapping (or mapping is inactive)',
+                'unmapped_locations': unmapped_locations,
+                'total_count': len(unmapped_locations)
             })
 
         return test_result

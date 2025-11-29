@@ -4,7 +4,7 @@ from .models import (
     CostCenterSplit, ReconciliationRun, ReconciliationItem,
     ExceptionResolution, LabourCostSummary, SageIntacctExport,
     EmployeeReconciliation, JournalReconciliation, LocationMapping,
-    ValidationResult
+    ValidationResult, EmployeePayPeriodSnapshot
 )
 
 @admin.register(PayPeriod)
@@ -139,3 +139,52 @@ class ValidationResultAdmin(admin.ModelAdmin):
     list_display = ['upload', 'passed', 'created_at']
     list_filter = ['passed', 'created_at']
     readonly_fields = ['upload', 'passed', 'validation_data', 'created_at']
+
+
+@admin.register(EmployeePayPeriodSnapshot)
+class EmployeePayPeriodSnapshotAdmin(admin.ModelAdmin):
+    list_display = [
+        'pay_period', 'employee_code', 'employee_name',
+        'allocation_source', 'total_cost', 'created_at'
+    ]
+    list_filter = ['pay_period', 'allocation_source', 'employment_status']
+    search_fields = ['employee_code', 'employee_name']
+    readonly_fields = ['created_at', 'updated_at', 'allocation_finalized_at', 'allocation_finalized_by', 'formatted_cost_allocation']
+
+    def formatted_cost_allocation(self, obj):
+        """Display cost allocation in a readable format"""
+        import json
+        from django.utils.html import format_html
+        if obj.cost_allocation:
+            formatted = json.dumps(obj.cost_allocation, indent=2)
+            return format_html('<pre>{}</pre>', formatted)
+        return '-'
+    formatted_cost_allocation.short_description = 'Cost Allocation by Location/Department'
+
+    fieldsets = (
+        ('Pay Period & Employee', {
+            'fields': ('pay_period', 'employee_code', 'employee_name', 'employment_status', 'termination_date')
+        }),
+        ('Cost Allocation', {
+            'fields': ('formatted_cost_allocation', 'allocation_source', 'allocation_finalized_at', 'allocation_finalized_by')
+        }),
+        ('Payroll Liability GL Accounts (2xxx)', {
+            'fields': ('gl_2310_annual_leave', 'gl_2317_long_service_leave', 'gl_2318_toil_liability', 'gl_2320_sick_leave'),
+            'classes': ('collapse',),
+        }),
+        ('Labour Expense GL Accounts (6xxx)', {
+            'fields': (
+                'gl_6302', 'gl_6305', 'gl_6309', 'gl_6310', 'gl_6312', 'gl_6315',
+                'gl_6325', 'gl_6330', 'gl_6331', 'gl_6332', 'gl_6335', 'gl_6338',
+                'gl_6340', 'gl_6345_salaries', 'gl_6350', 'gl_6355_sick_leave',
+                'gl_6370_superannuation', 'gl_6372_toil', 'gl_6375', 'gl_6380'
+            ),
+            'classes': ('collapse',),
+        }),
+        ('Totals', {
+            'fields': ('total_cost', 'total_hours')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )

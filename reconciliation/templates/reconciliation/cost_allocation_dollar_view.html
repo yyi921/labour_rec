@@ -73,6 +73,14 @@
 <!-- Employee GL Matrix -->
 <div class="matrix-section">
     <h2>Employee Cost Allocation by GL Account</h2>
+
+    {% if show_filter_message %}
+    <div class="alert alert-info" style="background-color: #e3f2fd; padding: 20px; margin: 20px 0; border-left: 4px solid #2196F3;">
+        <h3 style="margin-top: 0;">Select Location or Department to View Data</h3>
+        <p>To improve performance, please select at least one filter (Location or Department) above to load employee allocation data.</p>
+        <p><small>You can select "All Locations" and "All Departments" after the initial load if you want to view all data.</small></p>
+    </div>
+    {% else %}
     <p><small>Total Employees: {{ employees|length }} | Grand Total: ${{ grand_total|floatformat:2|intcomma }}</small></p>
 
     <div class="table-wrapper">
@@ -81,7 +89,8 @@
                 <tr>
                     <th class="sticky-col">Employee Code</th>
                     <th class="sticky-col2">Employee Name</th>
-                    <th class="sticky-col3">Source</th>
+                    <th class="sticky-col3">Location</th>
+                    <th class="sticky-col4">Source</th>
                     {% for gl in gl_columns %}
                     <th class="number gl-header">
                         {{ gl.account }}<br>
@@ -96,7 +105,8 @@
                 <tr>
                     <td class="sticky-col">{{ emp.employee_code }}</td>
                     <td class="sticky-col2">{{ emp.employee_name }}</td>
-                    <td class="sticky-col3">
+                    <td class="sticky-col3">{{ emp.employee_location|default:"N/A" }}</td>
+                    <td class="sticky-col4">
                         <span class="source-badge source-{{ emp.source }}">{{ emp.source|upper }}</span>
                     </td>
                     {% for gl in gl_columns %}
@@ -114,7 +124,7 @@
 
                 <!-- TOTALS ROW -->
                 <tr class="totals-row">
-                    <td class="sticky-col" colspan="3"><strong>TOTAL</strong></td>
+                    <td class="sticky-col" colspan="4"><strong>TOTAL</strong></td>
                     {% for gl in gl_columns %}
                     <td class="number"><strong>${{ gl_totals|get_item:gl.account|floatformat:2|intcomma }}</strong></td>
                     {% endfor %}
@@ -123,10 +133,11 @@
             </tbody>
         </table>
     </div>
-</div>
 
-<div style="margin: 30px 0;">
-    <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">Back to Dashboard</a>
+    <div style="margin: 30px 0;">
+        <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+    {% endif %}
 </div>
 
 {% endif %}
@@ -262,13 +273,22 @@
     left: 300px;
     background-color: white;
     z-index: 5;
+    min-width: 120px;
+}
+
+.sticky-col4 {
+    position: sticky;
+    left: 420px;
+    background-color: white;
+    z-index: 5;
     min-width: 80px;
     text-align: center;
 }
 
 .gl-matrix-table thead .sticky-col,
 .gl-matrix-table thead .sticky-col2,
-.gl-matrix-table thead .sticky-col3 {
+.gl-matrix-table thead .sticky-col3,
+.gl-matrix-table thead .sticky-col4 {
     background-color: #2c3e50;
     z-index: 15;
 }
@@ -281,6 +301,8 @@
 
 .totals-row .sticky-col,
 .totals-row .sticky-col2,
+.totals-row .sticky-col3,
+.totals-row .sticky-col4,
 .totals-row .sticky-col3 {
     background-color: #ecf0f1;
 }

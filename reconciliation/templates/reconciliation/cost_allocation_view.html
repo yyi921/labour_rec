@@ -102,18 +102,59 @@
 <!-- Employee Allocation Table -->
 <div class="allocation-section">
     <h2>Employee Cost Allocations</h2>
+
+    {% if show_filter_message %}
+    <div class="alert alert-info" style="background-color: #e3f2fd; padding: 20px; margin: 20px 0; border-left: 4px solid #2196F3;">
+        <h3 style="margin-top: 0;">Select Location or Department to View Data</h3>
+        <p>To improve performance, please select at least one filter (Location or Department) above to load employee allocation data.</p>
+        <p><small>You can select "All Locations" and "All Departments" after the initial load if you want to view all data.</small></p>
+    </div>
+    {% else %}
     <p><small>Total Employees: {{ employees|length }}</small></p>
 
+    <!-- Bulk Actions Section -->
+    <div class="bulk-actions-section" style="background-color: #f8f9fa; padding: 15px; margin-bottom: 20px; border-radius: 5px; border: 1px solid #dee2e6;">
+        <h3 style="margin-top: 0; margin-bottom: 10px; font-size: 16px;">Bulk Source Selection</h3>
+        <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+            <div style="display: flex; gap: 15px;">
+                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                    <input type="radio" name="bulk-source" value="iqb" checked>
+                    <strong>IQB</strong>
+                </label>
+                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                    <input type="radio" name="bulk-source" value="tanda">
+                    <strong>Tanda</strong>
+                </label>
+                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                    <input type="radio" name="bulk-source" value="override">
+                    <strong>Override</strong>
+                </label>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="applyBulkToAll()" class="btn btn-primary" style="padding: 5px 15px;">Apply to All Visible</button>
+                <button onclick="applyBulkToSelected()" class="btn btn-primary" style="padding: 5px 15px;">Apply to Selected</button>
+            </div>
+        </div>
+        <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">
+            <em>Note: Tanda will only be applied if Tanda data exists for the employee. Override requires manual input.</em>
+        </p>
+    </div>
+
     <div style="margin-bottom: 15px;">
-        <button onclick="saveAllocations()" class="btn btn-primary">Save Changes</button>
+        <button onclick="saveAllocations()" class="btn btn-primary">Save Changes (Visible Only)</button>
+        <button onclick="saveAllEmployees()" class="btn btn-success">Save All Employees (All Locations/Departments)</button>
         <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">Back to Dashboard</a>
     </div>
 
     <table class="allocation-table">
         <thead>
             <tr>
+                <th style="width: 40px;">
+                    <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)">
+                </th>
                 <th>Employee Code</th>
                 <th>Employee Name</th>
+                <th>Location</th>
                 <th class="number">Total Cost</th>
                 <th>IQB Allocation</th>
                 <th>Tanda Allocation</th>
@@ -123,9 +164,13 @@
         </thead>
         <tbody>
             {% for emp in employees %}
-            <tr data-employee="{{ emp.employee_code }}">
+            <tr data-employee="{{ emp.employee_code }}" data-default-source="{{ emp.default_source }}" data-has-tanda="{{ emp.has_tanda|yesno:'true,false' }}">
+                <td style="text-align: center;">
+                    <input type="checkbox" class="employee-select" data-employee="{{ emp.employee_code }}">
+                </td>
                 <td>{{ emp.employee_code }}</td>
                 <td>{{ emp.employee_name }}</td>
+                <td>{{ emp.employee_location|default:"N/A" }}</td>
                 <td class="number">${{ emp.total_cost|floatformat:2|intcomma }}</td>
 
                 <!-- IQB Allocation -->
@@ -168,11 +213,11 @@
 
                 <!-- Override Input -->
                 <td>
-                    <input type="text"
-                           class="override-input"
-                           id="override-{{ emp.employee_code }}"
-                           placeholder="421-5000: 60, 422-5000: 40"
-                           value="{% if emp.override_allocation %}{% for cost_account, details in emp.override_allocation.items %}{{ cost_account }}: {{ details.percentage|floatformat:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}">
+                    <textarea class="override-input"
+                              id="override-{{ emp.employee_code }}"
+                              rows="4"
+                              placeholder="421-5000: 60, 422-5000: 40"
+                    >{% if emp.override_allocation %}{% for cost_account, details in emp.override_allocation.items %}{{ cost_account }}: {{ details.percentage|floatformat:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}{% else %}{% for cost_account, details in emp.expanded_allocation.items %}{{ cost_account }}: {{ details.percentage|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}</textarea>
                     <div class="validation-error" id="error-{{ emp.employee_code }}"></div>
                 </td>
 
@@ -213,6 +258,7 @@
         <button onclick="saveAllocations()" class="btn btn-primary">Save Changes</button>
         <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">Back to Dashboard</a>
     </div>
+    {% endif %}
 </div>
 
 {% endif %}
@@ -345,11 +391,14 @@
 
 .override-input {
     width: 100%;
+    min-width: 300px;
     padding: 6px;
     border: 1px solid #ced4da;
     border-radius: 4px;
     font-family: 'Courier New', monospace;
     font-size: 12px;
+    resize: vertical;
+    line-height: 1.4;
 }
 
 .override-input:focus {
@@ -514,6 +563,53 @@ function clearFilters() {
 
 function updateSource(empCode, source) {
     saveSelections();
+
+    // Auto-save immediately to persist across all pages
+    const payPeriodId = '{{ pay_period.period_id }}';
+
+    // Get override value if source is override
+    let changes = [{
+        employee_code: empCode,
+        source: source
+    }];
+
+    if (source === 'override') {
+        const overrideInput = document.querySelector(`#override-${empCode}`);
+        if (overrideInput && overrideInput.value.trim()) {
+            const validation = validateOverride(overrideInput.value);
+            if (!validation.valid) {
+                alert(`Validation error: ${validation.error}`);
+                return;
+            }
+            changes[0].override = validation.allocations;
+        } else {
+            // Override selected but no value entered yet - don't save
+            return;
+        }
+    }
+
+    // Save to backend immediately
+    fetch(`/api/save-cost-allocations/${payPeriodId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ changes: changes })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log(`Auto-saved ${empCode} with source: ${source}`);
+            // Optional: Show a subtle notification
+            // You could add a small green checkmark or toast notification here
+        } else {
+            console.error(`Failed to auto-save ${empCode}:`, data.error);
+            alert(`Failed to save: ${data.error || 'Unknown error'}`);
+        }
+    })
+    .catch(error => {
+        console.error('Auto-save error:', error);
+    });
 }
 
 function validateOverride(input) {
@@ -562,15 +658,21 @@ function saveAllocations() {
         const source = sourceRadio ? sourceRadio.value : 'iqb';
 
         // Clear previous errors
-        errorDiv.textContent = '';
-        errorDiv.style.display = 'none';
+        if (errorDiv) {
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+        }
 
         // Validate override if selected
         if (source === 'override') {
             const validation = validateOverride(overrideInput.value);
             if (!validation.valid) {
-                errorDiv.textContent = validation.error;
-                errorDiv.style.display = 'block';
+                if (errorDiv) {
+                    errorDiv.textContent = validation.error;
+                    errorDiv.style.display = 'block';
+                } else {
+                    alert(`Validation error for employee ${empCode}: ${validation.error}`);
+                }
                 hasErrors = true;
                 return;
             }
@@ -601,9 +703,198 @@ function saveAllocations() {
     // Save selections before navigating
     saveSelections();
 
-    // TODO: Send to review page
-    console.log('Changes to save:', changes);
-    alert(`Ready to save ${changes.length} employee allocation(s). Review page will be implemented next.`);
+    // Send to backend API
+    const payPeriodId = '{{ pay_period.period_id }}';
+    const saveButton = document.querySelector('button[onclick="saveAllocations()"]');
+
+    // Disable button and show loading
+    if (saveButton) {
+        saveButton.disabled = true;
+        saveButton.textContent = 'Saving...';
+    }
+
+    fetch(`/api/save-cost-allocations/${payPeriodId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ changes: changes })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Successfully saved ${data.saved_count} allocation snapshot(s)!\n\nAllocations have been grouped by location and department.`);
+            // Optionally redirect to dashboard or review page
+            // window.location.href = `/dashboard/${payPeriodId}/`;
+        } else {
+            alert(`Error: ${data.error || 'Unknown error occurred'}`);
+        }
+    })
+    .catch(error => {
+        console.error('Error saving allocations:', error);
+        alert('Failed to save allocations. Please check the console for details.');
+    })
+    .finally(() => {
+        // Re-enable button
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Changes (Visible Only)';
+        }
+    });
+}
+
+// Save All Employees across all locations and departments
+function saveAllEmployees() {
+    if (!confirm('This will save ALL employees for this pay period across ALL locations and departments using their current source selections. Are you sure?')) {
+        return;
+    }
+
+    const payPeriodId = '{{ pay_period.period_id }}';
+    const saveAllButton = document.querySelector('button[onclick="saveAllEmployees()"]');
+
+    // Disable button and show loading
+    if (saveAllButton) {
+        saveAllButton.disabled = true;
+        saveAllButton.textContent = 'Saving All...';
+    }
+
+    fetch(`/api/save-all-allocations/${payPeriodId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Successfully saved ${data.saved_count} allocation snapshot(s) across all employees!`);
+        } else {
+            alert(`Error: ${data.error || 'Unknown error occurred'}`);
+        }
+    })
+    .catch(error => {
+        console.error('Error saving all allocations:', error);
+        alert('Failed to save all allocations. Please check the console for details.');
+    })
+    .finally(() => {
+        // Re-enable button
+        if (saveAllButton) {
+            saveAllButton.disabled = false;
+            saveAllButton.textContent = 'Save All Employees (All Locations/Departments)';
+        }
+    });
+}
+
+// Initialize default source selections on page load
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-employee]').forEach(row => {
+        const empCode = row.getAttribute('data-employee');
+        const defaultSource = row.getAttribute('data-default-source');
+        const currentChecked = row.querySelector(`input[name="source-${empCode}"]:checked`);
+
+        // If no source is currently selected or if we want to apply the default based on location
+        // The default is already set in the backend, so this is just for visual confirmation
+        // You can add a button or checkbox to "Apply Defaults" if needed
+
+        // Optional: Add a tooltip or indicator showing the recommended source
+        const locationCell = row.querySelector('td:nth-child(4)'); // Changed from 3 to 4 due to new checkbox column
+        if (locationCell && defaultSource) {
+            const recommendedText = defaultSource === 'tanda' ? ' (→Tanda)' : ' (→IQB)';
+            const location = locationCell.textContent;
+            if (location === 'Culinary' || location === 'Stewarding') {
+                locationCell.innerHTML = location + '<small style="color: #2196F3; font-weight: bold;">' + recommendedText + '</small>';
+            }
+        }
+    });
+});
+
+// Toggle select all checkboxes
+function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.employee-select');
+    checkboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+    });
+}
+
+// Apply bulk source selection to all visible employees
+function applyBulkToAll() {
+    const selectedSource = document.querySelector('input[name="bulk-source"]:checked').value;
+
+    let appliedCount = 0;
+    let skippedCount = 0;
+
+    document.querySelectorAll('[data-employee]').forEach(row => {
+        const empCode = row.getAttribute('data-employee');
+        const hasTanda = row.getAttribute('data-has-tanda') === 'true';
+
+        // Skip if trying to apply Tanda but employee doesn't have Tanda data
+        if (selectedSource === 'tanda' && !hasTanda) {
+            skippedCount++;
+            return;
+        }
+
+        // Find and check the appropriate radio button
+        const radio = row.querySelector(`input[name="source-${empCode}"][value="${selectedSource}"]`);
+        if (radio && !radio.disabled) {
+            radio.checked = true;
+            updateSource(empCode, selectedSource);
+            appliedCount++;
+        } else {
+            skippedCount++;
+        }
+    });
+
+    let message = `Applied ${selectedSource.toUpperCase()} to ${appliedCount} employee(s).`;
+    if (skippedCount > 0) {
+        message += ` Skipped ${skippedCount} employee(s) (no Tanda data or disabled).`;
+    }
+    alert(message);
+}
+
+// Apply bulk source selection to selected employees only
+function applyBulkToSelected() {
+    const selectedSource = document.querySelector('input[name="bulk-source"]:checked').value;
+    const selectedCheckboxes = document.querySelectorAll('.employee-select:checked');
+
+    if (selectedCheckboxes.length === 0) {
+        alert('Please select at least one employee using the checkboxes.');
+        return;
+    }
+
+    let appliedCount = 0;
+    let skippedCount = 0;
+
+    selectedCheckboxes.forEach(checkbox => {
+        const empCode = checkbox.getAttribute('data-employee');
+        const row = checkbox.closest('tr');
+        const hasTanda = row.getAttribute('data-has-tanda') === 'true';
+
+        // Skip if trying to apply Tanda but employee doesn't have Tanda data
+        if (selectedSource === 'tanda' && !hasTanda) {
+            skippedCount++;
+            return;
+        }
+
+        // Find and check the appropriate radio button
+        const radio = row.querySelector(`input[name="source-${empCode}"][value="${selectedSource}"]`);
+        if (radio && !radio.disabled) {
+            radio.checked = true;
+            updateSource(empCode, selectedSource);
+            appliedCount++;
+        } else {
+            skippedCount++;
+        }
+    });
+
+    let message = `Applied ${selectedSource.toUpperCase()} to ${appliedCount} selected employee(s).`;
+    if (skippedCount > 0) {
+        message += ` Skipped ${skippedCount} employee(s) (no Tanda data or disabled).`;
+    }
+    alert(message);
+
+    // Uncheck all checkboxes after applying
+    document.getElementById('select-all').checked = false;
+    selectedCheckboxes.forEach(cb => cb.checked = false);
 }
 </script>
 

@@ -13,9 +13,11 @@ urlpatterns = [
 
     # Mapping verification and cost allocation endpoints
     path('verify-mapping/<str:pay_period_id>/', mapping_views.verify_tanda_mapping, name='verify_mapping'),
-    path('api/save-mappings/<str:pay_period_id>/', mapping_views.save_location_mappings, name='save_location_mappings'),
+    path('api/save-mappings/<str:pay_period_id>/', mapping_views.save_location_mapping, name='save_location_mapping'),
     path('api/run-cost-allocation/<str:pay_period_id>/', mapping_views.run_cost_allocation, name='run_cost_allocation'),
     path('cost-allocation/<str:pay_period_id>/', mapping_views.cost_allocation_view, name='cost_allocation_view'),
+    path('api/save-cost-allocations/<str:pay_period_id>/', mapping_views.save_cost_allocations, name='save_cost_allocations'),
+    path('api/save-all-allocations/<str:pay_period_id>/', mapping_views.save_all_allocations, name='save_all_allocations'),
 
     # Data validation endpoints
     path('validation/<uuid:upload_id>/', data_validation_views.validation_result_view, name='validation_result'),

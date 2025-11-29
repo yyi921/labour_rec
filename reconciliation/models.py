@@ -733,3 +733,206 @@ class ValidationResult(models.Model):
     def __str__(self):
         status = "PASSED" if self.passed else "FAILED"
         return f"{self.upload.file_name} - {status}"
+    
+class EmployeePayPeriodSnapshot(models.Model):
+    """
+    Snapshot of employee's payroll data for each pay period
+    Stores finalized cost allocations and GL totals
+    """
+    # Composite primary key
+    pay_period = models.ForeignKey(PayPeriod, on_delete=models.CASCADE, related_name='employee_snapshots')
+    employee_code = models.CharField(max_length=20, db_index=True)
+    
+    # Employee details (denormalized for historical accuracy)
+    employee_name = models.CharField(max_length=200)
+    employment_status = models.CharField(max_length=50, blank=True)  # Active, Terminated, etc.
+    termination_date = models.DateField(null=True, blank=True)
+    
+    # Finalized cost allocation percentages
+    # This is the FINAL allocation after any manual overrides
+    # Format: Location-Department structure for Sage export
+    cost_allocation = models.JSONField(default=dict)
+    # Format: {
+    #   '449': {                    # Location
+    #     '50': 33.33,             # Department: percentage
+    #     '30': 16.67
+    #   },
+    #   '454': {
+    #     '50': 50.00
+    #   }
+    # }
+    
+    allocation_source = models.CharField(max_length=20, default='iqb')  # iqb, tanda, override
+    allocation_finalized_at = models.DateTimeField(null=True, blank=True)
+    allocation_finalized_by = models.ForeignKey(
+        'auth.User', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='finalized_allocations'
+    )
+    
+    # GL Account Totals (from IQB)
+    # Payroll Liability Accounts (2xxx)
+    gl_2310_annual_leave = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_2317_long_service_leave = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_2318_toil_liability = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_2320_sick_leave = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    # Labour Expense Accounts (6xxx)
+    gl_6302 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6305 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6309 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6310 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6312 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6315 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6325 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6330 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6331 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6332 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6335 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6338 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6340 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6345_salaries = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6350 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6355_sick_leave = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6370_superannuation = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6372_toil = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6375 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_6380 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    
+    # Leave Balances (end of period) - PLACEHOLDERS FOR NOW
+    al_closing_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    al_closing_value = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    
+    lsl_closing_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    lsl_closing_value = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    
+    toil_closing_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    toil_closing_value = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    
+    # Total cost for this employee this period
+    total_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ['pay_period', 'employee_code']
+        ordering = ['-pay_period__period_end', 'employee_code']
+        indexes = [
+            models.Index(fields=['pay_period', 'employee_code']),
+            models.Index(fields=['employee_code', 'pay_period']),  # For employee history
+            models.Index(fields=['termination_date']),
+        ]
+        verbose_name = 'Employee Pay Period Snapshot'
+        verbose_name_plural = 'Employee Pay Period Snapshots'
+    
+    def __str__(self):
+        return f"{self.employee_name} ({self.employee_code}) - {self.pay_period.period_id}"
+    
+    def validate_allocation(self):
+        """Validate that cost allocations sum to 100%"""
+        if not self.cost_allocation:
+            return False, "No allocations defined"
+        
+        # Sum all percentages across all locations and departments
+        total = Decimal('0')
+        for location, departments in self.cost_allocation.items():
+            for dept, percentage in departments.items():
+                total += Decimal(str(percentage))
+        
+        if abs(total - 100) > 0.01:  # 0.01% tolerance
+            return False, f"Allocations sum to {total}%, not 100%"
+        
+        return True, "Valid"
+    
+    def get_allocation_by_location_dept(self, location_id, dept_id):
+        """
+        Get allocation percentage for a specific location-department
+        
+        Args:
+            location_id: e.g., '449'
+            dept_id: e.g., '50'
+        
+        Returns:
+            float: Percentage (0-100)
+        """
+        return self.cost_allocation.get(location_id, {}).get(dept_id, 0)
+    
+    def calculate_allocated_amount(self, gl_amount, location_id, dept_id):
+        """
+        Calculate allocated amount for a location-department
+        
+        Args:
+            gl_amount: Total GL amount to allocate
+            location_id: e.g., '449'
+            dept_id: e.g., '50'
+        
+        Returns:
+            Decimal: Allocated amount
+        """
+        percentage = self.get_allocation_by_location_dept(location_id, dept_id)
+        return Decimal(str(gl_amount)) * Decimal(str(percentage)) / 100
+    
+    def get_all_location_dept_combinations(self):
+        """
+        Get all location-department combinations with their percentages
+        
+        Returns:
+            list: [{'location': '449', 'department': '50', 'percentage': 33.33}, ...]
+        """
+        combinations = []
+        for location, departments in self.cost_allocation.items():
+            for dept, percentage in departments.items():
+                combinations.append({
+                    'location': location,
+                    'department': dept,
+                    'percentage': percentage
+                })
+        return combinations
+    
+    def get_allocation_summary(self):
+        """
+        Get human-readable allocation summary
+        
+        Returns:
+            str: e.g., "Location 449, Dept 50: 33.33%; Location 454, Dept 50: 66.67%"
+        """
+        parts = []
+        for location, departments in sorted(self.cost_allocation.items()):
+            for dept, percentage in sorted(departments.items()):
+                parts.append(f"Location {location}, Dept {dept}: {percentage}%")
+        return "; ".join(parts)
+    
+    def get_gl_totals(self):
+        """
+        Get all GL account totals as a dictionary
+        
+        Returns:
+            dict: GL account totals
+        """
+        return {
+            '2310': {
+                'name': 'Payroll Liab - Annual Leave',
+                'amount': self.gl_2310_annual_leave
+            },
+            '6345': {
+                'name': 'Labour - Salaries',
+                'amount': self.gl_6345_salaries
+            },
+            '6355': {
+                'name': 'Labour - Sick Leave',
+                'amount': self.gl_6355_sick_leave
+            },
+            '6370': {
+                'name': 'Labour - Superannuation',
+                'amount': self.gl_6370_superannuation
+            },
+            '6372': {
+                'name': 'Labour - Time in Lieu',
+                'amount': self.gl_6372_toil
+            }
+        }
