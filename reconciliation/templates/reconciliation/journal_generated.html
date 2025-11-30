@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Journal Entries - {{ pay_period.period_id }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .info-box {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .info-box.warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        .info-box.success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+        }
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .number {
+            text-align: right;
+            font-family: 'Courier New', monospace;
+        }
+        .total-row {
+            font-weight: bold;
+            background-color: #f0f0f0;
+            border-top: 2px solid #333;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 10px 5px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .btn-secondary {
+            background-color: #757575;
+        }
+        .btn-secondary:hover {
+            background-color: #616161;
+        }
+        .btn-download {
+            background-color: #2196F3;
+        }
+        .btn-download:hover {
+            background-color: #0b7dda;
+        }
+        .balanced {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .unbalanced {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Generated Journal Entries</h1>
+        <h2>Pay Period: {{ pay_period.period_id }}</h2>
+
+        <div class="info-box {{ balanced|yesno:'success,warning' }}">
+            <strong>Journal Status:</strong>
+            {% if balanced %}
+                <span class="balanced">✓ Balanced</span> - Debits and Credits match
+            {% else %}
+                <span class="unbalanced">⚠ Unbalanced</span> - Debits and Credits do NOT match
+            {% endif %}
+            <br>
+            <strong>Employees Processed:</strong> {{ employee_count }}
+            <br>
+            <strong>Journal Entries:</strong> {{ journal_entry_count }}
+            <br>
+            <strong>Total Debits:</strong> ${{ total_debits|floatformat:2 }}
+            <br>
+            <strong>Total Credits:</strong> ${{ total_credits|floatformat:2 }}
+        </div>
+
+        <div style="margin: 20px 0;">
+            <a href="{% url 'reconciliation:download_journal_sage' pay_period.period_id %}" class="btn btn-download">
+                📥 Download Sage Intacct Journal
+            </a>
+            <a href="{% url 'reconciliation:download_journal' pay_period.period_id %}" class="btn btn-download">
+                📥 Download Simple CSV
+            </a>
+            <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">
+                ← Back to Dashboard
+            </a>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Location</th>
+                    <th>Department</th>
+                    <th>Cost Center</th>
+                    <th>GL Account</th>
+                    <th>Description</th>
+                    <th class="number">Debit</th>
+                    <th class="number">Credit</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                <tr>
+                    <td>{{ entry.location_id }} - {{ entry.location_name }}</td>
+                    <td>{{ entry.department_id }} - {{ entry.department_name }}</td>
+                    <td>{{ entry.cost_center }}</td>
+                    <td>{{ entry.gl_account }}</td>
+                    <td>{{ entry.description }}</td>
+                    <td class="number">
+                        {% if entry.debit > 0 %}
+                            ${{ entry.debit|floatformat:2 }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="number">
+                        {% if entry.credit > 0 %}
+                            ${{ entry.credit|floatformat:2 }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                <tr class="total-row">
+                    <td colspan="5" style="text-align: right;">TOTALS:</td>
+                    <td class="number">${{ total_debits|floatformat:2 }}</td>
+                    <td class="number">${{ total_credits|floatformat:2 }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="margin: 20px 0;">
+            <a href="{% url 'reconciliation:download_journal_sage' pay_period.period_id %}" class="btn btn-download">
+                📥 Download Sage Intacct Journal
+            </a>
+            <a href="{% url 'reconciliation:download_journal' pay_period.period_id %}" class="btn btn-download">
+                📥 Download Simple CSV
+            </a>
+            <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">
+                ← Back to Dashboard
+            </a>
+        </div>
+    </div>
+</body>
+</html>

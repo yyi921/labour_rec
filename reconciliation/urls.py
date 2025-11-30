@@ -2,7 +2,7 @@
 URL configuration for reconciliation app
 """
 from django.urls import path
-from reconciliation.views import upload_views, dashboard_views, mapping_views, data_validation_views
+from reconciliation.views import upload_views, dashboard_views, mapping_views, data_validation_views, journal_views
 
 app_name = 'reconciliation'
 
@@ -21,6 +21,11 @@ urlpatterns = [
 
     # Data validation endpoints
     path('validation/<uuid:upload_id>/', data_validation_views.validation_result_view, name='validation_result'),
+
+    # Journal generation endpoints
+    path('journal/<str:pay_period_id>/', journal_views.generate_journal, name='generate_journal'),
+    path('journal/<str:pay_period_id>/download/', journal_views.download_journal, name='download_journal'),
+    path('journal/<str:pay_period_id>/download-sage/', journal_views.download_journal_sage, name='download_journal_sage'),
 
     # Upload endpoints
     path('api/uploads/smart/', upload_views.smart_upload, name='smart_upload'),

@@ -633,10 +633,13 @@ function validateOverride(input) {
             return { valid: false, error: 'Percentages must be between 0 and 100' };
         }
 
-        allocations[costAccount] = percentage;
+        allocations[costAccount] = {
+            percentage: percentage,
+            amount: 0  // Will be calculated by backend
+        };
     }
 
-    const total = Object.values(allocations).reduce((sum, pct) => sum + pct, 0);
+    const total = Object.values(allocations).reduce((sum, item) => sum + item.percentage, 0);
     if (Math.abs(total - 100) > 0.1) {
         return { valid: false, error: `Total is ${total.toFixed(1)}%, must be 100%` };
     }
