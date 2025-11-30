@@ -774,10 +774,18 @@ class EmployeePayPeriodSnapshot(models.Model):
     
     # GL Account Totals (from IQB)
     # Payroll Liability Accounts (2xxx)
+    # Note: Field names may not match GL descriptions due to legacy naming, see mapping in mapping_views.py
     gl_2310_annual_leave = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     gl_2317_long_service_leave = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     gl_2318_toil_liability = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    gl_2320_sick_leave = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_2320_sick_leave = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # Actually WorkCover
+    gl_2321_paid_parental = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_2325_leasing = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_2330_long_service_leave = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_2350_net_wages = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_2351_other_deductions = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_2360_payg_withholding = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gl_2391_super_sal_sacrifice = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     # Labour Expense Accounts (6xxx)
     gl_6302 = models.DecimalField(max_digits=12, decimal_places=2, default=0)

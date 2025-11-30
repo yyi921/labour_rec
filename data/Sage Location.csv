@@ -1,31 +1,31 @@
-Location ID,Location name,Parent ID,Parent - Name,Manager,Parent entity,Entity base currency
-421,Marmor,10,Breakwater Island Trust, ,10,AUD
-422,Terasu,10,Breakwater Island Trust, ,10,AUD
-423,Ardo Rooftop Bar,10,Breakwater Island Trust, ,10,AUD
-424,Ardo Pool Side Dining,10,Breakwater Island Trust, ,10,AUD
-425,Ville Container Chiller,10,Breakwater Island Trust, ,10,AUD
-426,Ardo Mini Bar,10,Breakwater Island Trust, ,10,AUD
-427,Ardo In Room Dining,10,Breakwater Island Trust, ,10,AUD
-428,Ardo Food Store,10,Breakwater Island Trust, ,10,AUD
-429,Ardo Beverage Store,10,Breakwater Island Trust, ,10,AUD
-430,Ardo Hotel,10,Breakwater Island Trust, ,10,AUD
-442,Sports Bar,10,Breakwater Island Trust, ,10,AUD
-444,Quarterdeck,10,Breakwater Island Trust, ,10,AUD
-446,Splash Bar,10,Breakwater Island Trust, ,10,AUD
-448,Magnetic Room Bar,10,Breakwater Island Trust, ,10,AUD
-449,Orpheus Room Bar,10,Breakwater Island Trust, ,10,AUD
-450,Palm House,10,Breakwater Island Trust, ,10,AUD
-454,Miss Songs,10,Breakwater Island Trust, ,10,AUD
-458,Spin,10,Breakwater Island Trust, ,10,AUD
-460,Event Operations,10,Breakwater Island Trust, ,10,AUD
-470,Gaming,10,Breakwater Island Trust, ,10,AUD
-480,The Ville Hotel,10,Breakwater Island Trust, ,10,AUD
-486,Mini Bar,10,Breakwater Island Trust, ,10,AUD
-488,Room Service,10,Breakwater Island Trust, ,10,AUD
-550,Ville Food Store,10,Breakwater Island Trust, ,10,AUD
-551,Ville Beverage Store,10,Breakwater Island Trust, ,10,AUD
-552,Ville General Store,10,Breakwater Island Trust, ,10,AUD
-553,Ville Container Freezer,10,Breakwater Island Trust, ,10,AUD
-600,Ardo (Saltwater),10,Breakwater Island Trust, ,10,AUD
-700,TECC,10,Breakwater Island Trust, ,10,AUD
-910,Shared Services The Ville,10,Breakwater Island Trust, ,10,AUD
+Location ID,Location name,Parent ID,Parent - Name,Manager,Parent entity,Entity base currency,BILLABLE,GLENTRY_ITEMID,GLENTRY_PROJECTID,GLENTRY_CUSTOMERID
+421,Marmor,10,Breakwater Island Trust, ,10,AUD,,,,
+422,Terasu,10,Breakwater Island Trust, ,10,AUD,,,,
+423,Ardo Rooftop Bar,10,Breakwater Island Trust, ,10,AUD,,,,
+424,Ardo Pool Side Dining,10,Breakwater Island Trust, ,10,AUD,,,,
+425,Ville Container Chiller,10,Breakwater Island Trust, ,10,AUD,,,,
+426,Ardo Mini Bar,10,Breakwater Island Trust, ,10,AUD,,,,
+427,Ardo In Room Dining,10,Breakwater Island Trust, ,10,AUD,,,,
+428,Ardo Food Store,10,Breakwater Island Trust, ,10,AUD,,,,
+429,Ardo Beverage Store,10,Breakwater Island Trust, ,10,AUD,,,,
+430,Ardo Hotel,10,Breakwater Island Trust, ,10,AUD,,,,
+442,Sports Bar,10,Breakwater Island Trust, ,10,AUD,,,,
+444,Quarterdeck,10,Breakwater Island Trust, ,10,AUD,,,,
+446,Splash Bar,10,Breakwater Island Trust, ,10,AUD,,,,
+448,Magnetic Room Bar,10,Breakwater Island Trust, ,10,AUD,,,,
+449,Orpheus Room Bar,10,Breakwater Island Trust, ,10,AUD,,,,
+450,Palm House,10,Breakwater Island Trust, ,10,AUD,,,,
+454,Miss Songs,10,Breakwater Island Trust, ,10,AUD,,,,
+458,Spin,10,Breakwater Island Trust, ,10,AUD,,,,
+460,Event Operations,10,Breakwater Island Trust, ,10,AUD,,,,
+470,Gaming,10,Breakwater Island Trust, ,10,AUD,,,,
+480,The Ville Hotel,10,Breakwater Island Trust, ,10,AUD,,,,
+486,Mini Bar,10,Breakwater Island Trust, ,10,AUD,,,,
+488,Room Service,10,Breakwater Island Trust, ,10,AUD,,,,
+550,Ville Food Store,10,Breakwater Island Trust, ,10,AUD,,,,
+551,Ville Beverage Store,10,Breakwater Island Trust, ,10,AUD,,,,
+552,Ville General Store,10,Breakwater Island Trust, ,10,AUD,,,,
+553,Ville Container Freezer,10,Breakwater Island Trust, ,10,AUD,,,,
+600,Ardo (Saltwater),10,Breakwater Island Trust, ,10,AUD,,,,
+700,TECC,10,Breakwater Island Trust, ,10,AUD,T,ICO-RECHARGE,CMG110-001,CMG110
+910,Shared Services The Ville,10,Breakwater Island Trust, ,10,AUD,,,,

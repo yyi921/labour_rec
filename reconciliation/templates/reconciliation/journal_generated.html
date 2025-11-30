@@ -112,18 +112,20 @@
         <div class="info-box {{ balanced|yesno:'success,warning' }}">
             <strong>Journal Status:</strong>
             {% if balanced %}
-                <span class="balanced">✓ Balanced</span> - Debits and Credits match
+                <span class="balanced">✓ Balanced</span> - Total is close to zero
             {% else %}
-                <span class="unbalanced">⚠ Unbalanced</span> - Debits and Credits do NOT match
+                <span class="unbalanced">⚠ Unbalanced</span> - Total is NOT close to zero
             {% endif %}
             <br>
             <strong>Employees Processed:</strong> {{ employee_count }}
             <br>
             <strong>Journal Entries:</strong> {{ journal_entry_count }}
             <br>
-            <strong>Total Debits:</strong> ${{ total_debits|floatformat:2 }}
+            <strong>Total Debit:</strong> ${{ total_debit|floatformat:2 }}
             <br>
-            <strong>Total Credits:</strong> ${{ total_credits|floatformat:2 }}
+            <strong>Date:</strong> {{ date }}
+            <br>
+            <strong>Description:</strong> {{ description }}
         </div>
 
         <div style="margin: 20px 0;">
@@ -141,43 +143,43 @@
         <table>
             <thead>
                 <tr>
+                    <th>GL Account</th>
                     <th>Location</th>
                     <th>Department</th>
-                    <th>Cost Center</th>
-                    <th>GL Account</th>
-                    <th>Description</th>
+                    <th>Document</th>
+                    <th>Memo</th>
                     <th class="number">Debit</th>
-                    <th class="number">Credit</th>
+                    <th>Billable</th>
+                    <th>Item ID</th>
+                    <th>Project ID</th>
+                    <th>Customer ID</th>
                 </tr>
             </thead>
             <tbody>
                 {% for entry in entries %}
                 <tr>
-                    <td>{{ entry.location_id }} - {{ entry.location_name }}</td>
-                    <td>{{ entry.department_id }} - {{ entry.department_name }}</td>
-                    <td>{{ entry.cost_center }}</td>
-                    <td>{{ entry.gl_account }}</td>
-                    <td>{{ entry.description }}</td>
+                    <td>{{ entry.acct_no }}</td>
+                    <td>{{ entry.location_id }}{% if entry.location_name %} - {{ entry.location_name }}{% endif %}</td>
+                    <td>{{ entry.dept_id }}{% if entry.dept_name %} - {{ entry.dept_name }}{% endif %}</td>
+                    <td>{{ entry.document }}</td>
+                    <td>{{ entry.memo }}</td>
                     <td class="number">
-                        {% if entry.debit > 0 %}
+                        {% if entry.debit != 0 %}
                             ${{ entry.debit|floatformat:2 }}
                         {% else %}
                             -
                         {% endif %}
                     </td>
-                    <td class="number">
-                        {% if entry.credit > 0 %}
-                            ${{ entry.credit|floatformat:2 }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
+                    <td>{{ entry.billable|default:"-" }}</td>
+                    <td>{{ entry.item_id|default:"-" }}</td>
+                    <td>{{ entry.project_id|default:"-" }}</td>
+                    <td>{{ entry.customer_id|default:"-" }}</td>
                 </tr>
                 {% endfor %}
                 <tr class="total-row">
-                    <td colspan="5" style="text-align: right;">TOTALS:</td>
-                    <td class="number">${{ total_debits|floatformat:2 }}</td>
-                    <td class="number">${{ total_credits|floatformat:2 }}</td>
+                    <td colspan="5" style="text-align: right;">TOTAL:</td>
+                    <td class="number">${{ total_debit|floatformat:2 }}</td>
+                    <td colspan="4"></td>
                 </tr>
             </tbody>
         </table>

@@ -997,12 +997,19 @@ def save_cost_allocations(request, pay_period_id):
 
             # Map GL accounts to model fields
             gl_field_mapping = {
-                # Payroll Liability Accounts
+                # Payroll Liability Accounts (2xxx)
                 '2310': 'gl_2310_annual_leave',
-                '2317': 'gl_2317_long_service_leave',
+                '2317': 'gl_2317_long_service_leave',  # Actually TIL Provision, but field name kept
                 '2318': 'gl_2318_toil_liability',
-                '2320': 'gl_2320_sick_leave',
-                # Labour Expense Accounts
+                '2320': 'gl_2320_sick_leave',  # Actually WorkCover, but field name kept
+                '2321': 'gl_2321_paid_parental',
+                '2325': 'gl_2325_leasing',
+                '2330': 'gl_2330_long_service_leave',
+                '2350': 'gl_2350_net_wages',
+                '2351': 'gl_2351_other_deductions',
+                '2360': 'gl_2360_payg_withholding',
+                '2391': 'gl_2391_super_sal_sacrifice',
+                # Labour Expense Accounts (6xxx)
                 '6302': 'gl_6302',
                 '6305': 'gl_6305',
                 '6309': 'gl_6309',
@@ -1173,12 +1180,19 @@ def save_all_allocations(request, pay_period_id):
 
             # Map GL accounts to model fields
             gl_field_mapping = {
-                # Payroll Liability Accounts
+                # Payroll Liability Accounts (2xxx)
                 '2310': 'gl_2310_annual_leave',
-                '2317': 'gl_2317_long_service_leave',
+                '2317': 'gl_2317_long_service_leave',  # Actually TIL Provision, but field name kept
                 '2318': 'gl_2318_toil_liability',
-                '2320': 'gl_2320_sick_leave',
-                # Labour Expense Accounts
+                '2320': 'gl_2320_sick_leave',  # Actually WorkCover, but field name kept
+                '2321': 'gl_2321_paid_parental',
+                '2325': 'gl_2325_leasing',
+                '2330': 'gl_2330_long_service_leave',
+                '2350': 'gl_2350_net_wages',
+                '2351': 'gl_2351_other_deductions',
+                '2360': 'gl_2360_payg_withholding',
+                '2391': 'gl_2391_super_sal_sacrifice',
+                # Labour Expense Accounts (6xxx)
                 '6302': 'gl_6302',
                 '6305': 'gl_6305',
                 '6309': 'gl_6309',
