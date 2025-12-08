@@ -1,0 +1,192 @@
+{% extends "reconciliation/base.html" %}
+
+{% block title %}Validation Summary - {{ pay_period.period_id }}{% endblock %}
+
+{% block content %}
+<header>
+    <div class="breadcrumb">
+        <a href="{% url 'reconciliation:pay_period_list' %}">Pay Periods</a> /
+        {% if pay_period %}
+        <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}">{{ pay_period.period_id }}</a> /
+        {% endif %}
+        Validation Summary
+    </div>
+    <h1>Multi-Upload Validation Summary</h1>
+    {% if pay_period %}
+    <div class="upload-info">
+        <p><strong>Pay Period:</strong> {{ pay_period.period_id }} ({{ pay_period.period_start|date:"d M Y" }} - {{ pay_period.period_end|date:"d M Y" }})</p>
+        <p><strong>Total Files Uploaded:</strong> {{ total_uploads }}</p>
+    </div>
+    {% endif %}
+</header>
+
+{% if error %}
+<div class="alert alert-warning">{{ error }}</div>
+{% else %}
+
+<!-- Overall Status -->
+<div class="validation-status {% if all_passed %}status-pass{% else %}status-fail{% endif %}">
+    {% if all_passed %}
+        <div class="status-icon">✓</div>
+        <h2>ALL VALIDATIONS PASSED</h2>
+        <p>All {{ total_uploads }} file(s) passed validation successfully. You can proceed to the Reconciliation Dashboard.</p>
+    {% else %}
+        <div class="status-icon">✗</div>
+        <h2>SOME VALIDATIONS FAILED</h2>
+        <p>One or more files failed validation. Please review the errors below.</p>
+    {% endif %}
+</div>
+
+<!-- Files Summary -->
+<div class="files-summary" style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <h2>Uploaded Files</h2>
+    <div style="display: grid; gap: 15px;">
+        {% for data in uploads_data %}
+        <div style="border: 1px solid #ddd; padding: 15px; border-radius: 6px; {% if data.validation_passed %}background: #f0f9f0;{% elif data.validation_passed == False %}background: #fff5f5;{% endif %}">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <div>
+                    <strong style="font-size: 16px;">{{ data.upload.file_name }}</strong>
+                    <br>
+                    <span style="color: #666; font-size: 14px;">{{ data.upload.source_system }} - {{ data.upload.record_count|default:"0" }} records</span>
+                </div>
+                <div>
+                    {% if data.validation_passed %}
+                        <span class="badge badge-success" style="font-size: 14px; padding: 8px 16px;">✓ PASSED</span>
+                    {% elif data.validation_passed == False %}
+                        <span class="badge badge-error" style="font-size: 14px; padding: 8px 16px;">✗ FAILED</span>
+                    {% else %}
+                        <span class="badge" style="background: #ccc; font-size: 14px; padding: 8px 16px;">NO VALIDATION</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div style="font-size: 13px; color: #666;">
+                Uploaded: {{ data.upload.uploaded_at|date:"d M Y H:i" }} by {{ data.upload.uploaded_by.username }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Validation Details for Each File -->
+{% for data in uploads_data %}
+<div class="validation-section" style="margin-bottom: 40px;">
+    <h2 style="background: #f5f5f5; padding: 15px; border-radius: 8px; border-left: 4px solid {% if data.validation_passed %}#28a745{% else %}#dc3545{% endif %};">
+        {{ data.upload.source_system }} - {{ data.upload.file_name }}
+    </h2>
+
+    {% if data.validations %}
+    <div class="validation-tests">
+        {% for test in data.validations %}
+        <div class="test-card {% if test.passed %}test-pass{% else %}test-fail{% endif %}">
+            <div class="test-header">
+                <div class="test-status-icon">
+                    {% if test.passed %}✓{% else %}✗{% endif %}
+                </div>
+                <div class="test-info">
+                    <h3>{{ test.test_name }}</h3>
+                    <p class="test-description">{{ test.description }}</p>
+                </div>
+                <div class="test-badge">
+                    {% if test.passed %}
+                        <span class="badge badge-success">PASS</span>
+                    {% else %}
+                        <span class="badge badge-error">FAIL</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if not test.passed and test.errors %}
+            <div class="test-errors">
+                <h4>Errors Found:</h4>
+                {% for error in test.errors %}
+                <div class="error-detail">
+                    {% if error.message %}
+                        <p class="error-message">{{ error.message }}</p>
+                    {% endif %}
+
+                    {% if error.invalid_employees %}
+                        <p><strong>Invalid Employee Codes:</strong></p>
+                        <ul class="error-list">
+                            {% for emp in error.invalid_employees|slice:":10" %}
+                            <li>{{ emp }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% if error.total_count > 10 %}
+                        <p class="error-note">Showing first 10 of {{ error.total_count }} invalid employee codes</p>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if error.unmapped_locations %}
+                        <p><strong>Unmapped Tanda Locations:</strong></p>
+                        <ul class="error-list">
+                            {% for loc in error.unmapped_locations %}
+                            <li>{{ loc }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+
+                    {% if error.invalid_codes %}
+                        <p><strong>Invalid Pay Comp Codes:</strong></p>
+                        <ul class="error-list">
+                            {% for code in error.invalid_codes|slice:":10" %}
+                            <li>{{ code }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% if error.total_count > 10 %}
+                        <p class="error-note">Showing first 10 of {{ error.total_count }} invalid codes</p>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if test.warnings %}
+            <div class="test-warnings" style="background: #fff3cd; padding: 15px; border-radius: 4px; margin-top: 10px;">
+                <h4 style="color: #856404;">Warnings:</h4>
+                {% for warning in test.warnings %}
+                <div class="warning-detail">
+                    <p style="color: #856404;">⚠ {{ warning.message }}</p>
+                    {% if warning.team_names %}
+                        <p><strong>Team Names Found:</strong></p>
+                        <ul class="error-list">
+                            {% for team in warning.team_names %}
+                            <li>{{ team }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% if warning.note %}
+                        <p style="font-style: italic; color: #666;">{{ warning.note }}</p>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="padding: 20px; background: #f9f9f9; border-radius: 4px; text-align: center; color: #666;">
+        No validation results available for this file.
+    </p>
+    {% endif %}
+</div>
+{% endfor %}
+
+<!-- Action Buttons -->
+<div class="actions" style="margin-top: 30px; display: flex; gap: 10px;">
+    {% if pay_period %}
+    <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="button">
+        Go to Reconciliation Dashboard →
+    </a>
+    {% endif %}
+    <a href="{% url 'reconciliation:multi_upload' %}" class="button button-secondary">
+        Upload More Files
+    </a>
+    <a href="{% url 'reconciliation:pay_period_list' %}" class="button button-secondary">
+        ← Back to Pay Periods
+    </a>
+</div>
+
+{% endif %}
+{% endblock %}

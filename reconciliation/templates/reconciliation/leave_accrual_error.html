@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Accrual Generation Error</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #dc3545;
+        }
+        .error-icon {
+            font-size: 64px;
+            color: #dc3545;
+        }
+        .error-message {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 10px 5px;
+            background-color: #757575;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background-color: #616161;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error-icon">⚠️</div>
+        <h1>Leave Accrual Generation Error</h1>
+        <h2>Pay Period: {{ pay_period.period_id }}</h2>
+
+        <div class="error-message">
+            <strong>Error:</strong> {{ error }}
+        </div>
+
+        <p>Please resolve the error and try again.</p>
+
+        <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn">
+            ← Back to Dashboard
+        </a>
+    </div>
+</body>
+</html>

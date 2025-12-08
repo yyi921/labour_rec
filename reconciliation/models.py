@@ -52,6 +52,7 @@ class Upload(models.Model):
         ('Tanda_Timesheet', 'Tanda Timesheet'),
         ('Micropay_IQB', 'Micropay IQB Report'),
         ('Micropay_Journal', 'Micropay GL Journal'),
+        ('Micropay_IQB_Leave', 'Micropay IQB Leave Balance'),
     ]
     source_system = models.CharField(max_length=50, choices=SOURCE_CHOICES)
     
@@ -97,6 +98,7 @@ class TandaTimesheet(models.Model):
     location_name = models.CharField(max_length=200)  # Maps to cost center
     team_name = models.CharField(max_length=200)
     award_export_name = models.CharField(max_length=100)  # Leave type indicator
+    gl_code = models.CharField(max_length=20, blank=True, default='')  # Direct GL mapping (e.g., "454-30")
     
     date_shift_start = models.DateField(null=True, blank=True)
     shift_start_time = models.TimeField(null=True, blank=True)
@@ -200,6 +202,35 @@ class JournalEntry(models.Model):
     
     def __str__(self):
         return f"{self.cost_account} - {self.transaction}: ${self.debit}"
+
+
+class IQBLeaveBalance(models.Model):
+    """Leave balances from Micropay IQB Leave Balance reports"""
+    upload = models.ForeignKey(Upload, on_delete=models.CASCADE, related_name='leave_balance_records')
+
+    employee_code = models.CharField(max_length=20, db_index=True)
+    surname = models.CharField(max_length=100)
+    first_name = models.CharField(max_length=100)
+    full_name = models.CharField(max_length=200)
+    employment_type = models.CharField(max_length=50)
+    location = models.CharField(max_length=100)
+
+    leave_type = models.CharField(max_length=100, db_index=True)  # 'Annual Leave', 'Long Service Leave', 'User Defined Leave'
+    leave_description = models.CharField(max_length=200, blank=True)  # For User Defined Leave, e.g., 'time-in-lieu'
+    balance_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    balance_value = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    leave_loading = models.DecimalField(max_digits=15, decimal_places=2, default=0)  # Leave Loading Entitlement & Pro Rata
+
+    as_of_date = models.DateField()  # The date this balance is as of
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['upload', 'employee_code', 'leave_type']),
+            models.Index(fields=['as_of_date', 'leave_type']),
+        ]
+
+    def __str__(self):
+        return f"{self.employee_code} - {self.leave_type}: {self.balance_hours}hrs / ${self.balance_value}"
 
 
 class CostCenterSplit(models.Model):

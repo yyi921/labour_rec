@@ -4,7 +4,7 @@ from .models import (
     CostCenterSplit, ReconciliationRun, ReconciliationItem,
     ExceptionResolution, LabourCostSummary, SageIntacctExport,
     EmployeeReconciliation, JournalReconciliation, LocationMapping,
-    ValidationResult, EmployeePayPeriodSnapshot
+    ValidationResult, EmployeePayPeriodSnapshot, IQBLeaveBalance
 )
 
 @admin.register(PayPeriod)
@@ -36,6 +36,13 @@ class JournalEntryAdmin(admin.ModelAdmin):
     list_display = ['cost_account', 'transaction', 'debit', 'hours', 'date']
     list_filter = ['ledger_account', 'transaction']
     search_fields = ['cost_account', 'description']
+
+@admin.register(IQBLeaveBalance)
+class IQBLeaveBalanceAdmin(admin.ModelAdmin):
+    list_display = ['employee_code', 'full_name', 'leave_type', 'balance_hours', 'balance_value', 'leave_loading', 'as_of_date']
+    list_filter = ['leave_type', 'employment_type', 'as_of_date', 'location']
+    search_fields = ['employee_code', 'surname', 'first_name', 'full_name']
+    readonly_fields = ['upload', 'as_of_date']
 
 @admin.register(CostCenterSplit)
 class CostCenterSplitAdmin(admin.ModelAdmin):

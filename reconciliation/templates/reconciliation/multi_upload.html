@@ -1,0 +1,639 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-File Upload - Labour Reconciliation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .upload-zone {
+            background: white;
+            border: 3px dashed #ccc;
+            border-radius: 10px;
+            padding: 60px 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 30px;
+        }
+
+        .upload-zone.drag-over {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .upload-zone:hover {
+            border-color: #667eea;
+        }
+
+        .upload-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-list {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            transition: background 0.2s;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-item:hover {
+            background: #f9f9f9;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+        .file-icon {
+            font-size: 24px;
+            margin-right: 15px;
+        }
+
+        .file-details {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .file-meta {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .file-status {
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-right: 10px;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-uploading {
+            background: #cfe2ff;
+            color: #084298;
+        }
+
+        .status-success {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #842029;
+        }
+
+        .status-validating {
+            background: #e7d7f8;
+            color: #5a0f84;
+        }
+
+        .remove-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .remove-btn:hover {
+            background: #c82333;
+        }
+
+        .view-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+            margin-right: 10px;
+            transition: background 0.2s;
+        }
+
+        .view-btn:hover {
+            background: #0056b3;
+        }
+
+        .actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #eee;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #667eea;
+            transition: width 0.3s;
+        }
+
+        .summary {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .summary-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .validation-details {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Multi-File Upload</h1>
+            <p class="subtitle">Upload multiple files for validation and processing</p>
+        </div>
+
+        <!-- Pay Period Input -->
+        <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+            <label for="payPeriodInput" style="display: block; font-weight: 500; margin-bottom: 10px; color: #333;">
+                Pay Period ID (e.g., 2025-11-16):
+            </label>
+            <input
+                type="text"
+                id="payPeriodInput"
+                placeholder="YYYY-MM-DD"
+                style="width: 300px; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px;"
+                value=""
+            >
+            <p style="margin-top: 8px; font-size: 13px; color: #666;">
+                Enter the pay period end date in YYYY-MM-DD format
+            </p>
+        </div>
+
+        <div class="upload-zone" id="uploadZone">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Drag & drop files here or click to browse</div>
+            <div class="upload-hint">Supports CSV and Excel files (Tanda Timesheet, IQB Report, GL Journal, IQB Leave Balance)</div>
+            <input type="file" id="fileInput" class="file-input" multiple accept=".csv,.xlsx,.xls">
+        </div>
+
+        <div class="summary" id="summary" style="display: none;">
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="summary-value" id="totalFiles">0</div>
+                    <div class="summary-label">Total Files</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" id="successCount">0</div>
+                    <div class="summary-label">Uploaded</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" id="errorCount">0</div>
+                    <div class="summary-label">Errors</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" id="pendingCount">0</div>
+                    <div class="summary-label">Pending</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="file-list" id="fileList" style="display: none;">
+            <h3 style="margin-bottom: 15px;">Files Queue</h3>
+            <div id="filesContainer"></div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary" id="uploadAllBtn" disabled>Upload & Validate All</button>
+            <button class="btn btn-secondary" id="clearAllBtn">Clear All</button>
+            <a href="{% url 'reconciliation:pay_period_list' %}" class="btn btn-secondary">← Back to Pay Periods</a>
+        </div>
+    </div>
+
+    <script>
+        let files = [];
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const filesContainer = document.getElementById('filesContainer');
+        const uploadAllBtn = document.getElementById('uploadAllBtn');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        const summary = document.getElementById('summary');
+        const payPeriodInput = document.getElementById('payPeriodInput');
+
+        // Get CSRF token from cookies
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+
+        // Drag and drop handlers
+        uploadZone.addEventListener('click', () => fileInput.click());
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('drag-over');
+        });
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('drag-over');
+        });
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(fileList) {
+            for (let file of fileList) {
+                files.push({
+                    file: file,
+                    id: Date.now() + Math.random(),
+                    status: 'pending',
+                    uploadId: null,
+                    validationResult: null,
+                    error: null
+                });
+            }
+            renderFiles();
+            updateSummary();
+        }
+
+        function renderFiles() {
+            if (files.length === 0) {
+                fileList.style.display = 'none';
+                uploadAllBtn.disabled = true;
+                return;
+            }
+
+            fileList.style.display = 'block';
+            summary.style.display = 'block';
+            uploadAllBtn.disabled = false;
+
+            filesContainer.innerHTML = files.map((fileObj, index) => `
+                <div class="file-item" id="file-${fileObj.id}">
+                    <div class="file-info">
+                        <div class="file-icon">${getFileIcon(fileObj.file.name)}</div>
+                        <div class="file-details">
+                            <div class="file-name">${fileObj.file.name}</div>
+                            <div class="file-meta">${formatFileSize(fileObj.file.size)}</div>
+                            ${fileObj.error ? `<div class="error-message">${fileObj.error}</div>` : ''}
+                            ${fileObj.validationResult ? renderValidationResult(fileObj.validationResult) : ''}
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <span class="file-status status-${fileObj.status}">${formatStatus(fileObj.status)}</span>
+                        ${fileObj.uploadId && fileObj.status === 'success' ?
+                            `<a href="/validation/${fileObj.uploadId}/" class="view-btn" target="_blank">View Details</a>` : ''}
+                        ${fileObj.status === 'pending' ?
+                            `<button class="remove-btn" onclick="removeFile(${index})">Remove</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderValidationResult(result) {
+            if (!result) return '';
+
+            const passed = result.passed;
+            const statusClass = passed ? 'status-success' : 'status-error';
+            const statusText = passed ? '✓ Validation Passed' : '✗ Validation Failed';
+
+            let details = `<div class="validation-details">
+                <strong>${statusText}</strong><br>`;
+
+            if (result.validations && result.validations.length > 0) {
+                details += '<ul style="margin: 5px 0; padding-left: 20px;">';
+                result.validations.forEach(v => {
+                    const icon = v.passed ? '✓' : '✗';
+                    details += `<li>${icon} ${v.test_name}: ${v.message || (v.passed ? 'OK' : 'Failed')}</li>`;
+                });
+                details += '</ul>';
+            }
+
+            details += '</div>';
+            return details;
+        }
+
+        function getFileIcon(filename) {
+            if (filename.endsWith('.csv')) return '📄';
+            if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) return '📊';
+            return '📁';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function formatStatus(status) {
+            const statusMap = {
+                'pending': 'Pending',
+                'uploading': 'Uploading...',
+                'validating': 'Validating...',
+                'success': 'Complete',
+                'error': 'Error'
+            };
+            return statusMap[status] || status;
+        }
+
+        function removeFile(index) {
+            files.splice(index, 1);
+            renderFiles();
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const total = files.length;
+            const success = files.filter(f => f.status === 'success').length;
+            const error = files.filter(f => f.status === 'error').length;
+            const pending = files.filter(f => f.status === 'pending').length;
+
+            document.getElementById('totalFiles').textContent = total;
+            document.getElementById('successCount').textContent = success;
+            document.getElementById('errorCount').textContent = error;
+            document.getElementById('pendingCount').textContent = pending;
+        }
+
+        uploadAllBtn.addEventListener('click', async () => {
+            // Validate pay period input
+            const payPeriod = payPeriodInput.value.trim();
+            if (!payPeriod) {
+                alert('Please enter a pay period ID (e.g., 2025-11-16)');
+                payPeriodInput.focus();
+                return;
+            }
+
+            // Validate format (basic check)
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(payPeriod)) {
+                alert('Please enter pay period ID in YYYY-MM-DD format');
+                payPeriodInput.focus();
+                return;
+            }
+
+            uploadAllBtn.disabled = true;
+            clearAllBtn.disabled = true;
+
+            for (let i = 0; i < files.length; i++) {
+                if (files[i].status !== 'pending') continue;
+
+                await uploadFile(i);
+            }
+
+            uploadAllBtn.disabled = false;
+            clearAllBtn.disabled = false;
+
+            // After all uploads complete, redirect to validation summary
+            window.location.href = `/validation/summary/${payPeriod}/`;
+        });
+
+        clearAllBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear all files?')) {
+                files = [];
+                renderFiles();
+                updateSummary();
+            }
+        });
+
+        async function uploadFile(index) {
+            const fileObj = files[index];
+            fileObj.status = 'uploading';
+            renderFiles();
+            updateSummary();
+
+            const formData = new FormData();
+            formData.append('file', fileObj.file);
+
+            try {
+                const response = await fetch('/api/uploads/smart/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    fileObj.status = 'success';
+                    fileObj.uploadId = data.upload_id;
+                    fileObj.validationResult = data.validation_result;
+                } else if (response.status === 409 && data.status === 'duplicate_detected') {
+                    // Duplicate detected - automatically override
+                    fileObj.status = 'uploading';
+                    fileObj.error = 'Duplicate detected, overriding...';
+                    renderFiles();
+
+                    const overrideFormData = new FormData();
+                    overrideFormData.append('file', fileObj.file);
+                    overrideFormData.append('reason', 'Auto-override from multi-upload');
+
+                    const overrideResponse = await fetch(data.actions.override, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': csrftoken
+                        },
+                        body: overrideFormData
+                    });
+
+                    const overrideData = await overrideResponse.json();
+
+                    if (overrideResponse.ok) {
+                        fileObj.status = 'success';
+                        fileObj.uploadId = overrideData.upload_id;
+                        fileObj.validationResult = overrideData.validation_result;
+                        fileObj.error = null;
+                    } else {
+                        fileObj.status = 'error';
+                        fileObj.error = overrideData.detail || overrideData.error || 'Override failed';
+                    }
+                } else {
+                    fileObj.status = 'error';
+                    fileObj.error = data.detail || data.message || data.error || 'Upload failed';
+                }
+            } catch (error) {
+                fileObj.status = 'error';
+                fileObj.error = error.message;
+            }
+
+            renderFiles();
+            updateSummary();
+        }
+    </script>
+</body>
+</html>

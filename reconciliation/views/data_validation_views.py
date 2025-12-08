@@ -32,3 +32,53 @@ def validation_result_view(request, upload_id):
     }
 
     return render(request, 'reconciliation/validation_result.html', context)
+
+
+def validation_summary_view(request, pay_period_id):
+    """
+    Display validation results for all uploads in a pay period
+    """
+    pay_period = get_object_or_404(PayPeriod, period_id=pay_period_id)
+
+    # Get all active uploads for this pay period
+    uploads = Upload.objects.filter(
+        pay_period=pay_period,
+        is_active=True
+    ).order_by('source_system', '-uploaded_at')
+
+    if not uploads.exists():
+        return render(request, 'reconciliation/validation_summary.html', {
+            'error': f'No uploads found for pay period {pay_period_id}',
+            'pay_period': pay_period
+        })
+
+    # Get uploads and their validation results
+    uploads_data = []
+
+    for upload in uploads:
+        try:
+            validation = ValidationResult.objects.get(upload=upload)
+            validation_data = validation.validation_data
+            validations = validation_data.get('validations', [])
+        except ValidationResult.DoesNotExist:
+            validation = None
+            validations = []
+
+        uploads_data.append({
+            'upload': upload,
+            'validation': validation,
+            'validation_passed': validation.passed if validation else None,
+            'validations': validations
+        })
+
+    # Calculate overall status
+    all_passed = all(data['validation_passed'] for data in uploads_data if data['validation_passed'] is not None)
+
+    context = {
+        'uploads_data': uploads_data,
+        'pay_period': pay_period,
+        'all_passed': all_passed,
+        'total_uploads': len(uploads_data)
+    }
+
+    return render(request, 'reconciliation/validation_summary.html', context)

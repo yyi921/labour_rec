@@ -9,9 +9,7 @@ BASE_URL = 'http://127.0.0.1:8000'
 
 # Test files
 test_files = [
-    ('Tanda', r'C:\Users\yuany\OneDrive\Desktop\labour_reconciliation\media\test_data\Tanda_Timesheet Report by Hours, $, Export Name and Location.csv'),
-    ('IQB', r'C:\Users\yuany\OneDrive\Desktop\labour_reconciliation\media\test_data\Micropay_TSV RET002 FNE 20251116 FN1.csv'),
-    ('Journal', r'C:\Users\yuany\OneDrive\Desktop\labour_reconciliation\media\test_data\Micropay_TSV GL Batch FNE 20251116 FN1.csv'),
+    ('IQB', r'C:\Users\yuany\OneDrive\Desktop\labour_reconciliation\media\test_data\Micropay_TSV RET002 FNE 20251116 FN1 - v1.csv'),
 ]
 
 print("=" * 80)
@@ -57,6 +55,37 @@ for name, filepath in test_files:
         print(f"  Version: {data['existing_upload']['version']}")
         print(f"  Uploaded: {data['existing_upload']['uploaded_at']}")
         print(f"  Override URL: {BASE_URL}{data['actions']['override']}")
+
+        # Auto-override with new file
+        print(f"\n[INFO] Auto-overriding with new file...")
+        with open(filepath, 'rb') as f:
+            files = {'file': (os.path.basename(filepath), f)}
+            override_response = requests.post(f"{BASE_URL}{data['actions']['override']}", files=files)
+
+        if override_response.status_code == 200:
+            override_data = override_response.json()
+            print(f"[OK] Override successful!")
+
+            # Check structure and display data
+            if 'upload' in override_data:
+                print(f"  File Type: {override_data['upload']['file_type']}")
+                print(f"  Records: {override_data['upload']['records_imported']}")
+                print(f"  Period: {override_data['period']['period_id']}")
+                print(f"  Upload ID: {override_data['upload']['upload_id']}")
+                print(f"  Version: {override_data['upload']['version']}")
+
+                # Display validation results
+                if 'validation' in override_data:
+                    validation = override_data['validation']
+                    validation_status = "[PASS]" if validation['passed'] else "[FAIL]"
+                    print(f"  Validation: {validation_status}")
+                    print(f"  Validation URL: {BASE_URL}{validation['validation_url']}")
+            else:
+                # Alternative structure
+                print(f"  Upload ID: {override_data.get('upload_id', 'N/A')}")
+                print(f"  Response: {override_data}")
+        else:
+            print(f"[ERROR] Override failed: {override_response.json()}")
 
     else:
         print(f"[ERROR] Error: {response.json()}")

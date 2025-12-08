@@ -40,6 +40,15 @@ class FileDetector:
                 'Date'
             ],
             'optional_columns': ['Credit', 'Hours', 'Transaction'],
+        },
+        'Micropay_IQB_Leave': {
+            'required_columns': [
+                'Employee Code',
+                'Leave Type',
+                'Total Amount Liability Normal Rate',
+                'Leave Loading Entitlement & Pro Rata Normal Rate'
+            ],
+            'optional_columns': ['Surname', 'First Name', 'Total Hours'],
         }
     }
     
@@ -107,7 +116,7 @@ class FileDetector:
         Args:
             file_type: Type of file detected
             df: DataFrame containing the file data
-            filepath: Optional path to the file (needed for Journal date extraction)
+            filepath: Optional path to the file (needed for Journal and Leave Balance date extraction)
 
         Returns:
             dict: {
@@ -123,6 +132,8 @@ class FileDetector:
                 return FileDetector._extract_iqb_period(df)
             elif file_type == 'Micropay_Journal':
                 return FileDetector._extract_journal_period(df, filepath)
+            elif file_type == 'Micropay_IQB_Leave':
+                return FileDetector._extract_leave_balance_period(df, filepath)
             else:
                 return None
         except Exception as e:
@@ -213,10 +224,49 @@ class FileDetector:
         return None
     
     @staticmethod
+    def _extract_leave_balance_period(df, filepath=None):
+        """
+        Extract period from Micropay IQB Leave Balance file
+
+        Args:
+            df: DataFrame (not used, kept for consistency)
+            filepath: Path to the file (e.g., "Micropay_TSV IQB LV008 2025-11-16.csv")
+
+        Returns:
+            dict with period_end only (no period_start for Leave Balance files)
+        """
+        if not filepath:
+            return None
+
+        # Extract filename from full path
+        import os
+        filename = os.path.basename(filepath)
+
+        # Look for date pattern (YYYY-MM-DD or YYYY-M-D) in filename
+        # Pattern supports both zero-padded and non-zero-padded dates
+        pattern = r'(\d{4})-(\d{1,2})-(\d{1,2})'
+        match = re.search(pattern, filename)
+
+        if match:
+            year, month, day = match.groups()
+            try:
+                period_end = datetime(int(year), int(month), int(day)).date()
+
+                return {
+                    'period_end': period_end,
+                    'period_start': None,  # No start date for Leave Balance files
+                    'period_id': period_end.isoformat()
+                }
+            except ValueError:
+                pass
+
+        return None
+
+    @staticmethod
     def extract_from_filename(filename):
         """
         Try to extract period from filename as fallback
-        
+
         Common patterns:
         - payroll_2025-10-05.csv
         - Tanda_20251005.xlsx
@@ -237,7 +287,7 @@ class FileDetector:
                 }
             except:
                 pass
-        
+
         # Pattern 2: YYYYMMDD
         pattern2 = r'(\d{8})'
         match = re.search(pattern2, filename)
@@ -253,5 +303,5 @@ class FileDetector:
                 }
             except:
                 pass
-        
+
         return None

@@ -5,6 +5,7 @@ from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from django.db import transaction
 import json
 import csv
 import os
@@ -563,21 +564,22 @@ def _calculate_iqb_allocation(iqb_upload, emp_code, include_transaction_types, t
 
 def _calculate_tanda_allocation(tanda_upload, emp_code, total_cost):
     """
-    Calculate allocation based on Tanda timesheets and location mapping
+    Calculate allocation based on Tanda timesheets using gl_code field
+    Falls back to location mapping for backward compatibility
     Returns dict of {cost_account: {percentage: float, amount: float}}
     """
     # Get all Tanda records for this employee
     tanda_records = TandaTimesheet.objects.filter(
         upload=tanda_upload,
         employee_id=emp_code
-    ).values('location_name').annotate(
+    ).values('gl_code', 'location_name').annotate(
         total_hours=Sum('shift_hours')
     )
 
     if not tanda_records:
         return None
 
-    # Get location mappings
+    # Get location mappings (for backward compatibility)
     location_mappings = {
         mapping.tanda_location: mapping.cost_account_code
         for mapping in LocationMapping.objects.filter(is_active=True)
@@ -594,12 +596,17 @@ def _calculate_tanda_allocation(tanda_upload, emp_code, total_cost):
 
     allocation = {}
     for item in tanda_records:
+        gl_code = item['gl_code']
         location = item['location_name']
         hours = float(item['total_hours'] or 0)
 
-        cost_account = location_mappings.get(location)
-        if not cost_account:
-            continue
+        # Use gl_code if available, otherwise fall back to location mapping
+        if gl_code:
+            cost_account = gl_code
+        else:
+            cost_account = location_mappings.get(location)
+            if not cost_account:
+                continue  # Skip only if no gl_code AND no location mapping
 
         percentage = (hours / total_hours) * 100
         amount = (percentage / 100) * total_cost_float
@@ -924,149 +931,154 @@ def save_cost_allocations(request, pay_period_id):
 
         saved_count = 0
 
-        # Process each employee
-        for change in changes:
-            emp_code = change.get('employee_code')
-            source = change.get('source')
-            override_allocation = change.get('override', {})
+        # Process each employee in a transaction to prevent database locks
+        with transaction.atomic():
+            for change in changes:
+                emp_code = change.get('employee_code')
+                source = change.get('source')
+                override_allocation = change.get('override', {})
 
-            # Get employee name
-            emp_name = CostAllocationRule.objects.filter(
-                pay_period=pay_period,
-                employee_code=emp_code
-            ).first()
-            if not emp_name:
-                continue
-            emp_name = emp_name.employee_name
-
-            # Get employee's GL breakdown
-            pay_comp_breakdown = IQBDetail.objects.filter(
-                upload=iqb_upload,
-                employee_code=emp_code,
-                transaction_type__in=include_transaction_types
-            ).values('pay_comp_code').annotate(
-                total=Sum('amount')
-            )
-
-            gl_costs = _map_to_gl_accounts(pay_comp_breakdown)
-            total_cost = sum(gl_costs.values())
-
-            # Get the allocation based on source
-            if source == 'override':
-                allocation = override_allocation
-            elif source == 'iqb':
-                allocation = _calculate_iqb_allocation(iqb_upload, emp_code, include_transaction_types, total_cost)
-            elif source == 'tanda':
-                tanda_upload = Upload.objects.filter(
+                # Get employee name
+                emp_name = CostAllocationRule.objects.filter(
                     pay_period=pay_period,
-                    source_system='Tanda_Timesheet',
-                    is_active=True
+                    employee_code=emp_code
                 ).first()
-                if tanda_upload:
-                    allocation = _calculate_tanda_allocation(tanda_upload, emp_code, total_cost)
-                else:
+                if not emp_name:
+                    continue
+                emp_name = emp_name.employee_name
+
+                # Get employee's GL breakdown
+                pay_comp_breakdown = IQBDetail.objects.filter(
+                    upload=iqb_upload,
+                    employee_code=emp_code,
+                    transaction_type__in=include_transaction_types
+                ).values('pay_comp_code').annotate(
+                    total=Sum('amount')
+                )
+
+                gl_costs = _map_to_gl_accounts(pay_comp_breakdown)
+                total_cost = sum(gl_costs.values())
+
+                # Get the allocation based on source
+                if source == 'override':
+                    allocation = override_allocation
+                    # If override is empty, fall back to IQB but still save source as 'override'
+                    # This allows the user to select Override first, then enter values later
+                    if not allocation:
+                        allocation = _calculate_iqb_allocation(iqb_upload, emp_code, include_transaction_types, total_cost)
+                elif source == 'iqb':
                     allocation = _calculate_iqb_allocation(iqb_upload, emp_code, include_transaction_types, total_cost)
-            else:
-                continue
-
-            if not allocation:
-                continue
-
-            # Expand SPL allocations
-            expanded_allocation = _expand_spl_allocations(allocation)
-
-            # Build cost_allocation JSON structure: { '449': { '50': 33.33, '30': 16.67 } }
-            cost_allocation_json = {}
-
-            for cost_account, details in expanded_allocation.items():
-                if not cost_account or '-' not in cost_account:
+                elif source == 'tanda':
+                    tanda_upload = Upload.objects.filter(
+                        pay_period=pay_period,
+                        source_system='Tanda_Timesheet',
+                        is_active=True
+                    ).first()
+                    if tanda_upload:
+                        allocation = _calculate_tanda_allocation(tanda_upload, emp_code, total_cost)
+                    else:
+                        allocation = _calculate_iqb_allocation(iqb_upload, emp_code, include_transaction_types, total_cost)
+                else:
                     continue
 
-                # Parse location and department from cost account
-                parts = cost_account.split('-')
-                location_id = parts[0]
-                dept_id = parts[1][:2] if len(parts[1]) >= 2 else ''
+                if not allocation:
+                    continue
 
-                if location_id not in cost_allocation_json:
-                    cost_allocation_json[location_id] = {}
+                # Expand SPL allocations
+                expanded_allocation = _expand_spl_allocations(allocation)
 
-                if dept_id not in cost_allocation_json[location_id]:
-                    cost_allocation_json[location_id][dept_id] = 0
+                # Build cost_allocation JSON structure: { '449': { '50': 33.33, '30': 16.67 } }
+                cost_allocation_json = {}
 
-                cost_allocation_json[location_id][dept_id] += float(details.get('percentage', 0))
+                for cost_account, details in expanded_allocation.items():
+                    if not cost_account or '-' not in cost_account:
+                        continue
 
-            # Map GL accounts to model fields
-            gl_field_mapping = {
-                # Payroll Liability Accounts (2xxx)
-                '2310': 'gl_2310_annual_leave',
-                '2317': 'gl_2317_long_service_leave',  # Actually TIL Provision, but field name kept
-                '2318': 'gl_2318_toil_liability',
-                '2320': 'gl_2320_sick_leave',  # Actually WorkCover, but field name kept
-                '2321': 'gl_2321_paid_parental',
-                '2325': 'gl_2325_leasing',
-                '2330': 'gl_2330_long_service_leave',
-                '2350': 'gl_2350_net_wages',
-                '2351': 'gl_2351_other_deductions',
-                '2360': 'gl_2360_payg_withholding',
-                '2391': 'gl_2391_super_sal_sacrifice',
-                # Labour Expense Accounts (6xxx)
-                '6302': 'gl_6302',
-                '6305': 'gl_6305',
-                '6309': 'gl_6309',
-                '6310': 'gl_6310',
-                '6312': 'gl_6312',
-                '6315': 'gl_6315',
-                '6325': 'gl_6325',
-                '6330': 'gl_6330',
-                '6331': 'gl_6331',
-                '6332': 'gl_6332',
-                '6335': 'gl_6335',
-                '6338': 'gl_6338',
-                '6340': 'gl_6340',
-                '6345': 'gl_6345_salaries',
-                '6350': 'gl_6350',
-                '6355': 'gl_6355_sick_leave',
-                '6370': 'gl_6370_superannuation',
-                '6372': 'gl_6372_toil',
-                '6375': 'gl_6375',
-                '6380': 'gl_6380',
-            }
+                    # Parse location and department from cost account
+                    parts = cost_account.split('-')
+                    location_id = parts[0]
+                    dept_id = parts[1][:2] if len(parts[1]) >= 2 else ''
 
-            # Build GL values
-            gl_values = {}
-            for gl_account, gl_amount in gl_costs.items():
-                if gl_account in gl_field_mapping:
-                    gl_values[gl_field_mapping[gl_account]] = Decimal(str(gl_amount))
+                    if location_id not in cost_allocation_json:
+                        cost_allocation_json[location_id] = {}
 
-            # Delete existing snapshot for this employee/pay period
-            EmployeePayPeriodSnapshot.objects.filter(
-                pay_period=pay_period,
-                employee_code=emp_code
-            ).delete()
+                    if dept_id not in cost_allocation_json[location_id]:
+                        cost_allocation_json[location_id][dept_id] = 0
 
-            # Create single snapshot for this employee
-            EmployeePayPeriodSnapshot.objects.create(
-                pay_period=pay_period,
-                employee_code=emp_code,
-                employee_name=emp_name,
-                cost_allocation=cost_allocation_json,
-                allocation_source=source,
-                total_cost=Decimal(str(total_cost)),
-                **gl_values
-            )
+                    cost_allocation_json[location_id][dept_id] += float(details.get('percentage', 0))
 
-            # Update or create CostAllocationRule to persist the source selection
-            CostAllocationRule.objects.update_or_create(
-                pay_period=pay_period,
-                employee_code=emp_code,
-                defaults={
-                    'employee_name': emp_name,
-                    'source': source,
-                    'allocations': expanded_allocation
+                # Map GL accounts to model fields
+                gl_field_mapping = {
+                    # Payroll Liability Accounts (2xxx)
+                    '2310': 'gl_2310_annual_leave',
+                    '2317': 'gl_2317_long_service_leave',  # Actually TIL Provision, but field name kept
+                    '2318': 'gl_2318_toil_liability',
+                    '2320': 'gl_2320_sick_leave',  # Actually WorkCover, but field name kept
+                    '2321': 'gl_2321_paid_parental',
+                    '2325': 'gl_2325_leasing',
+                    '2330': 'gl_2330_long_service_leave',
+                    '2350': 'gl_2350_net_wages',
+                    '2351': 'gl_2351_other_deductions',
+                    '2360': 'gl_2360_payg_withholding',
+                    '2391': 'gl_2391_super_sal_sacrifice',
+                    # Labour Expense Accounts (6xxx)
+                    '6302': 'gl_6302',
+                    '6305': 'gl_6305',
+                    '6309': 'gl_6309',
+                    '6310': 'gl_6310',
+                    '6312': 'gl_6312',
+                    '6315': 'gl_6315',
+                    '6325': 'gl_6325',
+                    '6330': 'gl_6330',
+                    '6331': 'gl_6331',
+                    '6332': 'gl_6332',
+                    '6335': 'gl_6335',
+                    '6338': 'gl_6338',
+                    '6340': 'gl_6340',
+                    '6345': 'gl_6345_salaries',
+                    '6350': 'gl_6350',
+                    '6355': 'gl_6355_sick_leave',
+                    '6370': 'gl_6370_superannuation',
+                    '6372': 'gl_6372_toil',
+                    '6375': 'gl_6375',
+                    '6380': 'gl_6380',
                 }
-            )
 
-            saved_count += 1
+                # Build GL values
+                gl_values = {}
+                for gl_account, gl_amount in gl_costs.items():
+                    if gl_account in gl_field_mapping:
+                        gl_values[gl_field_mapping[gl_account]] = Decimal(str(gl_amount))
+
+                # Delete existing snapshot for this employee/pay period
+                EmployeePayPeriodSnapshot.objects.filter(
+                    pay_period=pay_period,
+                    employee_code=emp_code
+                ).delete()
+
+                # Create single snapshot for this employee
+                EmployeePayPeriodSnapshot.objects.create(
+                    pay_period=pay_period,
+                    employee_code=emp_code,
+                    employee_name=emp_name,
+                    cost_allocation=cost_allocation_json,
+                    allocation_source=source,
+                    total_cost=Decimal(str(total_cost)),
+                    **gl_values
+                )
+
+                # Update or create CostAllocationRule to persist the source selection
+                CostAllocationRule.objects.update_or_create(
+                    pay_period=pay_period,
+                    employee_code=emp_code,
+                    defaults={
+                        'employee_name': emp_name,
+                        'source': source,
+                        'allocations': expanded_allocation
+                    }
+                )
+
+                saved_count += 1
 
         return JsonResponse({
             'success': True,
@@ -1116,129 +1128,133 @@ def save_all_allocations(request, pay_period_id):
 
         saved_count = 0
 
-        # Process each employee using their source from CostAllocationRule
-        for rule in all_rules:
-            emp_code = rule.employee_code
-            emp_name = rule.employee_name
-            source = rule.source  # Get the source from the rule
+        # Process each employee using their source from CostAllocationRule in a transaction
+        with transaction.atomic():
+            for rule in all_rules:
+                emp_code = rule.employee_code
+                emp_name = rule.employee_name
+                source = rule.source  # Get the source from the rule
 
-            # Get employee's GL breakdown
-            pay_comp_breakdown = IQBDetail.objects.filter(
-                upload=iqb_upload,
-                employee_code=emp_code,
-                transaction_type__in=include_transaction_types
-            ).values('pay_comp_code').annotate(
-                total=Sum('amount')
-            )
+                # Get employee's GL breakdown
+                pay_comp_breakdown = IQBDetail.objects.filter(
+                    upload=iqb_upload,
+                    employee_code=emp_code,
+                    transaction_type__in=include_transaction_types
+                ).values('pay_comp_code').annotate(
+                    total=Sum('amount')
+                )
 
-            gl_costs = _map_to_gl_accounts(pay_comp_breakdown)
-            total_cost = sum(gl_costs.values())
+                gl_costs = _map_to_gl_accounts(pay_comp_breakdown)
+                total_cost = sum(gl_costs.values())
 
-            # Get the allocation based on source
-            if source == 'override':
-                allocation = rule.allocations  # Use stored override allocation
-            elif source == 'iqb':
-                allocation = _calculate_iqb_allocation(iqb_upload, emp_code, include_transaction_types, total_cost)
-            elif source == 'tanda':
-                tanda_upload = Upload.objects.filter(
-                    pay_period=pay_period,
-                    source_system='Tanda_Timesheet',
-                    is_active=True
-                ).first()
-                if tanda_upload:
-                    allocation = _calculate_tanda_allocation(tanda_upload, emp_code, total_cost)
-                else:
+                # Get the allocation based on source
+                if source == 'override':
+                    allocation = rule.allocations  # Use stored override allocation
+                    # If override is empty, fall back to IQB but still save source as 'override'
+                    if not allocation:
+                        allocation = _calculate_iqb_allocation(iqb_upload, emp_code, include_transaction_types, total_cost)
+                elif source == 'iqb':
                     allocation = _calculate_iqb_allocation(iqb_upload, emp_code, include_transaction_types, total_cost)
-            else:
-                continue
-
-            if not allocation:
-                continue
-
-            # Expand SPL allocations
-            expanded_allocation = _expand_spl_allocations(allocation)
-
-            # Build cost_allocation JSON structure
-            cost_allocation_json = {}
-
-            for cost_account, details in expanded_allocation.items():
-                if not cost_account or '-' not in cost_account:
+                elif source == 'tanda':
+                    tanda_upload = Upload.objects.filter(
+                        pay_period=pay_period,
+                        source_system='Tanda_Timesheet',
+                        is_active=True
+                    ).first()
+                    if tanda_upload:
+                        allocation = _calculate_tanda_allocation(tanda_upload, emp_code, total_cost)
+                    else:
+                        allocation = _calculate_iqb_allocation(iqb_upload, emp_code, include_transaction_types, total_cost)
+                else:
                     continue
 
-                # Parse location and department from cost account
-                parts = cost_account.split('-')
-                location_id = parts[0]
-                dept_id = parts[1][:2] if len(parts[1]) >= 2 else ''
+                if not allocation:
+                    continue
 
-                if location_id not in cost_allocation_json:
-                    cost_allocation_json[location_id] = {}
+                # Expand SPL allocations
+                expanded_allocation = _expand_spl_allocations(allocation)
 
-                if dept_id not in cost_allocation_json[location_id]:
-                    cost_allocation_json[location_id][dept_id] = 0
+                # Build cost_allocation JSON structure
+                cost_allocation_json = {}
 
-                cost_allocation_json[location_id][dept_id] += float(details.get('percentage', 0))
+                for cost_account, details in expanded_allocation.items():
+                    if not cost_account or '-' not in cost_account:
+                        continue
 
-            # Map GL accounts to model fields
-            gl_field_mapping = {
-                # Payroll Liability Accounts (2xxx)
-                '2310': 'gl_2310_annual_leave',
-                '2317': 'gl_2317_long_service_leave',  # Actually TIL Provision, but field name kept
-                '2318': 'gl_2318_toil_liability',
-                '2320': 'gl_2320_sick_leave',  # Actually WorkCover, but field name kept
-                '2321': 'gl_2321_paid_parental',
-                '2325': 'gl_2325_leasing',
-                '2330': 'gl_2330_long_service_leave',
-                '2350': 'gl_2350_net_wages',
-                '2351': 'gl_2351_other_deductions',
-                '2360': 'gl_2360_payg_withholding',
-                '2391': 'gl_2391_super_sal_sacrifice',
-                # Labour Expense Accounts (6xxx)
-                '6302': 'gl_6302',
-                '6305': 'gl_6305',
-                '6309': 'gl_6309',
-                '6310': 'gl_6310',
-                '6312': 'gl_6312',
-                '6315': 'gl_6315',
-                '6325': 'gl_6325',
-                '6330': 'gl_6330',
-                '6331': 'gl_6331',
-                '6332': 'gl_6332',
-                '6335': 'gl_6335',
-                '6338': 'gl_6338',
-                '6340': 'gl_6340',
-                '6345': 'gl_6345_salaries',
-                '6350': 'gl_6350',
-                '6355': 'gl_6355_sick_leave',
-                '6370': 'gl_6370_superannuation',
-                '6372': 'gl_6372_toil',
-                '6375': 'gl_6375',
-                '6380': 'gl_6380',
-            }
+                    # Parse location and department from cost account
+                    parts = cost_account.split('-')
+                    location_id = parts[0]
+                    dept_id = parts[1][:2] if len(parts[1]) >= 2 else ''
 
-            # Build GL values
-            gl_values = {}
-            for gl_account, gl_amount in gl_costs.items():
-                if gl_account in gl_field_mapping:
-                    gl_values[gl_field_mapping[gl_account]] = Decimal(str(gl_amount))
+                    if location_id not in cost_allocation_json:
+                        cost_allocation_json[location_id] = {}
 
-            # Delete existing snapshot for this employee/pay period
-            EmployeePayPeriodSnapshot.objects.filter(
-                pay_period=pay_period,
-                employee_code=emp_code
-            ).delete()
+                    if dept_id not in cost_allocation_json[location_id]:
+                        cost_allocation_json[location_id][dept_id] = 0
 
-            # Create single snapshot for this employee
-            EmployeePayPeriodSnapshot.objects.create(
-                pay_period=pay_period,
-                employee_code=emp_code,
-                employee_name=emp_name,
-                cost_allocation=cost_allocation_json,
-                allocation_source=source,
-                total_cost=Decimal(str(total_cost)),
-                **gl_values
-            )
+                    cost_allocation_json[location_id][dept_id] += float(details.get('percentage', 0))
 
-            saved_count += 1
+                # Map GL accounts to model fields
+                gl_field_mapping = {
+                    # Payroll Liability Accounts (2xxx)
+                    '2310': 'gl_2310_annual_leave',
+                    '2317': 'gl_2317_long_service_leave',  # Actually TIL Provision, but field name kept
+                    '2318': 'gl_2318_toil_liability',
+                    '2320': 'gl_2320_sick_leave',  # Actually WorkCover, but field name kept
+                    '2321': 'gl_2321_paid_parental',
+                    '2325': 'gl_2325_leasing',
+                    '2330': 'gl_2330_long_service_leave',
+                    '2350': 'gl_2350_net_wages',
+                    '2351': 'gl_2351_other_deductions',
+                    '2360': 'gl_2360_payg_withholding',
+                    '2391': 'gl_2391_super_sal_sacrifice',
+                    # Labour Expense Accounts (6xxx)
+                    '6302': 'gl_6302',
+                    '6305': 'gl_6305',
+                    '6309': 'gl_6309',
+                    '6310': 'gl_6310',
+                    '6312': 'gl_6312',
+                    '6315': 'gl_6315',
+                    '6325': 'gl_6325',
+                    '6330': 'gl_6330',
+                    '6331': 'gl_6331',
+                    '6332': 'gl_6332',
+                    '6335': 'gl_6335',
+                    '6338': 'gl_6338',
+                    '6340': 'gl_6340',
+                    '6345': 'gl_6345_salaries',
+                    '6350': 'gl_6350',
+                    '6355': 'gl_6355_sick_leave',
+                    '6370': 'gl_6370_superannuation',
+                    '6372': 'gl_6372_toil',
+                    '6375': 'gl_6375',
+                    '6380': 'gl_6380',
+                }
+
+                # Build GL values
+                gl_values = {}
+                for gl_account, gl_amount in gl_costs.items():
+                    if gl_account in gl_field_mapping:
+                        gl_values[gl_field_mapping[gl_account]] = Decimal(str(gl_amount))
+
+                # Delete existing snapshot for this employee/pay period
+                EmployeePayPeriodSnapshot.objects.filter(
+                    pay_period=pay_period,
+                    employee_code=emp_code
+                ).delete()
+
+                # Create single snapshot for this employee
+                EmployeePayPeriodSnapshot.objects.create(
+                    pay_period=pay_period,
+                    employee_code=emp_code,
+                    employee_name=emp_name,
+                    cost_allocation=cost_allocation_json,
+                    allocation_source=source,
+                    total_cost=Decimal(str(total_cost)),
+                    **gl_values
+                )
+
+                saved_count += 1
 
         return JsonResponse({
             'success': True,

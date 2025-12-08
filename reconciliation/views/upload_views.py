@@ -13,8 +13,9 @@ import uuid
 
 from reconciliation.models import Upload, PayPeriod, ValidationResult
 from reconciliation.file_detector import FileDetector
-from reconciliation.parsers import TandaParser, IQBParser, JournalParser
+from reconciliation.parsers import TandaParser, IQBParser, JournalParser, IQBLeaveBalanceParser
 from reconciliation.data_validator import DataValidator
+from datetime import datetime
 
 
 def get_or_create_default_user():
@@ -163,14 +164,20 @@ def smart_upload(request):
             if file_type == 'Tanda_Timesheet':
                 record_count = TandaParser.parse(upload, df)
                 pay_period.has_tanda = True
-                
+
             elif file_type == 'Micropay_IQB':
                 record_count = IQBParser.parse(upload, df)
                 pay_period.has_iqb = True
-                
+
             elif file_type == 'Micropay_Journal':
                 record_count = JournalParser.parse(upload, df)
                 pay_period.has_journal = True
+
+            elif file_type == 'Micropay_IQB_Leave':
+                # Use pay period end date as the as_of_date
+                as_of_date = datetime.strptime(pay_period.period_id, '%Y-%m-%d').date()
+                record_count = IQBLeaveBalanceParser.parse(upload, df, as_of_date)
+                # Note: We don't set a flag on pay_period for leave balance as it's optional
             
             # Update upload record
             upload.record_count = record_count
@@ -331,14 +338,19 @@ def override_upload(request, upload_id):
         if file_type == 'Tanda_Timesheet':
             old_upload.tanda_records.all().delete()
             record_count = TandaParser.parse(new_upload, df)
-            
+
         elif file_type == 'Micropay_IQB':
             old_upload.iqb_records.all().delete()
             record_count = IQBParser.parse(new_upload, df)
-            
+
         elif file_type == 'Micropay_Journal':
             old_upload.journal_records.all().delete()
             record_count = JournalParser.parse(new_upload, df)
+
+        elif file_type == 'Micropay_IQB_Leave':
+            old_upload.leave_balance_records.all().delete()
+            as_of_date = datetime.strptime(pay_period.period_id, '%Y-%m-%d').date()
+            record_count = IQBLeaveBalanceParser.parse(new_upload, df, as_of_date)
         
         # Update new upload
         new_upload.record_count = record_count
@@ -472,3 +484,13 @@ def upload_detail(request, upload_id):
             'replaced_by': str(upload.replaced_by.upload_id) if upload.replaced_by else None
         }
     }, status=status.HTTP_200_OK)
+
+
+def multi_upload(request):
+    """
+    Multi-file upload page
+    GET /uploads/multi/
+    """
+    from django.shortcuts import render
+
+    return render(request, 'reconciliation/multi_upload.html')

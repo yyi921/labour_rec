@@ -132,8 +132,17 @@
             <a href="{% url 'reconciliation:download_journal_sage' pay_period.period_id %}" class="btn btn-download">
                 📥 Download Sage Intacct Journal
             </a>
+            <a href="{% url 'reconciliation:download_journal_xero' pay_period.period_id %}" class="btn btn-download">
+                📥 Download Xero Journal (Inter-company)
+            </a>
             <a href="{% url 'reconciliation:download_journal' pay_period.period_id %}" class="btn btn-download">
                 📥 Download Simple CSV
+            </a>
+            <a href="{% url 'reconciliation:download_employee_snapshot' pay_period.period_id %}" class="btn btn-download">
+                📥 Download Employee Snapshot
+            </a>
+            <a href="{% url 'reconciliation:generate_leave_accrual' pay_period.period_id %}" class="btn">
+                📅 Generate Leave Accrual Journal
             </a>
             <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">
                 ← Back to Dashboard
@@ -188,8 +197,17 @@
             <a href="{% url 'reconciliation:download_journal_sage' pay_period.period_id %}" class="btn btn-download">
                 📥 Download Sage Intacct Journal
             </a>
+            <a href="{% url 'reconciliation:download_journal_xero' pay_period.period_id %}" class="btn btn-download">
+                📥 Download Xero Journal (Inter-company)
+            </a>
             <a href="{% url 'reconciliation:download_journal' pay_period.period_id %}" class="btn btn-download">
                 📥 Download Simple CSV
+            </a>
+            <a href="{% url 'reconciliation:download_employee_snapshot' pay_period.period_id %}" class="btn btn-download">
+                📥 Download Employee Snapshot
+            </a>
+            <a href="{% url 'reconciliation:generate_leave_accrual' pay_period.period_id %}" class="btn">
+                📅 Generate Leave Accrual Journal
             </a>
             <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">
                 ← Back to Dashboard

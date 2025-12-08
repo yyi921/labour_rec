@@ -215,8 +215,10 @@
                 <td>
                     <textarea class="override-input"
                               id="override-{{ emp.employee_code }}"
+                              data-employee="{{ emp.employee_code }}"
                               rows="4"
                               placeholder="421-5000: 60, 422-5000: 40"
+                              onblur="saveOverrideIfSelected(this)"
                     >{% if emp.override_allocation %}{% for cost_account, details in emp.override_allocation.items %}{{ cost_account }}: {{ details.percentage|floatformat:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}{% else %}{% for cost_account, details in emp.expanded_allocation.items %}{{ cost_account }}: {{ details.percentage|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}</textarea>
                     <div class="validation-error" id="error-{{ emp.employee_code }}"></div>
                 </td>
@@ -561,6 +563,16 @@ function clearFilters() {
     document.getElementById('filterForm').submit();
 }
 
+function saveOverrideIfSelected(textarea) {
+    const empCode = textarea.getAttribute('data-employee');
+    const overrideRadio = document.querySelector(`input[name="source-${empCode}"][value="override"]`);
+
+    // Only auto-save if the Override radio button is selected
+    if (overrideRadio && overrideRadio.checked) {
+        updateSource(empCode, 'override');
+    }
+}
+
 function updateSource(empCode, source) {
     saveSelections();
 
@@ -583,8 +595,10 @@ function updateSource(empCode, source) {
             }
             changes[0].override = validation.allocations;
         } else {
-            // Override selected but no value entered yet - don't save
-            return;
+            // Override selected but no value entered yet - save source but use IQB allocation as fallback
+            // The user will need to enter an override value and it will auto-save when they finish typing
+            console.log(`Override selected for ${empCode} but no value entered yet`);
+            // Don't return - still save the source preference
         }
     }
 

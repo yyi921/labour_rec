@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime
 from decimal import Decimal
 from reconciliation.models import (
-    TandaTimesheet, IQBDetail, JournalEntry, Upload
+    TandaTimesheet, IQBDetail, JournalEntry, IQBLeaveBalance, Upload
 )
 
 
@@ -49,6 +49,7 @@ class TandaParser:
                 location_name=str(row.get('Location Name', '')).strip(),
                 team_name=str(row.get('Team Name', '')).strip(),
                 award_export_name=str(row.get('Award Export Name', '')).strip(),
+                gl_code=str(row.get('GLCode', row.get('GL Code', ''))).strip(),
                 date_shift_start=date_shift_start,
                 shift_start_time=shift_start_time,
                 date_shift_finish=date_shift_finish,
@@ -295,9 +296,79 @@ class JournalParser:
         """Parse decimal value safely"""
         if pd.isna(value):
             return Decimal(str(default))
-        
+
         try:
             # Remove any currency symbols or commas
+            if isinstance(value, str):
+                value = value.replace('$', '').replace(',', '').strip()
+            return Decimal(str(value))
+        except:
+            return Decimal(str(default))
+
+
+class IQBLeaveBalanceParser:
+    """Parse Micropay IQB Leave Balance files"""
+
+    @staticmethod
+    def parse(upload, df, as_of_date):
+        """
+        Parse Micropay IQB Leave Balance DataFrame and create database records
+
+        Args:
+            upload: Upload model instance
+            df: pandas DataFrame with leave balance data
+            as_of_date: Date this balance is as of (from pay period or user input)
+
+        Returns:
+            int: Number of records created
+        """
+        records = []
+
+        for _, row in df.iterrows():
+            # Skip rows with no employee code
+            if pd.isna(row.get('Employee Code')):
+                continue
+
+            # Parse numeric values
+            balance_hours = IQBLeaveBalanceParser._parse_decimal(row.get('Total Hours', 0), 0)
+            balance_value = IQBLeaveBalanceParser._parse_decimal(row.get('Total Amount Liability Normal Rate', 0), 0)
+            leave_loading = IQBLeaveBalanceParser._parse_decimal(row.get('Leave Loading Entitlement & Pro Rata Normal Rate', 0), 0)
+
+            # Combine surname and first name for full name if Full Name column doesn't exist
+            surname = str(row.get('Surname', '')).strip()
+            first_name = str(row.get('First Name', '')).strip()
+            full_name = f"{first_name} {surname}".strip() if first_name or surname else ''
+
+            record = IQBLeaveBalance(
+                upload=upload,
+                employee_code=str(row.get('Employee Code', '')).strip(),
+                surname=surname,
+                first_name=first_name,
+                full_name=full_name,
+                employment_type=str(row.get('Employment Type', '')).strip(),
+                location=str(row.get('Location', '')).strip(),
+                leave_type=str(row.get('Leave Type', '')).strip(),
+                leave_description=str(row.get('Leave Class Description', '')).strip(),
+                balance_hours=balance_hours,
+                balance_value=balance_value,
+                leave_loading=leave_loading,
+                as_of_date=as_of_date
+            )
+
+            records.append(record)
+
+        # Bulk create for efficiency
+        IQBLeaveBalance.objects.bulk_create(records, batch_size=500)
+
+        return len(records)
+
+    @staticmethod
+    def _parse_decimal(value, default=0):
+        """Parse decimal value safely"""
+        if pd.isna(value):
+            return Decimal(str(default))
+
+        try:
             if isinstance(value, str):
                 value = value.replace('$', '').replace(',', '').strip()
             return Decimal(str(value))

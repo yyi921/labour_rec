@@ -1,0 +1,436 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Accrual Journal - {{ pay_period.period_id }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; border-bottom: 3px solid #4CAF50; padding-bottom: 10px; }
+        h2 { color: #555; margin-top: 40px; border-bottom: 2px solid #2196F3; padding-bottom: 8px; }
+        h3 { color: #666; margin-top: 25px; }
+
+        .info-box {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #2196F3;
+        }
+
+        .leave-section {
+            margin: 40px 0;
+            padding: 25px;
+            background: #fafafa;
+            border-radius: 8px;
+            border-left: 5px solid #4CAF50;
+        }
+        .leave-section.lsl { border-left-color: #FF9800; }
+        .leave-section.toil { border-left-color: #9C27B0; }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .stat-value {
+            font-size: 22px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+            background: white;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+        }
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:hover { background-color: #f5f5f5; }
+        .number { text-align: right; font-family: 'Courier New', monospace; }
+        .total-row {
+            font-weight: bold;
+            background-color: #e3f2fd;
+            border-top: 2px solid #2196F3;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 5px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .btn:hover { background-color: #45a049; }
+        .btn-secondary { background-color: #757575; }
+        .btn-secondary:hover { background-color: #616161; }
+        .btn-download { background-color: #2196F3; font-size: 14px; padding: 8px 16px; }
+        .btn-download:hover { background-color: #0b7dda; }
+        .btn-download.sage { background-color: #FF9800; }
+        .btn-download.sage:hover { background-color: #F57C00; }
+
+        .download-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 5px;
+            border-left: 4px solid #ffc107;
+        }
+
+        .balanced {
+            color: #28a745;
+            font-weight: bold;
+            padding: 10px;
+            background: #d4edda;
+            border-radius: 4px;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        .unbalanced {
+            color: #dc3545;
+            font-weight: bold;
+            padding: 10px;
+            background: #f8d7da;
+            border-radius: 4px;
+            display: inline-block;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Leave Accrual Journal</h1>
+        <h2>Pay Period: {{ pay_period.period_id }}</h2>
+
+        <div class="info-box">
+            <strong>Balance Period:</strong><br>
+            Opening Balance: {{ opening_date|date:"d M Y" }}<br>
+            Closing Balance: {{ closing_date|date:"d M Y" }}
+        </div>
+
+        <div style="margin: 20px 0;">
+            <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">
+                ← Back to Dashboard
+            </a>
+        </div>
+
+        <!-- ANNUAL LEAVE SECTION -->
+        <div class="leave-section annual">
+            <h2>Annual Leave Accrual</h2>
+
+            <div class="summary-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Employees</div>
+                    <div class="stat-value">{{ annual_totals.employee_count }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Opening Balance</div>
+                    <div class="stat-value">${{ annual_totals.total_opening|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Closing Balance</div>
+                    <div class="stat-value">${{ annual_totals.total_closing|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Leave Taken</div>
+                    <div class="stat-value">${{ annual_totals.total_leave_taken|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Base Accrual</div>
+                    <div class="stat-value">${{ annual_totals.total_base|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Super (12%)</div>
+                    <div class="stat-value">${{ annual_totals.total_super|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">PRT (4.95%)</div>
+                    <div class="stat-value">${{ annual_totals.total_prt|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Workcover</div>
+                    <div class="stat-value">${{ annual_totals.total_workcover|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total</div>
+                    <div class="stat-value">${{ annual_totals.total_with_oncosts|floatformat:2|intcomma }}</div>
+                </div>
+            </div>
+
+            <div class="download-section">
+                <h3>Download Options:</h3>
+                <a href="{% url 'reconciliation:download_leave_journal_sage' pay_period.period_id 'annual' %}" class="btn-download sage">
+                    📊 Sage Journal
+                </a>
+                <a href="{% url 'reconciliation:download_leave_employee_breakdown' pay_period.period_id 'annual' %}" class="btn-download">
+                    👥 Employee Breakdown
+                </a>
+            </div>
+
+            <h3>Journal Entries by Location & Department</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Location</th>
+                        <th>Department</th>
+                        <th>GL Account</th>
+                        <th class="number">Debit</th>
+                        <th class="number">Credit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in annual_journal %}
+                    <tr>
+                        <td>{{ entry.location_id }}{% if entry.location_name %} - {{ entry.location_name }}{% endif %}</td>
+                        <td>{{ entry.dept_id }}{% if entry.dept_name %} - {{ entry.dept_name }}{% endif %}</td>
+                        <td>{{ entry.gl_account }}</td>
+                        <td class="number">{% if entry.debit != 0 %}${{ entry.debit|floatformat:2|intcomma }}{% else %}-{% endif %}</td>
+                        <td class="number">{% if entry.credit != 0 %}${{ entry.credit|floatformat:2|intcomma }}{% else %}-{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="total-row">
+                        <td colspan="3" style="text-align: right;">TOTAL:</td>
+                        <td class="number">${{ annual_totals.total_debit|floatformat:2|intcomma }}</td>
+                        <td class="number">${{ annual_totals.total_credit|floatformat:2|intcomma }}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            {% if annual_balanced %}
+            <div class="balanced">✓ Journal is Balanced</div>
+            {% else %}
+            <div class="unbalanced">⚠ Journal is NOT Balanced</div>
+            {% endif %}
+        </div>
+
+        <!-- LONG SERVICE LEAVE SECTION -->
+        <div class="leave-section lsl">
+            <h2>Long Service Leave Accrual</h2>
+
+            <div class="summary-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Employees</div>
+                    <div class="stat-value">{{ lsl_totals.employee_count }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Opening Balance</div>
+                    <div class="stat-value">${{ lsl_totals.total_opening|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Closing Balance</div>
+                    <div class="stat-value">${{ lsl_totals.total_closing|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Leave Taken</div>
+                    <div class="stat-value">${{ lsl_totals.total_leave_taken|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Base Accrual</div>
+                    <div class="stat-value">${{ lsl_totals.total_base|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Super (12%)</div>
+                    <div class="stat-value">${{ lsl_totals.total_super|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">PRT (4.95%)</div>
+                    <div class="stat-value">${{ lsl_totals.total_prt|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Workcover</div>
+                    <div class="stat-value">${{ lsl_totals.total_workcover|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total</div>
+                    <div class="stat-value">${{ lsl_totals.total_with_oncosts|floatformat:2|intcomma }}</div>
+                </div>
+            </div>
+
+            <div class="download-section">
+                <h3>Download Options:</h3>
+                <a href="{% url 'reconciliation:download_leave_journal_sage' pay_period.period_id 'lsl' %}" class="btn-download sage">
+                    📊 Sage Journal
+                </a>
+                <a href="{% url 'reconciliation:download_leave_employee_breakdown' pay_period.period_id 'lsl' %}" class="btn-download">
+                    👥 Employee Breakdown
+                </a>
+            </div>
+
+            <h3>Journal Entries by Location & Department</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Location</th>
+                        <th>Department</th>
+                        <th>GL Account</th>
+                        <th class="number">Debit</th>
+                        <th class="number">Credit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in lsl_journal %}
+                    <tr>
+                        <td>{{ entry.location_id }}{% if entry.location_name %} - {{ entry.location_name }}{% endif %}</td>
+                        <td>{{ entry.dept_id }}{% if entry.dept_name %} - {{ entry.dept_name }}{% endif %}</td>
+                        <td>{{ entry.gl_account }}</td>
+                        <td class="number">{% if entry.debit != 0 %}${{ entry.debit|floatformat:2|intcomma }}{% else %}-{% endif %}</td>
+                        <td class="number">{% if entry.credit != 0 %}${{ entry.credit|floatformat:2|intcomma }}{% else %}-{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="total-row">
+                        <td colspan="3" style="text-align: right;">TOTAL:</td>
+                        <td class="number">${{ lsl_totals.total_debit|floatformat:2|intcomma }}</td>
+                        <td class="number">${{ lsl_totals.total_credit|floatformat:2|intcomma }}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            {% if lsl_balanced %}
+            <div class="balanced">✓ Journal is Balanced</div>
+            {% else %}
+            <div class="unbalanced">⚠ Journal is NOT Balanced</div>
+            {% endif %}
+        </div>
+
+        <!-- TIME-IN-LIEU SECTION -->
+        <div class="leave-section toil">
+            <h2>Time-in-Lieu Accrual</h2>
+
+            <div class="summary-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Employees</div>
+                    <div class="stat-value">{{ toil_totals.employee_count }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Opening Balance</div>
+                    <div class="stat-value">${{ toil_totals.total_opening|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Closing Balance</div>
+                    <div class="stat-value">${{ toil_totals.total_closing|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Leave Taken</div>
+                    <div class="stat-value">${{ toil_totals.total_leave_taken|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Base Accrual</div>
+                    <div class="stat-value">${{ toil_totals.total_base|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Super (12%)</div>
+                    <div class="stat-value">${{ toil_totals.total_super|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">PRT (4.95%)</div>
+                    <div class="stat-value">${{ toil_totals.total_prt|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Workcover</div>
+                    <div class="stat-value">${{ toil_totals.total_workcover|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total</div>
+                    <div class="stat-value">${{ toil_totals.total_with_oncosts|floatformat:2|intcomma }}</div>
+                </div>
+            </div>
+
+            <div class="download-section">
+                <h3>Download Options:</h3>
+                <a href="{% url 'reconciliation:download_leave_journal_sage' pay_period.period_id 'toil' %}" class="btn-download sage">
+                    📊 Sage Journal
+                </a>
+                <a href="{% url 'reconciliation:download_leave_employee_breakdown' pay_period.period_id 'toil' %}" class="btn-download">
+                    👥 Employee Breakdown
+                </a>
+            </div>
+
+            <h3>Journal Entries by Location & Department</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Location</th>
+                        <th>Department</th>
+                        <th>GL Account</th>
+                        <th class="number">Debit</th>
+                        <th class="number">Credit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in toil_journal %}
+                    <tr>
+                        <td>{{ entry.location_id }}{% if entry.location_name %} - {{ entry.location_name }}{% endif %}</td>
+                        <td>{{ entry.dept_id }}{% if entry.dept_name %} - {{ entry.dept_name }}{% endif %}</td>
+                        <td>{{ entry.gl_account }}</td>
+                        <td class="number">{% if entry.debit != 0 %}${{ entry.debit|floatformat:2|intcomma }}{% else %}-{% endif %}</td>
+                        <td class="number">{% if entry.credit != 0 %}${{ entry.credit|floatformat:2|intcomma }}{% else %}-{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="total-row">
+                        <td colspan="3" style="text-align: right;">TOTAL:</td>
+                        <td class="number">${{ toil_totals.total_debit|floatformat:2|intcomma }}</td>
+                        <td class="number">${{ toil_totals.total_credit|floatformat:2|intcomma }}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            {% if toil_balanced %}
+            <div class="balanced">✓ Journal is Balanced</div>
+            {% else %}
+            <div class="unbalanced">⚠ Journal is NOT Balanced</div>
+            {% endif %}
+        </div>
+
+        <div style="margin: 40px 0;">
+            <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">
+                ← Back to Dashboard
+            </a>
+        </div>
+    </div>
+</body>
+</html>

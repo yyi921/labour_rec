@@ -12,7 +12,8 @@ from django.shortcuts import render, get_object_or_404
 from django.db.models import Sum
 from reconciliation.models import (
     PayPeriod, EmployeePayPeriodSnapshot, JournalEntry, Upload,
-    SageLocation, SageDepartment, JournalReconciliation
+    SageLocation, SageDepartment, JournalReconciliation, IQBLeaveBalance,
+    IQBDetail, PayCompCodeMapping
 )
 
 
@@ -246,6 +247,63 @@ def generate_journal(request, pay_period_id):
                     'customer_id': customer_id
                 })
 
+    # Calculate Payroll Tax and Workcover on GL 1180 total
+    # Sum all GL 1180 entries
+    total_1180 = sum(line['debit'] for line in journal_lines if line['acct_no'] == '1180')
+
+    if total_1180 != 0:
+        # Define rates
+        PRT_rate = Decimal('0.0495')  # 4.95% Payroll Tax
+        workcover_rate = Decimal('0.01384')  # 1.384% Workcover
+
+        # Calculate amounts
+        payroll_tax = total_1180 * PRT_rate
+        workcover = total_1180 * workcover_rate
+        total_adjustment = payroll_tax + workcover
+
+        # Add three lines at the bottom
+        # 1. Debit GL 1180 for total adjustment
+        journal_lines.append({
+            'acct_no': '1180',
+            'location_id': '460',
+            'dept_id': '20',
+            'document': 'GL-Batch',
+            'memo': f"{description} - Payroll Tax and Workcover adjustment",
+            'debit': total_adjustment,
+            'billable': 'T',
+            'item_id': 'ICO-RECHARGE',
+            'project_id': 'CMG110-001',
+            'customer_id': 'CMG110'
+        })
+
+        # 2. Credit GL 6335 (Payroll Tax) - represented as negative debit
+        journal_lines.append({
+            'acct_no': '6335',
+            'location_id': '460',
+            'dept_id': '20',
+            'document': 'GL-Batch',
+            'memo': f"{description} - Payroll Tax @ {PRT_rate * 100}%",
+            'debit': -payroll_tax,
+            'billable': '',
+            'item_id': '',
+            'project_id': '',
+            'customer_id': ''
+        })
+
+        # 3. Credit GL 6380 (Workcover) - represented as negative debit
+        journal_lines.append({
+            'acct_no': '6380',
+            'location_id': '460',
+            'dept_id': '20',
+            'document': 'GL-Batch',
+            'memo': f"{description} - Workcover Insurance @ {workcover_rate * 100}%",
+            'debit': -workcover,
+            'billable': '',
+            'item_id': '',
+            'project_id': '',
+            'customer_id': ''
+        })
+
     # Calculate total
     total_debit = sum(line['debit'] for line in journal_lines)
 
@@ -475,6 +533,63 @@ def download_journal_sage(request, pay_period_id):
                     'customer_id': customer_id
                 })
 
+    # Calculate Payroll Tax and Workcover on GL 1180 total
+    # Sum all GL 1180 entries
+    total_1180 = sum(line['debit'] for line in journal_lines if line['acct_no'] == '1180')
+
+    if total_1180 != 0:
+        # Define rates
+        PRT_rate = Decimal('0.0495')  # 4.95% Payroll Tax
+        workcover_rate = Decimal('0.01384')  # 1.384% Workcover
+
+        # Calculate amounts
+        payroll_tax = total_1180 * PRT_rate
+        workcover = total_1180 * workcover_rate
+        total_adjustment = payroll_tax + workcover
+
+        # Add three lines at the bottom
+        # 1. Debit GL 1180 for total adjustment
+        journal_lines.append({
+            'acct_no': '1180',
+            'location_id': '460',
+            'dept_id': '20',
+            'document': 'GL-Batch',
+            'memo': f"{description} - Payroll Tax and Workcover adjustment",
+            'debit': total_adjustment,
+            'billable': 'T',
+            'item_id': 'ICO-RECHARGE',
+            'project_id': 'CMG110-001',
+            'customer_id': 'CMG110'
+        })
+
+        # 2. Credit GL 6335 (Payroll Tax) - represented as negative debit
+        journal_lines.append({
+            'acct_no': '6335',
+            'location_id': '460',
+            'dept_id': '20',
+            'document': 'GL-Batch',
+            'memo': f"{description} - Payroll Tax @ {PRT_rate * 100}%",
+            'debit': -payroll_tax,
+            'billable': '',
+            'item_id': '',
+            'project_id': '',
+            'customer_id': ''
+        })
+
+        # 3. Credit GL 6380 (Workcover) - represented as negative debit
+        journal_lines.append({
+            'acct_no': '6380',
+            'location_id': '460',
+            'dept_id': '20',
+            'document': 'GL-Batch',
+            'memo': f"{description} - Workcover Insurance @ {workcover_rate * 100}%",
+            'debit': -workcover,
+            'billable': '',
+            'item_id': '',
+            'project_id': '',
+            'customer_id': ''
+        })
+
     # Create CSV response in Sage Intacct format
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="journal_sage_{pay_period_id}.csv"'
@@ -540,6 +655,1058 @@ def download_journal(request, pay_period_id):
             entry.description,
             f"{entry.journal_net:.2f}",
             'Yes' if entry.include_in_total_cost else 'No'
+        ])
+
+    return response
+
+
+def download_journal_xero(request, pay_period_id):
+    """Download journal in Xero format - inter-company entries only (billable = T)"""
+    pay_period = get_object_or_404(PayPeriod, period_id=pay_period_id)
+
+    # Get reconciliation run
+    recon_run = pay_period.recon_runs.filter(status='completed').order_by('-completed_at').first()
+    if not recon_run:
+        return HttpResponse("No completed reconciliation run found", status=404)
+
+    # Get all journal reconciliation entries
+    journal_recon_entries = JournalReconciliation.objects.filter(recon_run=recon_run)
+
+    # Generate journal entries (same as Sage export)
+    snapshots = EmployeePayPeriodSnapshot.objects.filter(pay_period=pay_period)
+    journal_upload = Upload.objects.filter(
+        pay_period=pay_period,
+        source_system='Micropay_Journal',
+        is_active=True
+    ).first()
+
+    if not journal_upload:
+        return HttpResponse("No Micropay Journal upload found", status=404)
+
+    journal_entries_from_db = JournalEntry.objects.filter(upload=journal_upload)
+    journal_mapping = load_journal_mapping()
+
+    # Get location and department names
+    location_names = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}
+    department_names = {dept.department_id: dept.department_name for dept in SageDepartment.objects.all()}
+
+    # Build GL field mapping
+    gl_field_to_account = {}
+    for field in EmployeePayPeriodSnapshot._meta.get_fields():
+        if field.name.startswith('gl_'):
+            parts = field.name.split('_')
+            if len(parts) >= 2 and parts[1].isdigit():
+                gl_account = parts[1]
+                gl_field_to_account[field.name] = gl_account
+
+    journal_lines = []
+    date = pay_period.period_end.strftime('%m/%d/%Y')
+    description = f"Payroll journal ending {pay_period.period_end.strftime('%Y-%m-%d')}"
+
+    # Group by GL account
+    gl_groups = defaultdict(list)
+    for recon_entry in journal_recon_entries:
+        gl_groups[recon_entry.gl_account].append(recon_entry)
+
+    # Process each unique GL account (same logic as Sage export)
+    for gl_account, recon_entries_for_gl in gl_groups.items():
+        first_entry = recon_entries_for_gl[0]
+        gl_desc = first_entry.description
+        include_in_total = first_entry.include_in_total_cost
+
+        if include_in_total:
+            prorated_entries = defaultdict(Decimal)
+
+            for snapshot in snapshots:
+                cost_allocation = snapshot.cost_allocation
+                if not cost_allocation:
+                    continue
+
+                gl_amount = Decimal('0')
+                for field_name, field_gl in gl_field_to_account.items():
+                    if field_gl == gl_account:
+                        gl_amount = getattr(snapshot, field_name, Decimal('0'))
+                        break
+
+                if gl_amount and gl_amount != 0:
+                    for location_id, departments in cost_allocation.items():
+                        for dept_id, percentage in departments.items():
+                            allocated_amount = gl_amount * (Decimal(str(percentage)) / Decimal('100'))
+                            key = (location_id, dept_id)
+                            prorated_entries[key] += allocated_amount
+
+            if not prorated_entries:
+                continue
+
+            for (location_id, dept_id), amount in prorated_entries.items():
+                memo = f"{description} {gl_account} {gl_desc}"
+
+                acct_no = gl_account
+                final_location = location_id
+                billable = ''
+                item_id = ''
+                project_id = ''
+                customer_id = ''
+
+                if location_id == '700':
+                    acct_no = '1180'
+                    final_location = '10'
+                    billable = 'T'
+                    item_id = 'ICO-RECHARGE'
+                    project_id = 'CMG110-001'
+                    customer_id = 'CMG110'
+
+                journal_lines.append({
+                    'acct_no': acct_no,
+                    'location_id': final_location,
+                    'dept_id': dept_id,
+                    'document': 'IQB',
+                    'memo': memo,
+                    'debit': amount,
+                    'billable': billable,
+                    'item_id': item_id,
+                    'project_id': project_id,
+                    'customer_id': customer_id
+                })
+        else:
+            non_prorated_entries = defaultdict(Decimal)
+
+            for journal in journal_entries_from_db:
+                ledger_account = journal.ledger_account.strip()
+
+                if ledger_account.startswith('-'):
+                    entry_gl = ledger_account[1:]
+                else:
+                    if '-' in ledger_account:
+                        entry_gl = ledger_account.split('-')[-1]
+                    else:
+                        entry_gl = ledger_account
+
+                if entry_gl != gl_account:
+                    continue
+
+                amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
+
+                location_id = ''
+                dept_id = ''
+                if '-' in ledger_account and not ledger_account.startswith('-'):
+                    parts = ledger_account.split('-')
+                    if len(parts) == 3:
+                        location_id = parts[0]
+                        dept_id = parts[1]
+
+                key = (location_id, dept_id)
+                non_prorated_entries[key] += amount
+
+            if not non_prorated_entries:
+                total_net = sum(entry.journal_net for entry in recon_entries_for_gl)
+                if total_net != 0:
+                    non_prorated_entries[('', '')] = total_net
+
+            for (location_id, dept_id), amount in non_prorated_entries.items():
+                memo = f"{description} {gl_account} {gl_desc}"
+
+                acct_no = gl_account
+                final_location = location_id
+                billable = ''
+                item_id = ''
+                project_id = ''
+                customer_id = ''
+
+                if location_id == '700':
+                    acct_no = '1180'
+                    final_location = '10'
+                    billable = 'T'
+                    item_id = 'ICO-RECHARGE'
+                    project_id = 'CMG110-001'
+                    customer_id = 'CMG110'
+
+                journal_lines.append({
+                    'acct_no': acct_no,
+                    'location_id': final_location,
+                    'dept_id': dept_id,
+                    'document': 'GL-Batch',
+                    'memo': memo,
+                    'debit': amount,
+                    'billable': billable,
+                    'item_id': item_id,
+                    'project_id': project_id,
+                    'customer_id': customer_id
+                })
+
+    # Calculate Payroll Tax and Workcover on GL 1180 total
+    total_1180 = sum(line['debit'] for line in journal_lines if line['acct_no'] == '1180')
+
+    if total_1180 != 0:
+        PRT_rate = Decimal('0.0495')
+        workcover_rate = Decimal('0.01384')
+
+        payroll_tax = total_1180 * PRT_rate
+        workcover = total_1180 * workcover_rate
+        total_adjustment = payroll_tax + workcover
+
+        journal_lines.append({
+            'acct_no': '1180',
+            'location_id': '460',
+            'dept_id': '20',
+            'document': 'GL-Batch',
+            'memo': f"{description} - Payroll Tax and Workcover adjustment",
+            'debit': total_adjustment,
+            'billable': 'T',
+            'item_id': 'ICO-RECHARGE',
+            'project_id': 'CMG110-001',
+            'customer_id': 'CMG110'
+        })
+
+        journal_lines.append({
+            'acct_no': '6335',
+            'location_id': '460',
+            'dept_id': '20',
+            'document': 'GL-Batch',
+            'memo': f"{description} - Payroll Tax @ {PRT_rate * 100}%",
+            'debit': -payroll_tax,
+            'billable': '',
+            'item_id': '',
+            'project_id': '',
+            'customer_id': ''
+        })
+
+        journal_lines.append({
+            'acct_no': '6380',
+            'location_id': '460',
+            'dept_id': '20',
+            'document': 'GL-Batch',
+            'memo': f"{description} - Workcover Insurance @ {workcover_rate * 100}%",
+            'debit': -workcover,
+            'billable': '',
+            'item_id': '',
+            'project_id': '',
+            'customer_id': ''
+        })
+
+    # Filter only billable entries (inter-company)
+    billable_lines = [line for line in journal_lines if line['billable'] == 'T']
+
+    # Process billable lines to extract correct GL accounts and split adjustment line
+    xero_lines = []
+
+    for line in billable_lines:
+        memo = line['memo']
+        amount = line['debit']
+
+        # Check if this is the combined Payroll Tax and Workcover adjustment
+        if 'Payroll Tax and Workcover adjustment' in memo:
+            # Split into two lines: 6335 (Payroll Tax) and 6380 (Workcover)
+            # Calculate individual amounts based on rates
+            PRT_rate = Decimal('0.0495')
+            workcover_rate = Decimal('0.01384')
+            total_rate = PRT_rate + workcover_rate
+
+            payroll_tax_amount = amount * (PRT_rate / total_rate)
+            workcover_amount = amount * (workcover_rate / total_rate)
+
+            # Add Payroll Tax line
+            xero_lines.append({
+                'narration': f"{description} - Payroll Tax @ {PRT_rate * 100}%",
+                'account_code': '6335',
+                'amount': payroll_tax_amount
+            })
+
+            # Add Workcover line
+            xero_lines.append({
+                'narration': f"{description} - Workcover Insurance @ {workcover_rate * 100}%",
+                'account_code': '6380',
+                'amount': workcover_amount
+            })
+        else:
+            # Extract GL account from memo
+            # Memo format: "Payroll journal ending YYYY-MM-DD GLNUM Description"
+            import re
+            gl_match = re.search(r'\d{4}-\d{2}-\d{2}\s+(\d{4})\s+', memo)
+
+            if gl_match:
+                gl_account = gl_match.group(1)
+            else:
+                # Fallback to acct_no if can't parse
+                gl_account = line['acct_no']
+
+            xero_lines.append({
+                'narration': memo,
+                'account_code': gl_account,
+                'amount': amount
+            })
+
+    # Create Xero CSV format
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="journal_xero_{pay_period_id}.csv"'
+
+    writer = csv.writer(response)
+
+    # Write header row (from Xero template)
+    writer.writerow([
+        '*Narration', '*Date', 'Description', '*AccountCode', '*TaxRate', '*Amount',
+        'TrackingName1', 'TrackingOption1', 'TrackingOption2'
+    ])
+
+    # Calculate total debit for billable entries
+    total_debit = sum(line['amount'] for line in xero_lines)
+
+    # Write debit lines (all billable entries)
+    for line in xero_lines:
+        writer.writerow([
+            line['narration'],  # *Narration
+            date,  # *Date
+            '',  # Description (blank)
+            line['account_code'],  # *AccountCode
+            'BAS Excluded',  # *TaxRate
+            f"{line['amount']:.2f}",  # *Amount (positive for debit)
+            'Department',  # TrackingName1
+            'Event Hire & Service Recoveries',  # TrackingOption1
+            '700-2000'  # TrackingOption2
+        ])
+
+    # Write credit line (GL 2350 with total opposite sign)
+    if total_debit != 0:
+        writer.writerow([
+            f"{description} - GL 2350 Net Wages Clearing",  # *Narration
+            date,  # *Date
+            '',  # Description (blank)
+            '2350',  # *AccountCode
+            'BAS Excluded',  # *TaxRate
+            f"{-total_debit:.2f}",  # *Amount (negative for credit)
+            'Department',  # TrackingName1
+            'Event Hire & Service Recoveries',  # TrackingOption1
+            '700-2000'  # TrackingOption2
+        ])
+
+    return response
+
+
+def download_employee_snapshot(request, pay_period_id):
+    """
+    Download employee pay period snapshot showing cost allocations by GL account
+    Each employee gets multiple rows - one for each cost center they're allocated to
+    """
+    pay_period = get_object_or_404(PayPeriod, period_id=pay_period_id)
+
+    # Get all snapshots for this pay period
+    snapshots = EmployeePayPeriodSnapshot.objects.filter(
+        pay_period=pay_period
+    ).order_by('employee_code')
+
+    # Create CSV response
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="employee_snapshot_{pay_period_id}.csv"'
+
+    writer = csv.writer(response)
+
+    # Define GL account columns in order
+    gl_columns = [
+        ('gl_2310_annual_leave', '2310 Annual Leave'),
+        ('gl_2317_long_service_leave', '2317 TIL Provision'),
+        ('gl_2318_toil_liability', '2318 TOIL Liability'),
+        ('gl_2320_sick_leave', '2320 WorkCover'),
+        ('gl_2321_paid_parental', '2321 Paid Parental'),
+        ('gl_2325_leasing', '2325 Leasing'),
+        ('gl_2330_long_service_leave', '2330 Long Service Leave'),
+        ('gl_2350_net_wages', '2350 Net Wages'),
+        ('gl_2351_other_deductions', '2351 Other Deductions'),
+        ('gl_2360_payg_withholding', '2360 PAYG Withholding'),
+        ('gl_2391_super_sal_sacrifice', '2391 Super Sal Sacrifice'),
+        ('gl_6302', '6302'),
+        ('gl_6305', '6305'),
+        ('gl_6309', '6309'),
+        ('gl_6310', '6310'),
+        ('gl_6312', '6312'),
+        ('gl_6315', '6315'),
+        ('gl_6325', '6325'),
+        ('gl_6330', '6330'),
+        ('gl_6331', '6331'),
+        ('gl_6332', '6332'),
+        ('gl_6335', '6335'),
+        ('gl_6338', '6338'),
+        ('gl_6340', '6340'),
+        ('gl_6345_salaries', '6345 Salaries'),
+        ('gl_6350', '6350'),
+        ('gl_6355_sick_leave', '6355 Sick Leave'),
+        ('gl_6370_superannuation', '6370 Superannuation'),
+        ('gl_6372_toil', '6372 TOIL'),
+        ('gl_6375', '6375'),
+        ('gl_6380', '6380'),
+    ]
+
+    # Write header
+    header = [
+        'Employee Code',
+        'Employee Name',
+        'Location',
+        'Department',
+        'Allocation %',
+        'Allocated Amount',
+        'Source'
+    ]
+    header.extend([label for _, label in gl_columns])
+    writer.writerow(header)
+
+    # Get location and department lookups
+    location_lookup = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}
+    department_lookup = {dept.department_id: dept.department_name for dept in SageDepartment.objects.all()}
+
+    # Write data rows
+    for snapshot in snapshots:
+        # Get cost allocation breakdown
+        cost_allocation = snapshot.cost_allocation or {}
+
+        # If no cost allocation, create one row with 100%
+        if not cost_allocation:
+            row = [
+                snapshot.employee_code,
+                snapshot.employee_name,
+                '',
+                '',
+                '100.00',
+                f"{snapshot.total_cost:.2f}",
+                snapshot.allocation_source
+            ]
+
+            # Add GL amounts (full amounts)
+            for field_name, _ in gl_columns:
+                amount = getattr(snapshot, field_name, Decimal('0')) or Decimal('0')
+                row.append(f"{amount:.2f}")
+
+            writer.writerow(row)
+        else:
+            # Create a row for each cost center allocation
+            for location_id, departments in cost_allocation.items():
+                for dept_id, percentage in departments.items():
+                    location_name = location_lookup.get(location_id, location_id)
+                    dept_name = department_lookup.get(dept_id, dept_id)
+
+                    # Calculate allocated amount for this cost center
+                    allocated_amount = float(snapshot.total_cost) * (float(percentage) / 100)
+
+                    row = [
+                        snapshot.employee_code,
+                        snapshot.employee_name,
+                        location_name,
+                        dept_name,
+                        f"{percentage:.2f}",
+                        f"{allocated_amount:.2f}",
+                        snapshot.allocation_source
+                    ]
+
+                    # Add GL amounts (prorated by allocation percentage)
+                    for field_name, _ in gl_columns:
+                        amount = getattr(snapshot, field_name, Decimal('0')) or Decimal('0')
+                        prorated_amount = float(amount) * (float(percentage) / 100)
+                        row.append(f"{prorated_amount:.2f}")
+
+                    writer.writerow(row)
+
+    return response
+
+
+def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expense_account,
+                                        opening_upload, closing_upload, iqb_upload,
+                                        pay_period, paycomp_mappings):
+    """
+    Calculate accruals for a specific leave type
+
+    Returns: List of employee-level accrual dictionaries
+    """
+    from django.db.models import Sum
+    accruals = []
+
+    # Get unique employees with closing balances for this leave type
+    # Group by employee_code and sum their balances
+    closing_employees = IQBLeaveBalance.objects.filter(
+        upload=closing_upload,
+        leave_type=leave_type
+    ).values('employee_code').annotate(
+        total_balance=Sum('balance_value'),
+        total_loading=Sum('leave_loading')
+    ).order_by('employee_code')
+
+    for emp_data in closing_employees:
+        emp_code = emp_data['employee_code']
+        # Include Leave Loading in closing balance
+        closing_balance = emp_data['total_balance'] or Decimal('0')
+        closing_loading = emp_data['total_loading'] or Decimal('0')
+        closing_value = closing_balance + closing_loading
+
+        # Get employee name from any record for this employee
+        emp_record = IQBLeaveBalance.objects.filter(
+            upload=closing_upload,
+            employee_code=emp_code,
+            leave_type=leave_type
+        ).first()
+        emp_name = emp_record.full_name if emp_record else emp_code
+
+        # Get opening balance (sum all records for this employee and leave type)
+        opening_aggregation = IQBLeaveBalance.objects.filter(
+            upload=opening_upload,
+            employee_code=emp_code,
+            leave_type=leave_type
+        ).aggregate(
+            total_balance=Sum('balance_value'),
+            total_loading=Sum('leave_loading')
+        )
+
+        # Include Leave Loading in opening balance
+        opening_balance = opening_aggregation['total_balance'] or Decimal('0')
+        opening_loading = opening_aggregation['total_loading'] or Decimal('0')
+        opening_value = opening_balance + opening_loading
+
+        # Calculate leave taken
+        leave_taken_records = IQBDetail.objects.filter(
+            upload=iqb_upload,
+            employee_code=emp_code
+        )
+
+        leave_taken = Decimal('0')
+        for record in leave_taken_records:
+            gl_account = paycomp_mappings.get(record.pay_comp_code)
+            if gl_account == gl_liability_account:
+                leave_taken += record.amount
+
+        # Calculate accrual
+        accrual_amount = closing_value - opening_value + leave_taken
+
+        if accrual_amount == 0:
+            continue
+
+        # Calculate oncosts
+        super_amount = accrual_amount * Decimal('0.12')
+        prt_amount = accrual_amount * Decimal('0.0495')
+        workcover_amount = accrual_amount * Decimal('0.01384')
+        total_with_oncosts = accrual_amount + super_amount + prt_amount + workcover_amount
+
+        # Get employee allocation
+        try:
+            snapshot = EmployeePayPeriodSnapshot.objects.get(
+                pay_period=pay_period,
+                employee_code=emp_code
+            )
+            cost_allocation = snapshot.cost_allocation or {}
+        except EmployeePayPeriodSnapshot.DoesNotExist:
+            continue
+
+        accruals.append({
+            'employee_code': emp_code,
+            'employee_name': emp_name,
+            'opening_value': opening_value,
+            'closing_value': closing_value,
+            'leave_taken': leave_taken,
+            'accrual_amount': accrual_amount,
+            'super_amount': super_amount,
+            'prt_amount': prt_amount,
+            'workcover_amount': workcover_amount,
+            'total_with_oncosts': total_with_oncosts,
+            'cost_allocation': cost_allocation,
+            'gl_liability': gl_liability_account,
+            'gl_expense': gl_expense_account
+        })
+
+    return accruals
+
+
+def _aggregate_journal_by_location_department(accruals, location_lookup, department_lookup):
+    """Aggregate journal entries by location and department"""
+    from collections import defaultdict
+
+    aggregated = defaultdict(lambda: Decimal('0'))
+
+    for accrual in accruals:
+        for location_id, departments in accrual['cost_allocation'].items():
+            for dept_id, percentage in departments.items():
+                allocation_pct = Decimal(str(percentage)) / Decimal('100')
+
+                # Base
+                base = accrual['accrual_amount'] * allocation_pct
+                if base != 0:
+                    aggregated[(location_id, dept_id, accrual['gl_expense'], 'debit')] += base
+                    aggregated[(location_id, dept_id, accrual['gl_liability'], 'credit')] += base
+
+                # Oncosts
+                for (gl_dr, amount_key) in [('6370', 'super_amount'), ('6335', 'prt_amount'), ('6380', 'workcover_amount')]:
+                    amt = accrual[amount_key] * allocation_pct
+                    if amt != 0:
+                        aggregated[(location_id, dept_id, gl_dr, 'debit')] += amt
+                        aggregated[(location_id, dept_id, '2055', 'credit')] += amt
+
+    journal_entries = []
+    for (location_id, dept_id, gl_account, dr_cr), amount in aggregated.items():
+        existing = next((e for e in journal_entries
+                        if e['location_id'] == location_id
+                        and e['dept_id'] == dept_id
+                        and e['gl_account'] == gl_account), None)
+
+        if existing:
+            if dr_cr == 'debit':
+                existing['debit'] += amount
+            else:
+                existing['credit'] += amount
+        else:
+            journal_entries.append({
+                'location_id': location_id,
+                'location_name': location_lookup.get(location_id, ''),
+                'dept_id': dept_id,
+                'dept_name': department_lookup.get(dept_id, ''),
+                'gl_account': gl_account,
+                'debit': amount if dr_cr == 'debit' else Decimal('0'),
+                'credit': amount if dr_cr == 'credit' else Decimal('0')
+            })
+
+    journal_entries.sort(key=lambda x: (x['location_id'], x['dept_id'], x['gl_account']))
+    return journal_entries
+
+
+def generate_leave_accrual_journal(request, pay_period_id):
+    """
+    Generate Leave accrual journal entries with oncosts for Annual Leave, LSL, and TOIL
+
+    Formula: Accrual = Closing Balance - Opening Balance + Leave Taken
+
+    Annual Leave:
+    - Base: DR 6300, CR 2310
+    - Super 12%: DR 6370, CR 2055
+    - PRT 4.95%: DR 6335, CR 2055
+    - Workcover 1.384%: DR 6380, CR 2055
+
+    Long Service Leave:
+    - Base: DR 6345, CR 2317
+    - Super/PRT/Workcover: CR 2055
+
+    Time-in-Lieu (User Defined Leave):
+    - Base: DR 6372, CR 2318
+    - Super/PRT/Workcover: CR 2055
+    """
+    pay_period = get_object_or_404(PayPeriod, period_id=pay_period_id)
+
+    # Get uploads
+    closing_upload = Upload.objects.filter(
+        pay_period=pay_period,
+        source_system='Micropay_IQB_Leave',
+        is_active=True
+    ).first()
+
+    if not closing_upload:
+        return render(request, 'reconciliation/leave_accrual_error.html', {
+            'error': f'No IQB Leave Balance file found for pay period {pay_period_id}',
+            'pay_period': pay_period
+        })
+
+    opening_upload = Upload.objects.filter(
+        source_system='Micropay_IQB_Leave',
+        is_active=True,
+        pay_period__period_id__lt=pay_period_id
+    ).order_by('-pay_period__period_id').first()
+
+    if not opening_upload:
+        return render(request, 'reconciliation/leave_accrual_error.html', {
+            'error': f'No opening IQB Leave Balance found before {pay_period_id}',
+            'pay_period': pay_period
+        })
+
+    iqb_upload = Upload.objects.filter(
+        pay_period=pay_period,
+        source_system='Micropay_IQB',
+        is_active=True
+    ).first()
+
+    if not iqb_upload:
+        return render(request, 'reconciliation/leave_accrual_error.html', {
+            'error': f'No IQB Detail file found for pay period {pay_period_id}',
+            'pay_period': pay_period
+        })
+
+    # Get PayComp to GL mapping
+    paycomp_mappings = {
+        mapping.pay_comp_code: mapping.gl_account
+        for mapping in PayCompCodeMapping.objects.all()
+    }
+
+    # Location and department lookups
+    location_lookup = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}
+    department_lookup = {dept.department_id: dept.department_name for dept in SageDepartment.objects.all()}
+
+    # Calculate accruals for all three leave types
+    annual_leave_accruals = _calculate_leave_accruals_for_type(
+        'Annual Leave', '2310', '6300',
+        opening_upload, closing_upload, iqb_upload, pay_period, paycomp_mappings
+    )
+
+    lsl_accruals = _calculate_leave_accruals_for_type(
+        'Long Service Leave', '2317', '6345',
+        opening_upload, closing_upload, iqb_upload, pay_period, paycomp_mappings
+    )
+
+    toil_accruals = _calculate_leave_accruals_for_type(
+        'User Defined Leave', '2318', '6372',
+        opening_upload, closing_upload, iqb_upload, pay_period, paycomp_mappings
+    )
+
+    # Aggregate journal entries by location/department
+    annual_journal = _aggregate_journal_by_location_department(annual_leave_accruals, location_lookup, department_lookup)
+    lsl_journal = _aggregate_journal_by_location_department(lsl_accruals, location_lookup, department_lookup)
+    toil_journal = _aggregate_journal_by_location_department(toil_accruals, location_lookup, department_lookup)
+
+    # Calculate totals for each leave type
+    def calc_totals(leave_type, gl_liability, accruals, journal):
+        # Calculate opening/closing/leave taken for ALL employees (not just those with accruals)
+        from django.db.models import Sum
+
+        # Opening balance total (ALL employees with this leave type)
+        opening_agg = IQBLeaveBalance.objects.filter(
+            upload=opening_upload,
+            leave_type=leave_type
+        ).aggregate(
+            total_balance=Sum('balance_value'),
+            total_loading=Sum('leave_loading')
+        )
+        total_opening = (opening_agg['total_balance'] or Decimal('0')) + (opening_agg['total_loading'] or Decimal('0'))
+
+        # Closing balance total (ALL employees with this leave type)
+        closing_agg = IQBLeaveBalance.objects.filter(
+            upload=closing_upload,
+            leave_type=leave_type
+        ).aggregate(
+            total_balance=Sum('balance_value'),
+            total_loading=Sum('leave_loading')
+        )
+        total_closing = (closing_agg['total_balance'] or Decimal('0')) + (closing_agg['total_loading'] or Decimal('0'))
+
+        # Leave taken total (ALL employees)
+        total_leave_taken = Decimal('0')
+        for record in IQBDetail.objects.filter(upload=iqb_upload):
+            gl_account = paycomp_mappings.get(record.pay_comp_code)
+            if gl_account == gl_liability:
+                total_leave_taken += record.amount
+
+        return {
+            'employee_count': len(accruals),
+            'total_opening': total_opening,
+            'total_closing': total_closing,
+            'total_leave_taken': total_leave_taken,
+            'total_base': sum(a['accrual_amount'] for a in accruals),
+            'total_super': sum(a['super_amount'] for a in accruals),
+            'total_prt': sum(a['prt_amount'] for a in accruals),
+            'total_workcover': sum(a['workcover_amount'] for a in accruals),
+            'total_with_oncosts': sum(a['total_with_oncosts'] for a in accruals),
+            'total_debit': sum(j['debit'] for j in journal),
+            'total_credit': sum(j['credit'] for j in journal),
+        }
+
+    annual_totals = calc_totals('Annual Leave', '2310', annual_leave_accruals, annual_journal)
+    lsl_totals = calc_totals('Long Service Leave', '2317', lsl_accruals, lsl_journal)
+    toil_totals = calc_totals('User Defined Leave', '2318', toil_accruals, toil_journal)
+
+    # Check if balanced
+    annual_balanced = abs(annual_totals['total_debit'] - annual_totals['total_credit']) < Decimal('0.01')
+    lsl_balanced = abs(lsl_totals['total_debit'] - lsl_totals['total_credit']) < Decimal('0.01')
+    toil_balanced = abs(toil_totals['total_debit'] - toil_totals['total_credit']) < Decimal('0.01')
+
+    context = {
+        'pay_period': pay_period,
+        'opening_date': opening_upload.pay_period.period_end,
+        'closing_date': pay_period.period_end,
+
+        # Annual Leave
+        'annual_accruals': annual_leave_accruals,
+        'annual_journal': annual_journal,
+        'annual_totals': annual_totals,
+        'annual_balanced': annual_balanced,
+
+        # Long Service Leave
+        'lsl_accruals': lsl_accruals,
+        'lsl_journal': lsl_journal,
+        'lsl_totals': lsl_totals,
+        'lsl_balanced': lsl_balanced,
+
+        # Time-in-Lieu
+        'toil_accruals': toil_accruals,
+        'toil_journal': toil_journal,
+        'toil_totals': toil_totals,
+        'toil_balanced': toil_balanced,
+    }
+
+    return render(request, 'reconciliation/leave_accrual_journal.html', context)
+
+
+
+def download_leave_journal_sage(request, pay_period_id, leave_type):
+    """Download leave accrual journal in Sage Intacct format"""
+    # Map leave type to GL accounts
+    leave_configs = {
+        'annual': {'name': 'Annual Leave', 'liability': '2310', 'expense': '6300'},
+        'lsl': {'name': 'Long Service Leave', 'liability': '2317', 'expense': '6345'},
+        'toil': {'name': 'User Defined Leave', 'liability': '2318', 'expense': '6372'},
+    }
+    
+    if leave_type not in leave_configs:
+        return HttpResponse("Invalid leave type", status=400)
+    
+    config = leave_configs[leave_type]
+    pay_period = get_object_or_404(PayPeriod, period_id=pay_period_id)
+    
+    # Get uploads (same as main function)
+    closing_upload = Upload.objects.filter(
+        pay_period=pay_period, source_system='Micropay_IQB_Leave', is_active=True
+    ).first()
+    opening_upload = Upload.objects.filter(
+        source_system='Micropay_IQB_Leave', is_active=True,
+        pay_period__period_id__lt=pay_period_id
+    ).order_by('-pay_period__period_id').first()
+    iqb_upload = Upload.objects.filter(
+        pay_period=pay_period, source_system='Micropay_IQB', is_active=True
+    ).first()
+    
+    if not all([closing_upload, opening_upload, iqb_upload]):
+        return HttpResponse("Missing required uploads", status=400)
+    
+    paycomp_mappings = {m.pay_comp_code: m.gl_account for m in PayCompCodeMapping.objects.all()}
+    location_lookup = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}
+    department_lookup = {dept.department_id: dept.department_name for dept in SageDepartment.objects.all()}
+    
+    # Calculate accruals
+    accruals = _calculate_leave_accruals_for_type(
+        config['name'], config['liability'], config['expense'],
+        opening_upload, closing_upload, iqb_upload, pay_period, paycomp_mappings
+    )
+    
+    journal = _aggregate_journal_by_location_department(accruals, location_lookup, department_lookup)
+    
+    # Generate Sage Intacct CSV
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{leave_type}_journal_sage_{pay_period_id}.csv"'
+
+    writer = csv.writer(response)
+
+    # Write header row in Sage Intacct format
+    writer.writerow([
+        'DONOTIMPORT', 'JOURNAL', 'DATE', 'DESCRIPTION', 'REFERENCE_NO', 'LINE_NO',
+        'ACCT_NO', 'LOCATION_ID', 'DEPT_ID', 'DOCUMENT', 'MEMO', 'DEBIT',
+        'BILLABLE', 'GLENTRY_ITEMID', 'GLENTRY_PROJECTID', 'GLENTRY_CUSTOMERID'
+    ])
+
+    # Common values
+    journal_id = f"{leave_type.upper()}-{pay_period_id}"
+    date = pay_period.period_end.strftime('%m/%d/%Y')
+    description = f"{config['name']} Accrual - {pay_period.period_end.strftime('%Y-%m-%d')}"
+
+    line_no = 1
+    for entry in journal:
+        location_id = entry['location_id']
+        dept_id = entry['dept_id']
+        gl_account = entry['gl_account']
+
+        # Handle location 700 special case for DEBIT entries
+        if location_id == '700' and entry['debit'] != 0:
+            # For location 700, debit amounts go to GL 1180 with billable fields
+            debit_amount = entry['debit']
+            donotimport = '#' if debit_amount == 0 else ''
+
+            writer.writerow([
+                donotimport,
+                journal_id,
+                date,
+                description,
+                '',  # REFERENCE_NO
+                line_no,
+                '1180',  # Changed from original GL account to 1180
+                location_id,
+                dept_id,
+                'GL-Batch',
+                f"{config['name']} Accrual",
+                f"{debit_amount:.2f}",
+                'T',  # BILLABLE = T
+                'ICO-RECHARGE',  # GLENTRY_ITEMID
+                'CMG110-001',  # GLENTRY_PROJECTID
+                'CMG110'  # GLENTRY_CUSTOMERID
+            ])
+            line_no += 1
+        elif entry['debit'] != 0:
+            # Regular debit entry
+            debit_amount = entry['debit']
+            donotimport = '#' if debit_amount == 0 else ''
+
+            writer.writerow([
+                donotimport,
+                journal_id,
+                date,
+                description,
+                '',  # REFERENCE_NO
+                line_no,
+                gl_account,
+                location_id,
+                dept_id,
+                'GL-Batch',
+                f"{config['name']} Accrual",
+                f"{debit_amount:.2f}",
+                '',  # BILLABLE (blank)
+                '',  # GLENTRY_ITEMID (blank)
+                '',  # GLENTRY_PROJECTID (blank)
+                ''   # GLENTRY_CUSTOMERID (blank)
+            ])
+            line_no += 1
+
+        # Credit entry (represented as negative debit)
+        if entry['credit'] != 0:
+            credit_amount = -entry['credit']  # Make it negative
+            donotimport = '#' if credit_amount == 0 else ''
+
+            writer.writerow([
+                donotimport,
+                journal_id,
+                date,
+                description,
+                '',  # REFERENCE_NO
+                line_no,
+                gl_account,
+                location_id,
+                dept_id,
+                'GL-Batch',
+                f"{config['name']} Accrual",
+                f"{credit_amount:.2f}",
+                '',  # BILLABLE (blank)
+                '',  # GLENTRY_ITEMID (blank)
+                '',  # GLENTRY_PROJECTID (blank)
+                ''   # GLENTRY_CUSTOMERID (blank)
+            ])
+            line_no += 1
+
+    return response
+
+
+def download_leave_employee_breakdown(request, pay_period_id, leave_type):
+    """Download employee-level leave accrual breakdown"""
+    leave_configs = {
+        'annual': {'name': 'Annual Leave', 'liability': '2310', 'expense': '6300'},
+        'lsl': {'name': 'Long Service Leave', 'liability': '2317', 'expense': '6345'},
+        'toil': {'name': 'User Defined Leave', 'liability': '2318', 'expense': '6372'},
+    }
+    
+    if leave_type not in leave_configs:
+        return HttpResponse("Invalid leave type", status=400)
+    
+    config = leave_configs[leave_type]
+    pay_period = get_object_or_404(PayPeriod, period_id=pay_period_id)
+    
+    # Get uploads
+    closing_upload = Upload.objects.filter(
+        pay_period=pay_period, source_system='Micropay_IQB_Leave', is_active=True
+    ).first()
+    opening_upload = Upload.objects.filter(
+        source_system='Micropay_IQB_Leave', is_active=True,
+        pay_period__period_id__lt=pay_period_id
+    ).order_by('-pay_period__period_id').first()
+    iqb_upload = Upload.objects.filter(
+        pay_period=pay_period, source_system='Micropay_IQB', is_active=True
+    ).first()
+    
+    if not all([closing_upload, opening_upload, iqb_upload]):
+        return HttpResponse("Missing required uploads", status=400)
+    
+    from django.db.models import Sum
+
+    paycomp_mappings = {m.pay_comp_code: m.gl_account for m in PayCompCodeMapping.objects.all()}
+
+    # Get ALL unique employee codes from both opening AND closing balances
+    closing_emp_codes = set(IQBLeaveBalance.objects.filter(
+        upload=closing_upload,
+        leave_type=config['name']
+    ).values_list('employee_code', flat=True).distinct())
+
+    opening_emp_codes = set(IQBLeaveBalance.objects.filter(
+        upload=opening_upload,
+        leave_type=config['name']
+    ).values_list('employee_code', flat=True).distinct())
+
+    all_employee_codes = sorted(closing_emp_codes | opening_emp_codes)
+
+    # Generate employee breakdown CSV
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{leave_type}_employees_{pay_period_id}.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'Employee Code', 'Employee Name', 'Opening Balance', 'Closing Balance',
+        'Leave Taken', 'Base Accrual', 'Super (12%)', 'PRT (4.95%)',
+        'Workcover (1.384%)', 'Total with Oncosts'
+    ])
+
+    for emp_code in all_employee_codes:
+        # Closing balance (with leave loading)
+        closing_aggregation = IQBLeaveBalance.objects.filter(
+            upload=closing_upload,
+            employee_code=emp_code,
+            leave_type=config['name']
+        ).aggregate(
+            total_balance=Sum('balance_value'),
+            total_loading=Sum('leave_loading')
+        )
+        closing_balance = closing_aggregation['total_balance'] or Decimal('0')
+        closing_loading = closing_aggregation['total_loading'] or Decimal('0')
+        closing_value = closing_balance + closing_loading
+
+        # Get employee name (try closing first, then opening)
+        emp_record = IQBLeaveBalance.objects.filter(
+            upload=closing_upload,
+            employee_code=emp_code,
+            leave_type=config['name']
+        ).first()
+        if not emp_record:
+            emp_record = IQBLeaveBalance.objects.filter(
+                upload=opening_upload,
+                employee_code=emp_code,
+                leave_type=config['name']
+            ).first()
+        emp_name = emp_record.full_name if emp_record else emp_code
+
+        # Opening balance (with leave loading)
+        opening_aggregation = IQBLeaveBalance.objects.filter(
+            upload=opening_upload,
+            employee_code=emp_code,
+            leave_type=config['name']
+        ).aggregate(
+            total_balance=Sum('balance_value'),
+            total_loading=Sum('leave_loading')
+        )
+        opening_balance = opening_aggregation['total_balance'] or Decimal('0')
+        opening_loading = opening_aggregation['total_loading'] or Decimal('0')
+        opening_value = opening_balance + opening_loading
+
+        # Leave taken
+        leave_taken_records = IQBDetail.objects.filter(
+            upload=iqb_upload,
+            employee_code=emp_code
+        )
+        leave_taken = Decimal('0')
+        for record in leave_taken_records:
+            gl_account = paycomp_mappings.get(record.pay_comp_code)
+            if gl_account == config['liability']:
+                leave_taken += record.amount
+
+        # Calculate accrual
+        accrual_amount = closing_value - opening_value + leave_taken
+
+        # Calculate oncosts
+        super_amount = accrual_amount * Decimal('0.12')
+        prt_amount = accrual_amount * Decimal('0.0495')
+        workcover_amount = accrual_amount * Decimal('0.01384')
+        total_with_oncosts = accrual_amount + super_amount + prt_amount + workcover_amount
+
+        writer.writerow([
+            emp_code,
+            emp_name,
+            f"{opening_value:.2f}",
+            f"{closing_value:.2f}",
+            f"{leave_taken:.2f}",
+            f"{accrual_amount:.2f}",
+            f"{super_amount:.2f}",
+            f"{prt_amount:.2f}",
+            f"{workcover_amount:.2f}",
+            f"{total_with_oncosts:.2f}",
         ])
 
     return response

@@ -100,6 +100,18 @@ class DataValidator:
             if not location_mapping_validation['passed']:
                 results['passed'] = False
 
+            # Test 3: Team Name validation (check for unmapped team names)
+            team_validation = DataValidator._validate_tanda_team_names(upload)
+            results['validations'].append(team_validation)
+            # Note: This is a warning, not a blocking error
+
+        elif upload.source_system == 'Micropay_IQB_Leave':
+            # Validate leave balance files
+            leave_balance_validation = DataValidator._validate_leave_balance(upload)
+            results['validations'].append(leave_balance_validation)
+            if not leave_balance_validation['passed']:
+                results['passed'] = False
+
         return results
 
     @staticmethod
@@ -403,5 +415,137 @@ class DataValidator:
                 'unmapped_locations': unmapped_locations,
                 'total_count': len(unmapped_locations)
             })
+
+        return test_result
+
+    @staticmethod
+    def _validate_tanda_team_names(upload):
+        """Check for unmapped team names in Tanda timesheets that may affect cost allocation"""
+        test_result = {
+            'test_name': 'Tanda Team Name Check',
+            'description': 'Check for team names that may need department mapping (informational)',
+            'passed': True,  # This is informational, not blocking
+            'errors': [],
+            'warnings': []
+        }
+
+        # Get unique team names from Tanda upload
+        from reconciliation.models import TandaTimesheet
+        team_names = TandaTimesheet.objects.filter(
+            upload=upload
+        ).values_list('team_name', flat=True).distinct()
+
+        unique_teams = [team for team in team_names if team]
+
+        if unique_teams:
+            test_result['warnings'].append({
+                'message': 'Team names found in timesheet - verify cost allocation includes all departments',
+                'team_names': unique_teams,
+                'total_count': len(unique_teams),
+                'note': 'If team names represent departments, ensure they are mapped in cost allocation'
+            })
+
+        return test_result
+
+    @staticmethod
+    def _validate_leave_balance(upload):
+        """
+        Validate leave balance file logic:
+        - If multiple leave balance files exist for this pay period, check that:
+          * The earliest date is the opening balance
+          * The latest date matches the pay period ID (closing balance)
+        - If only one leave balance file exists, check that:
+          * Either an opening balance exists in the system (from an earlier pay period)
+          * OR the file date matches the pay period ID (can use it as both opening and closing)
+        """
+        test_result = {
+            'test_name': 'Leave Balance File Validation',
+            'description': 'Check if leave balance files have proper opening and closing balances',
+            'passed': True,
+            'errors': []
+        }
+
+        pay_period = upload.pay_period
+        pay_period_date = pay_period.period_end
+
+        # Get all leave balance uploads for this pay period (including this one)
+        all_leave_uploads = Upload.objects.filter(
+            pay_period=pay_period,
+            source_system='Micropay_IQB_Leave',
+            is_active=True
+        ).order_by('uploaded_at')
+
+        if all_leave_uploads.count() == 0:
+            test_result['passed'] = False
+            test_result['errors'].append({
+                'message': 'No leave balance files found for this pay period'
+            })
+            return test_result
+
+        # Get the as_of_date for each leave balance file
+        from reconciliation.models import IQBLeaveBalance
+        leave_dates = []
+        for lb_upload in all_leave_uploads:
+            # Get the as_of_date from the records
+            as_of_date = IQBLeaveBalance.objects.filter(
+                upload=lb_upload
+            ).values_list('as_of_date', flat=True).first()
+
+            if as_of_date:
+                leave_dates.append({
+                    'upload': lb_upload,
+                    'date': as_of_date
+                })
+
+        if not leave_dates:
+            test_result['passed'] = False
+            test_result['errors'].append({
+                'message': 'Could not determine dates for leave balance files'
+            })
+            return test_result
+
+        # Sort by date
+        leave_dates.sort(key=lambda x: x['date'])
+
+        if len(leave_dates) >= 2:
+            # Two or more files: earliest is opening, latest should match pay period
+            opening_date = leave_dates[0]['date']
+            closing_date = leave_dates[-1]['date']
+
+            if closing_date != pay_period_date:
+                test_result['passed'] = False
+                test_result['errors'].append({
+                    'message': f'Closing balance date ({closing_date}) does not match pay period end date ({pay_period_date})',
+                    'opening_date': str(opening_date),
+                    'closing_date': str(closing_date),
+                    'expected_closing_date': str(pay_period_date)
+                })
+
+        elif len(leave_dates) == 1:
+            # Only one file: check if it matches pay period OR if opening balance exists elsewhere
+            single_date = leave_dates[0]['date']
+
+            if single_date == pay_period_date:
+                # This is the closing balance, check if opening balance exists from earlier period
+                # Look for leave balance from any earlier pay period
+                earlier_leave_upload = Upload.objects.filter(
+                    source_system='Micropay_IQB_Leave',
+                    is_active=True,
+                    pay_period__period_end__lt=pay_period_date
+                ).order_by('-pay_period__period_end').first()
+
+                if not earlier_leave_upload:
+                    test_result['passed'] = False
+                    test_result['errors'].append({
+                        'message': f'Only one leave balance file found for closing balance ({single_date}), but no opening balance exists from an earlier pay period',
+                        'suggestion': 'Upload an opening balance file with an earlier date, or if this is the first pay period, upload both opening and closing balance files'
+                    })
+            else:
+                # File date doesn't match pay period
+                test_result['passed'] = False
+                test_result['errors'].append({
+                    'message': f'Single leave balance file date ({single_date}) does not match pay period end date ({pay_period_date})',
+                    'suggestion': f'Either upload a closing balance file for {pay_period_date}, or if this is the opening balance, upload both opening and closing files'
+                })
 
         return test_result

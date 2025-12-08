@@ -20,14 +20,21 @@ urlpatterns = [
     path('api/save-all-allocations/<str:pay_period_id>/', mapping_views.save_all_allocations, name='save_all_allocations'),
 
     # Data validation endpoints
+    path('validation/summary/<str:pay_period_id>/', data_validation_views.validation_summary_view, name='validation_summary'),
     path('validation/<uuid:upload_id>/', data_validation_views.validation_result_view, name='validation_result'),
 
     # Journal generation endpoints
     path('journal/<str:pay_period_id>/', journal_views.generate_journal, name='generate_journal'),
     path('journal/<str:pay_period_id>/download/', journal_views.download_journal, name='download_journal'),
     path('journal/<str:pay_period_id>/download-sage/', journal_views.download_journal_sage, name='download_journal_sage'),
+    path('journal/<str:pay_period_id>/download-xero/', journal_views.download_journal_xero, name='download_journal_xero'),
+    path('journal/<str:pay_period_id>/download-snapshot/', journal_views.download_employee_snapshot, name='download_employee_snapshot'),
+    path('leave-accrual/<str:pay_period_id>/', journal_views.generate_leave_accrual_journal, name='generate_leave_accrual'),
+    path('leave-accrual/<str:pay_period_id>/download-<str:leave_type>-sage/', journal_views.download_leave_journal_sage, name='download_leave_journal_sage'),
+    path('leave-accrual/<str:pay_period_id>/download-<str:leave_type>-employees/', journal_views.download_leave_employee_breakdown, name='download_leave_employee_breakdown'),
 
     # Upload endpoints
+    path('uploads/multi/', upload_views.multi_upload, name='multi_upload'),
     path('api/uploads/smart/', upload_views.smart_upload, name='smart_upload'),
     path('api/uploads/<uuid:upload_id>/override/', upload_views.override_upload, name='override_upload'),
     path('api/uploads/', upload_views.list_uploads, name='list_uploads'),
