@@ -29,3 +29,4 @@ Location ID,Location name,Parent ID,Parent - Name,Manager,Parent entity,Entity b
 600,Ardo (Saltwater),10,Breakwater Island Trust, ,10,AUD,,,,
 700,TECC,10,Breakwater Island Trust, ,10,AUD,T,ICO-RECHARGE,CMG110-001,CMG110
 910,Shared Services The Ville,10,Breakwater Island Trust, ,10,AUD,,,,
+100,Breakwater Island Trust,10,Breakwater Island Trust, ,10,AUD,,,,

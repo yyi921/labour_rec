@@ -104,6 +104,64 @@
                         <p class="error-message">{{ error.message }}</p>
                     {% endif %}
 
+                    {% if error.invalid_location %}
+                        <p><strong>Invalid Location Code:</strong> <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">{{ error.invalid_location }}</code></p>
+                        <p><strong>Example Cost Account Codes with this location:</strong></p>
+                        <ul class="error-list">
+                            {% for account in error.cost_accounts %}
+                            <li><code>{{ account }}</code></li>
+                            {% endfor %}
+                        </ul>
+                        {% if error.total_count > 10 %}
+                        <p class="error-note">Showing first 10 of {{ error.total_count }} cost accounts with this invalid location</p>
+                        {% elif error.total_count > 1 %}
+                        <p class="error-note">Total: {{ error.total_count }} cost accounts with this invalid location</p>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if error.invalid_department %}
+                        <p><strong>Invalid Department Code:</strong> <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">{{ error.invalid_department }}</code></p>
+                        <p><strong>Example Cost Account Codes with this department:</strong></p>
+                        <ul class="error-list">
+                            {% for account in error.cost_accounts %}
+                            <li><code>{{ account }}</code></li>
+                            {% endfor %}
+                        </ul>
+                        {% if error.total_count > 10 %}
+                        <p class="error-note">Showing first 10 of {{ error.total_count }} cost accounts with this invalid department</p>
+                        {% elif error.total_count > 1 %}
+                        <p class="error-note">Total: {{ error.total_count }} cost accounts with this invalid department</p>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if error.missing_accounts %}
+                        <p><strong>Missing SPL Split Account Codes:</strong></p>
+                        <ul class="error-list">
+                            {% for account in error.missing_accounts %}
+                            <li><code>{{ account }}</code></li>
+                            {% endfor %}
+                        </ul>
+                        {% if error.total_count > 20 %}
+                        <p class="error-note">Showing first 20 of {{ error.total_count }} missing SPL accounts</p>
+                        {% elif error.total_count > 1 %}
+                        <p class="error-note">Total: {{ error.total_count }} missing SPL accounts</p>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if error.missing_codes %}
+                        <p><strong>Missing Pay Comp/Add Ded Codes:</strong></p>
+                        <ul class="error-list">
+                            {% for code in error.missing_codes %}
+                            <li><code>{{ code }}</code></li>
+                            {% endfor %}
+                        </ul>
+                        {% if error.total_count > 20 %}
+                        <p class="error-note">Showing first 20 of {{ error.total_count }} missing codes</p>
+                        {% elif error.total_count > 1 %}
+                        <p class="error-note">Total: {{ error.total_count }} missing codes</p>
+                        {% endif %}
+                    {% endif %}
+
                     {% if error.invalid_employees %}
                         <p><strong>Invalid Employee Codes:</strong></p>
                         <ul class="error-list">
@@ -135,6 +193,21 @@
                         {% if error.total_count > 10 %}
                         <p class="error-note">Showing first 10 of {{ error.total_count }} invalid codes</p>
                         {% endif %}
+                    {% endif %}
+
+                    {% if error.opening_date %}
+                        <p><strong>Opening Balance Date:</strong> {{ error.opening_date }}</p>
+                    {% endif %}
+                    {% if error.closing_date %}
+                        <p><strong>Closing Balance Date:</strong> {{ error.closing_date }}</p>
+                    {% endif %}
+                    {% if error.expected_closing_date %}
+                        <p><strong>Expected Closing Date:</strong> {{ error.expected_closing_date }}</p>
+                    {% endif %}
+                    {% if error.suggestion %}
+                        <p style="margin-top: 10px; padding: 10px; background: #e8f4fd; border-left: 3px solid #0066cc; border-radius: 3px;">
+                            <strong>Suggestion:</strong> {{ error.suggestion }}
+                        </p>
                     {% endif %}
                 </div>
                 {% endfor %}
