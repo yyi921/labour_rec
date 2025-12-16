@@ -3,6 +3,202 @@
 {% block title %}Validation Summary - {{ pay_period.period_id }}{% endblock %}
 
 {% block content %}
+<style>
+.upload-info {
+    background-color: #f8f9fa;
+    border-left: 4px solid #3498db;
+    padding: 15px;
+    margin: 20px 0;
+}
+
+.upload-info p {
+    margin: 5px 0;
+}
+
+.validation-status {
+    text-align: center;
+    padding: 40px;
+    margin: 30px 0;
+    border-radius: 8px;
+    border: 3px solid;
+}
+
+.status-pass {
+    background-color: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+
+.status-fail {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+}
+
+.status-icon {
+    font-size: 60px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.validation-status h2 {
+    margin: 15px 0;
+    font-size: 28px;
+}
+
+.validation-tests {
+    margin: 30px 0;
+}
+
+.test-card {
+    background-color: white;
+    border: 2px solid;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 15px 0;
+}
+
+.test-pass {
+    border-color: #28a745;
+}
+
+.test-fail {
+    border-color: #dc3545;
+}
+
+.test-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.test-status-icon {
+    font-size: 32px;
+    font-weight: bold;
+    min-width: 40px;
+}
+
+.test-pass .test-status-icon {
+    color: #28a745;
+}
+
+.test-fail .test-status-icon {
+    color: #dc3545;
+}
+
+.test-info {
+    flex: 1;
+}
+
+.test-info h3 {
+    margin: 0 0 5px 0;
+    font-size: 20px;
+}
+
+.test-description {
+    color: #6c757d;
+    margin: 0;
+    font-size: 14px;
+}
+
+.test-badge {
+    min-width: 80px;
+    text-align: right;
+}
+
+.badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.badge-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-error {
+    background-color: #dc3545;
+    color: white;
+}
+
+.test-errors {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #dee2e6;
+}
+
+.test-errors h4 {
+    color: #721c24;
+    margin-bottom: 15px;
+}
+
+.error-detail {
+    background-color: #f8f9fa;
+    border-left: 4px solid #dc3545;
+    padding: 15px;
+    margin: 15px 0;
+}
+
+.error-message {
+    font-weight: 600;
+    color: #721c24;
+    margin-bottom: 10px;
+}
+
+.error-list {
+    background-color: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 10px 10px 10px 30px;
+    margin: 10px 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.error-list li {
+    margin: 5px 0;
+    font-family: monospace;
+}
+
+.error-note {
+    font-size: 13px;
+    color: #6c757d;
+    font-style: italic;
+    margin-top: 5px;
+}
+
+.button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.3s ease;
+    background-color: #3498db;
+    color: white;
+}
+
+.button:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.button-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.button-secondary:hover {
+    background-color: #5a6268;
+}
+</style>
 <header>
     <div class="breadcrumb">
         <a href="{% url 'reconciliation:pay_period_list' %}">Pay Periods</a> /
