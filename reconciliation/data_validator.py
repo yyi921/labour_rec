@@ -94,16 +94,11 @@ class DataValidator:
             if not employee_validation['passed']:
                 results['passed'] = False
 
-            # Test 2: Location Mapping validation
-            location_mapping_validation = DataValidator._validate_tanda_location_mapping(upload)
-            results['validations'].append(location_mapping_validation)
-            if not location_mapping_validation['passed']:
+            # Test 2: GLCode validation (checks both location and department)
+            glcode_validation = DataValidator._validate_tanda_gl_codes(upload)
+            results['validations'].append(glcode_validation)
+            if not glcode_validation['passed']:
                 results['passed'] = False
-
-            # Test 3: Team Name validation (check for unmapped team names)
-            team_validation = DataValidator._validate_tanda_team_names(upload)
-            results['validations'].append(team_validation)
-            # Note: This is a warning, not a blocking error
 
         elif upload.source_system == 'Micropay_IQB_Leave':
             # Validate leave balance files
@@ -380,70 +375,87 @@ class DataValidator:
         return test_result
 
     @staticmethod
-    def _validate_tanda_location_mapping(upload):
-        """Validate that all Tanda locations are mapped in LocationMapping"""
+    def _validate_tanda_gl_codes(upload):
+        """Validate that GLCodes in Tanda timesheets match Sage Location and Department master data
+        GLCode format: [location]-[department] (e.g., '910-93')"""
         test_result = {
-            'test_name': 'Tanda Location Mapping Validation',
-            'description': 'Check if all Tanda location names have active mappings in LocationMapping',
+            'test_name': 'Tanda GLCode Validation',
+            'description': 'Check if GLCodes match Sage Location and Department master data (format: location-department)',
             'passed': True,
             'errors': []
         }
 
-        # Get all active location mappings
-        valid_tanda_locations = set(
-            LocationMapping.objects.filter(is_active=True).values_list('tanda_location', flat=True)
-        )
+        # Get all valid location and department IDs
+        valid_locations = set(SageLocation.objects.values_list('location_id', flat=True))
+        valid_departments = set(SageDepartment.objects.values_list('department_id', flat=True))
 
-        # Get unique location names from Tanda upload
+        # Get unique GLCodes from Tanda upload
         from reconciliation.models import TandaTimesheet
-        tanda_locations = TandaTimesheet.objects.filter(
-            upload=upload
-        ).values_list('location_name', flat=True).distinct()
+        gl_codes = TandaTimesheet.objects.filter(upload=upload).values_list('gl_code', flat=True).distinct()
 
-        unmapped_locations = []
-        for location in tanda_locations:
-            if not location:
+        invalid_locations = {}
+        invalid_departments = {}
+        malformed_codes = []
+
+        for gl_code in gl_codes:
+            if not gl_code:
                 continue
 
-            if location not in valid_tanda_locations:
-                unmapped_locations.append(location)
+            # Parse GLCode: location-department
+            if '-' not in gl_code:
+                malformed_codes.append(gl_code)
+                continue
 
-        if unmapped_locations:
+            parts = gl_code.split('-')
+            if len(parts) != 2:
+                malformed_codes.append(gl_code)
+                continue
+
+            location_code = parts[0].strip()
+            department_code = parts[1].strip()
+
+            # Validate location code
+            if location_code and location_code not in valid_locations:
+                if location_code not in invalid_locations:
+                    invalid_locations[location_code] = []
+                invalid_locations[location_code].append(gl_code)
+
+            # Validate department code
+            if department_code and department_code not in valid_departments:
+                if department_code not in invalid_departments:
+                    invalid_departments[department_code] = []
+                invalid_departments[department_code].append(gl_code)
+
+        # Report malformed GLCodes
+        if malformed_codes:
             test_result['passed'] = False
             test_result['errors'].append({
-                'message': 'Tanda locations not found in LocationMapping (or mapping is inactive)',
-                'unmapped_locations': unmapped_locations,
-                'total_count': len(unmapped_locations)
+                'message': 'GLCodes with incorrect format (expected: location-department)',
+                'malformed_codes': malformed_codes[:20],
+                'total_count': len(malformed_codes)
             })
 
-        return test_result
+        # Report invalid location codes
+        if invalid_locations:
+            test_result['passed'] = False
+            for location_code, codes in invalid_locations.items():
+                test_result['errors'].append({
+                    'invalid_location': location_code,
+                    'gl_codes': codes[:10],
+                    'total_count': len(codes),
+                    'error_type': 'location'
+                })
 
-    @staticmethod
-    def _validate_tanda_team_names(upload):
-        """Check for unmapped team names in Tanda timesheets that may affect cost allocation"""
-        test_result = {
-            'test_name': 'Tanda Team Name Check',
-            'description': 'Check for team names that may need department mapping (informational)',
-            'passed': True,  # This is informational, not blocking
-            'errors': [],
-            'warnings': []
-        }
-
-        # Get unique team names from Tanda upload
-        from reconciliation.models import TandaTimesheet
-        team_names = TandaTimesheet.objects.filter(
-            upload=upload
-        ).values_list('team_name', flat=True).distinct()
-
-        unique_teams = [team for team in team_names if team]
-
-        if unique_teams:
-            test_result['warnings'].append({
-                'message': 'Team names found in timesheet - verify cost allocation includes all departments',
-                'team_names': unique_teams,
-                'total_count': len(unique_teams),
-                'note': 'If team names represent departments, ensure they are mapped in cost allocation'
-            })
+        # Report invalid department codes
+        if invalid_departments:
+            test_result['passed'] = False
+            for department_code, codes in invalid_departments.items():
+                test_result['errors'].append({
+                    'invalid_department': department_code,
+                    'gl_codes': codes[:10],
+                    'total_count': len(codes),
+                    'error_type': 'department'
+                })
 
         return test_result
 

@@ -68,29 +68,69 @@
                     <p class="error-message">{{ error.message }}</p>
                 {% endif %}
 
-                {% if error.invalid_location %}
-                    <p><strong>Invalid Location Code:</strong> {{ error.invalid_location }}</p>
-                    <p><strong>Found in Cost Accounts:</strong></p>
+                {% if error.malformed_codes %}
+                    <p><strong>Malformed GLCodes (expected format: location-department):</strong></p>
                     <ul class="error-list">
-                        {% for account in error.cost_accounts %}
-                        <li>{{ account }}</li>
+                        {% for code in error.malformed_codes %}
+                        <li>{{ code }}</li>
                         {% endfor %}
                     </ul>
-                    {% if error.total_count > 10 %}
-                    <p class="error-note">Showing first 10 of {{ error.total_count }} occurrences</p>
+                    {% if error.total_count > 20 %}
+                    <p class="error-note">Showing first 20 of {{ error.total_count }} malformed GLCodes</p>
+                    {% elif error.total_count > 1 %}
+                    <p class="error-note">Total: {{ error.total_count }} malformed GLCodes</p>
+                    {% endif %}
+                {% endif %}
+
+                {% if error.invalid_location %}
+                    <p><strong>Invalid Location Code:</strong> {{ error.invalid_location }}</p>
+                    {% if error.cost_accounts %}
+                        <p><strong>Found in Cost Accounts:</strong></p>
+                        <ul class="error-list">
+                            {% for account in error.cost_accounts %}
+                            <li>{{ account }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% if error.total_count > 10 %}
+                        <p class="error-note">Showing first 10 of {{ error.total_count }} occurrences</p>
+                        {% endif %}
+                    {% endif %}
+                    {% if error.gl_codes %}
+                        <p><strong>Found in GLCodes:</strong></p>
+                        <ul class="error-list">
+                            {% for code in error.gl_codes %}
+                            <li>{{ code }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% if error.total_count > 10 %}
+                        <p class="error-note">Showing first 10 of {{ error.total_count }} GLCodes</p>
+                        {% endif %}
                     {% endif %}
                 {% endif %}
 
                 {% if error.invalid_department %}
                     <p><strong>Invalid Department Code:</strong> {{ error.invalid_department }}</p>
-                    <p><strong>Found in Cost Accounts:</strong></p>
-                    <ul class="error-list">
-                        {% for account in error.cost_accounts %}
-                        <li>{{ account }}</li>
-                        {% endfor %}
-                    </ul>
-                    {% if error.total_count > 10 %}
-                    <p class="error-note">Showing first 10 of {{ error.total_count }} occurrences</p>
+                    {% if error.cost_accounts %}
+                        <p><strong>Found in Cost Accounts:</strong></p>
+                        <ul class="error-list">
+                            {% for account in error.cost_accounts %}
+                            <li>{{ account }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% if error.total_count > 10 %}
+                        <p class="error-note">Showing first 10 of {{ error.total_count }} occurrences</p>
+                        {% endif %}
+                    {% endif %}
+                    {% if error.gl_codes %}
+                        <p><strong>Found in GLCodes:</strong></p>
+                        <ul class="error-list">
+                            {% for code in error.gl_codes %}
+                            <li>{{ code }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% if error.total_count > 10 %}
+                        <p class="error-note">Showing first 10 of {{ error.total_count }} GLCodes</p>
+                        {% endif %}
                     {% endif %}
                 {% endif %}
 
