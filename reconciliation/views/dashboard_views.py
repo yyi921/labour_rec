@@ -14,6 +14,7 @@ from reconciliation.models import (
 def reconciliation_dashboard(request, pay_period_id):
     """
     Main reconciliation dashboard showing all summary tables
+    Auto-triggers reconciliation if not already run
     """
     pay_period = get_object_or_404(PayPeriod, period_id=pay_period_id)
 
@@ -22,11 +23,16 @@ def reconciliation_dashboard(request, pay_period_id):
         pay_period=pay_period
     ).order_by('-started_at').first()
 
+    # Auto-trigger reconciliation if not found
     if not recon_run:
-        return render(request, 'reconciliation/dashboard.html', {
-            'pay_period': pay_period,
-            'error': 'No reconciliation run found for this pay period'
-        })
+        from reconciliation.engine import trigger_reconciliation
+        try:
+            recon_run = trigger_reconciliation(pay_period)
+        except Exception as e:
+            return render(request, 'reconciliation/dashboard.html', {
+                'pay_period': pay_period,
+                'error': f'Failed to run reconciliation: {str(e)}'
+            })
 
     # Table 1: Overall Summary
     overall_summary = _get_overall_summary(pay_period)
