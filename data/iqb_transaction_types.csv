@@ -11,4 +11,5 @@ Super,No,Yes,Superannuation - cost only
 Term ETP - Taxable (Code: O),No,Yes,Termination payment
 Term Post 93 AL Gross,Yes,Yes,Termination annual leave
 Term Post 93 LL Gross,Yes,Yes,Termination long service leave
+Term Post 93 LSL Gross,Yes,Yes,Termination long service leave (LSL variant)
 User Defined Leave,Yes,Yes,Custom leave types
