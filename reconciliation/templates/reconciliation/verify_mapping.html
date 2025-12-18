@@ -141,7 +141,7 @@ document.getElementById('mappingForm').addEventListener('submit', async function
     resultDiv.innerHTML = '<div class="alert alert-info">Saving mappings and re-running cost allocation...</div>';
 
     try {
-        const response = await fetch('{% url "reconciliation:save_location_mappings" pay_period.period_id %}', {
+        const response = await fetch('{% url "reconciliation:save_location_mapping" pay_period.period_id %}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

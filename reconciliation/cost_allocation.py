@@ -50,8 +50,10 @@ class CostAllocationEngine:
         if not self.iqb_upload:
             raise ValueError("No IQB data available")
 
-        # Clear existing rules for this period and source only
-        CostAllocationRule.objects.filter(pay_period=self.pay_period, source=source).delete()
+        # Clear existing rules when building from IQB (fresh start)
+        # When building from Tanda, we update existing rules instead of deleting
+        if source == 'iqb':
+            CostAllocationRule.objects.filter(pay_period=self.pay_period).delete()
 
         if source == 'iqb':
             return self._build_from_iqb()
@@ -129,67 +131,87 @@ class CostAllocationEngine:
     
     def _build_from_tanda(self):
         """
-        Build allocations from Tanda timesheet locations
-        Requires LocationMapping to be set up
+        Build allocations from Tanda timesheet GLCode
+        Uses GLCode field first, falls back to LocationMapping if GLCode is blank
         """
         if not self.tanda_upload:
             raise ValueError("No Tanda data available")
-        
+
         # Get all employees with their location hours from Tanda
         employees = TandaTimesheet.objects.filter(
             upload=self.tanda_upload
         ).values('employee_id', 'employee_name').distinct()
-        
+
         rules_created = []
         mapping_errors = []
-        
+
         for emp in employees:
             emp_id = emp['employee_id']
             emp_name = emp['employee_name']
-            
-            # Get hours and costs by location + team combination
-            location_data = TandaTimesheet.objects.filter(
+
+            # Get hours and costs by GLCode
+            glcode_data = TandaTimesheet.objects.filter(
                 upload=self.tanda_upload,
                 employee_id=emp_id
-            ).values('location_name', 'team_name').annotate(
+            ).values('gl_code', 'location_name', 'team_name').annotate(
                 total_hours=Sum('shift_hours'),
                 total_cost=Sum('shift_cost')
             )
 
             # Calculate total
-            total_hours = sum(item['total_hours'] for item in location_data if item['total_hours'])
-            total_cost = sum(item['total_cost'] for item in location_data if item['total_cost'])
+            total_hours = sum(item['total_hours'] for item in glcode_data if item['total_hours'])
+            total_cost = sum(item['total_cost'] for item in glcode_data if item['total_cost'])
 
             if total_hours == 0 or total_cost == 0:
                 continue
 
-            # Map locations to cost accounts
+            # Map to cost accounts
             allocations = {}
             unmapped_locations = []
 
-            for item in location_data:
+            for item in glcode_data:
+                gl_code = (item['gl_code'] or '').strip()
                 location_name = item['location_name']
                 team_name = item['team_name']
                 hours = item['total_hours'] or Decimal('0')
                 cost = item['total_cost'] or Decimal('0')
 
-                # Combine location and team to match LocationMapping format
-                tanda_location = f"{location_name} - {team_name}"
+                # Determine cost account code
+                cost_account = None
 
-                # Look up mapping
-                try:
-                    mapping = LocationMapping.objects.get(
-                        tanda_location=tanda_location,
-                        is_active=True
-                    )
-                    cost_account = mapping.cost_account_code
-                except LocationMapping.DoesNotExist:
-                    unmapped_locations.append(tanda_location)
+                if gl_code:
+                    # Use GLCode directly (normalize format if needed)
+                    # GLCode might be "470-68" but we need "470-6800"
+                    if '-' in gl_code:
+                        parts = gl_code.split('-')
+                        if len(parts) == 2:
+                            # Pad the second part to 4 digits
+                            location_part = parts[0]
+                            dept_part = parts[1].ljust(4, '0')
+                            cost_account = f"{location_part}-{dept_part}"
+                        else:
+                            cost_account = gl_code
+                    else:
+                        cost_account = gl_code
+                else:
+                    # Fall back to LocationMapping
+                    tanda_location = f"{location_name} - {team_name}"
+                    try:
+                        mapping = LocationMapping.objects.get(
+                            tanda_location=tanda_location,
+                            is_active=True
+                        )
+                        cost_account = mapping.cost_account_code
+                    except LocationMapping.DoesNotExist:
+                        unmapped_locations.append(tanda_location)
+                        continue
+
+                if not cost_account:
                     continue
-                
+
                 # Calculate percentage based on cost
                 percentage = float((cost / total_cost) * 100)
-                
+
                 # Accumulate if same cost account appears multiple times
                 if cost_account in allocations:
                     allocations[cost_account]['percentage'] += percentage
@@ -202,42 +224,45 @@ class CostAllocationEngine:
                         'hours': float(hours),
                         'source': 'tanda'
                     }
-            
+
             if unmapped_locations:
                 mapping_errors.append({
                     'employee': emp_name,
                     'unmapped_locations': unmapped_locations
                 })
-            
+
             if not allocations:
                 # Fall back to IQB if no mappings
                 continue
-            
+
             # Round percentages
             for cost_account in allocations:
                 allocations[cost_account]['percentage'] = round(
                     allocations[cost_account]['percentage'], 2
                 )
-            
-            # Create rule
-            rule = CostAllocationRule(
+
+            # Update or create rule
+            rule, created = CostAllocationRule.objects.update_or_create(
                 pay_period=self.pay_period,
                 employee_code=emp_id,
-                employee_name=emp_name,
-                source='tanda',
-                allocations=allocations
+                defaults={
+                    'employee_name': emp_name,
+                    'source': 'tanda',
+                    'allocations': allocations
+                }
             )
             rule.validate_allocations()
             rule.save()
-            
+
             rules_created.append(rule)
-        
+
         return {
             'source': 'tanda',
             'rules_created': len(rules_created),
             'valid_rules': sum(1 for r in rules_created if r.is_valid),
             'invalid_rules': sum(1 for r in rules_created if not r.is_valid),
-            'mapping_errors': mapping_errors
+            'mapping_errors': mapping_errors,
+            'unmapped_count': len(mapping_errors)
         }
     
     def apply_override(self, employee_code, new_allocations, user):

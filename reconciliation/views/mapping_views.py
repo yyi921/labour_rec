@@ -17,8 +17,32 @@ from reconciliation.models import (
     EmployeePayPeriodSnapshot
 )
 from reconciliation.cost_allocation import CostAllocationEngine
-from django.db.models import Sum, Count, Q
+from django.db.models import Sum, Count, Q, Max
 from decimal import Decimal
+import pandas as pd
+
+
+def _load_transaction_types_for_costs():
+    """
+    Load transaction types from CSV that should be included in cost calculations
+    Same logic as the reconciliation engine
+    """
+    config_path = os.path.join('data', 'iqb_transaction_types.csv')
+
+    try:
+        df = pd.read_csv(config_path)
+        # Get transaction types for costs (Include in Costs = Yes)
+        costs_types = df[df['Include in Costs'].str.strip().str.lower() == 'yes']['Transaction Type'].tolist()
+        return costs_types
+    except Exception as e:
+        # Fallback to default list if file can't be loaded
+        return [
+            'Annual Leave', 'Auto Pay', 'Hours By Rate', 'Long Service Leave',
+            'Non Standard Add Before', 'Other Leave', 'Sick Leave',
+            'Standard Add Before', 'Super', 'Term ETP - Taxable (Code: O)',
+            'Term Post 93 AL Gross', 'Term Post 93 LL Gross', 'Term Post 93 LSL Gross',
+            'User Defined Leave',
+        ]
 
 
 def _load_employee_locations():
@@ -180,6 +204,7 @@ def _expand_spl_allocations(allocation):
 def verify_tanda_mapping(request, pay_period_id):
     """
     Verify Tanda location mappings and allow user to fix unmapped locations
+    Only shows locations that have blank GLCode and no LocationMapping
     """
     pay_period = get_object_or_404(PayPeriod, period_id=pay_period_id)
 
@@ -196,36 +221,53 @@ def verify_tanda_mapping(request, pay_period_id):
             'error': 'No Tanda timesheet data found for this period'
         })
 
-    # Get all unique Tanda locations from uploaded data
-    tanda_locations = list(TandaTimesheet.objects.filter(
+    # Get all unique location-team combinations that have BLANK gl_code
+    # (only these need mapping, since records with gl_code are already mapped)
+    unmapped_data = TandaTimesheet.objects.filter(
         upload=tanda_upload
-    ).values('location_name').distinct().order_by('location_name'))
+    ).filter(
+        Q(gl_code__isnull=True) | Q(gl_code='')
+    ).values('location_name', 'team_name').annotate(
+        employee_count=Count('employee_id', distinct=True)
+    ).order_by('location_name', 'team_name')
 
     # Get existing mappings
-    mapped_locations = set(LocationMapping.objects.filter(
-        is_active=True
-    ).values_list('tanda_location', flat=True))
+    existing_mappings = {
+        m.tanda_location: m.cost_account_code
+        for m in LocationMapping.objects.filter(is_active=True)
+    }
 
-    # Mark which locations need mapping
-    for loc in tanda_locations:
-        loc['is_mapped'] = loc['location_name'] in mapped_locations
-        if loc['is_mapped']:
-            mapping = LocationMapping.objects.get(tanda_location=loc['location_name'])
-            loc['cost_account'] = mapping.cost_account_code
-            loc['department'] = mapping.department_name
+    # Build unmapped locations list (only those without gl_code AND without mapping)
+    unmapped_locations = []
+    for item in unmapped_data:
+        tanda_location = f"{item['location_name']} - {item['team_name']}"
+        if tanda_location not in existing_mappings:
+            unmapped_locations.append({
+                'tanda_location': tanda_location,
+                'employee_count': item['employee_count']
+            })
 
-    # Count employees affected by unmapped locations
-    unmapped_locations = [loc['location_name'] for loc in tanda_locations if not loc['is_mapped']]
-    affected_count = TandaTimesheet.objects.filter(
-        upload=tanda_upload,
-        location_name__in=unmapped_locations
-    ).values('employee_id').distinct().count() if unmapped_locations else 0
+    # Calculate total records with gl_code
+    total_records = TandaTimesheet.objects.filter(upload=tanda_upload).count()
+    records_with_glcode = TandaTimesheet.objects.filter(
+        upload=tanda_upload
+    ).exclude(
+        Q(gl_code__isnull=True) | Q(gl_code='')
+    ).count()
+
+    mapped_count = records_with_glcode + len(existing_mappings)
+    total_locations = TandaTimesheet.objects.filter(
+        upload=tanda_upload
+    ).values('location_name').distinct().count()
 
     return render(request, 'reconciliation/verify_mapping.html', {
         'pay_period': pay_period,
-        'tanda_locations': tanda_locations,
+        'unmapped_locations': unmapped_locations,
         'unmapped_count': len(unmapped_locations),
-        'affected_employees': affected_count,
+        'mapped_count': total_locations - len(unmapped_locations),
+        'total_locations': total_locations,
+        'records_with_glcode': records_with_glcode,
+        'mapped_pct': round((total_locations - len(unmapped_locations)) / total_locations * 100, 1) if total_locations > 0 else 0,
     })
 
 
@@ -271,6 +313,8 @@ def save_location_mapping(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@csrf_exempt
+@require_http_methods(['POST'])
 def run_cost_allocation(request, pay_period_id):
     """
     Run cost allocation for both IQB and Tanda sources
@@ -341,28 +385,6 @@ def cost_allocation_view(request, pay_period_id):
     # Get all employees with allocation rules
     employees_data = []
 
-    # Get all allocation rules (each employee has ONE rule with their current source)
-    all_rules = CostAllocationRule.objects.filter(
-        pay_period=pay_period
-    ).select_related('pay_period')
-
-    # Get override rules separately
-    override_rules = {
-        rule.employee_code: rule
-        for rule in CostAllocationRule.objects.filter(pay_period=pay_period, source='override')
-    }
-
-    # Get Tanda upload for calculating Tanda allocations on-the-fly
-    tanda_upload = Upload.objects.filter(
-        pay_period=pay_period,
-        source_system='Tanda_Timesheet',
-        is_active=True
-    ).first()
-
-    # Auto-create Tanda location mappings if needed
-    if tanda_upload:
-        _auto_create_tanda_mappings(tanda_upload)
-
     # Get IQB upload for cost calculations
     iqb_upload = Upload.objects.filter(
         pay_period=pay_period,
@@ -376,20 +398,50 @@ def cost_allocation_view(request, pay_period_id):
             'error': 'No IQB data available for this pay period'
         })
 
+    # Get Tanda upload for calculating Tanda allocations on-the-fly
+    tanda_upload = Upload.objects.filter(
+        pay_period=pay_period,
+        source_system='Tanda_Timesheet',
+        is_active=True
+    ).first()
+
+    # Auto-create Tanda location mappings if needed
+    if tanda_upload:
+        _auto_create_tanda_mappings(tanda_upload)
+
+    # Get all allocation rules (indexed by employee_code for quick lookup)
+    all_rules = {
+        rule.employee_code: rule
+        for rule in CostAllocationRule.objects.filter(pay_period=pay_period).select_related('pay_period')
+    }
+
+    # Get override rules separately
+    override_rules = {
+        rule.employee_code: rule
+        for rule in CostAllocationRule.objects.filter(pay_period=pay_period, source='override')
+    }
+
     # Load employee locations from master file
     employee_locations = _load_employee_locations()
 
-    # Build employee data
-    for rule in all_rules:
-        emp_code = rule.employee_code
+    # Get list of transaction types to include (load from CSV like the reconciliation engine does)
+    include_transaction_types = _load_transaction_types_for_costs()
 
-        # Get list of transaction types to include
-        include_transaction_types = [
-            'Annual Leave', 'Auto Pay', 'Hours By Rate', 'Long Service Leave',
-            'Non Standard Add Before', 'Other Leave', 'Sick Leave',
-            'Standard Add Before', 'Super', 'Term ETP - Taxable (Code: O)',
-            'Term Post 93 AL Gross', 'Term Post 93 LL Gross', 'User Defined Leave',
-        ]
+    # Get ALL employees from IQB (like the dashboard does, not just those with allocation rules)
+    all_employees = IQBDetail.objects.filter(
+        upload=iqb_upload,
+        transaction_type__in=include_transaction_types
+    ).values('employee_code').annotate(
+        employee_name=Max('full_name')
+    ).order_by('employee_code')
+
+    # Build employee data
+    for emp in all_employees:
+        emp_code = emp['employee_code']
+        emp_name = emp['employee_name']
+
+        # Get the allocation rule for this employee (if exists)
+        rule = all_rules.get(emp_code)
 
         # Apply location/department filter if specified
         if location_filter or department_filter:
@@ -427,8 +479,8 @@ def cost_allocation_view(request, pay_period_id):
         # Get override (if exists)
         override_rule = override_rules.get(emp_code)
 
-        # Determine current source from the rule
-        current_source = rule.source
+        # Determine current source from the rule (default to 'iqb' if no rule)
+        current_source = rule.source if rule else 'iqb'
 
         # Get employee location from master file
         emp_location = employee_locations.get(emp_code, '')
@@ -453,7 +505,7 @@ def cost_allocation_view(request, pay_period_id):
 
         employees_data.append({
             'employee_code': emp_code,
-            'employee_name': rule.employee_name,
+            'employee_name': emp_name,
             'employee_location': emp_location,
             'total_cost': float(total_cost),
             'gl_costs': gl_costs,
@@ -656,13 +708,8 @@ def _calculate_gl_totals(iqb_upload):
     """
     Calculate total amount by GL account for verification
     """
-    # Transaction types to include
-    include_transaction_types = [
-        'Annual Leave', 'Auto Pay', 'Hours By Rate', 'Long Service Leave',
-        'Non Standard Add Before', 'Other Leave', 'Sick Leave',
-        'Standard Add Before', 'Super', 'Term ETP - Taxable (Code: O)',
-        'Term Post 93 AL Gross', 'Term Post 93 LL Gross', 'User Defined Leave',
-    ]
+    # Load transaction types from CSV (same as reconciliation engine)
+    include_transaction_types = _load_transaction_types_for_costs()
 
     # Get all pay_comp_code totals
     pay_comp_totals = IQBDetail.objects.filter(
@@ -748,13 +795,8 @@ def _render_dollar_view(request, pay_period, location_filter, department_filter)
     # Get all allocation rules
     all_rules = CostAllocationRule.objects.filter(pay_period=pay_period)
 
-    # Transaction types to include
-    include_transaction_types = [
-        'Annual Leave', 'Auto Pay', 'Hours By Rate', 'Long Service Leave',
-        'Non Standard Add Before', 'Other Leave', 'Sick Leave',
-        'Standard Add Before', 'Super', 'Term ETP - Taxable (Code: O)',
-        'Term Post 93 AL Gross', 'Term Post 93 LL Gross', 'User Defined Leave',
-    ]
+    # Load transaction types from CSV (same as reconciliation engine)
+    include_transaction_types = _load_transaction_types_for_costs()
 
     # Build employee data with GL breakdown
     employees_data = []
@@ -921,13 +963,8 @@ def save_cost_allocations(request, pay_period_id):
         location_lookup = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}
         department_lookup = {dept.department_id: dept.department_name for dept in SageDepartment.objects.all()}
 
-        # Transaction types to include
-        include_transaction_types = [
-            'Annual Leave', 'Auto Pay', 'Hours By Rate', 'Long Service Leave',
-            'Non Standard Add Before', 'Other Leave', 'Sick Leave',
-            'Standard Add Before', 'Super', 'Term ETP - Taxable (Code: O)',
-            'Term Post 93 AL Gross', 'Term Post 93 LL Gross', 'User Defined Leave',
-        ]
+        # Load transaction types from CSV (same as reconciliation engine)
+        include_transaction_types = _load_transaction_types_for_costs()
 
         saved_count = 0
 
@@ -1118,13 +1155,8 @@ def save_all_allocations(request, pay_period_id):
         if not all_rules.exists():
             return JsonResponse({'error': 'No cost allocation rules found for this pay period'}, status=400)
 
-        # Transaction types to include
-        include_transaction_types = [
-            'Annual Leave', 'Auto Pay', 'Hours By Rate', 'Long Service Leave',
-            'Non Standard Add Before', 'Other Leave', 'Sick Leave',
-            'Standard Add Before', 'Super', 'Term ETP - Taxable (Code: O)',
-            'Term Post 93 AL Gross', 'Term Post 93 LL Gross', 'User Defined Leave',
-        ]
+        # Load transaction types from CSV (same as reconciliation engine)
+        include_transaction_types = _load_transaction_types_for_costs()
 
         saved_count = 0
 
