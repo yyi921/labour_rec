@@ -14,7 +14,7 @@ from django.conf import settings
 from reconciliation.models import (
     PayPeriod, LocationMapping, TandaTimesheet, Upload, CostAllocationRule,
     IQBDetail, SageLocation, SageDepartment, PayCompCodeMapping, FinalizedAllocation,
-    EmployeePayPeriodSnapshot
+    EmployeePayPeriodSnapshot, JournalReconciliation, ReconciliationRun
 )
 from reconciliation.cost_allocation import CostAllocationEngine
 from django.db.models import Sum, Count, Q, Max
@@ -519,8 +519,8 @@ def cost_allocation_view(request, pay_period_id):
             'expanded_allocation': expanded_allocation,
         })
 
-    # Calculate GL totals for verification
-    gl_totals = _calculate_gl_totals(iqb_upload)
+    # Get GL totals from Journal Reconciliation (same as dashboard)
+    gl_totals = _get_journal_gl_totals(pay_period)
 
     # Get filter options
     locations = SageLocation.objects.all().order_by('location_id')
@@ -702,6 +702,48 @@ def _employee_matches_filter_by_cost_account(iqb_upload, emp_code, include_trans
             return True
 
     return False
+
+
+def _get_journal_gl_totals(pay_period):
+    """
+    Get GL totals from Journal Reconciliation (same as dashboard)
+    This matches the Journal Entry Breakdown on the dashboard
+    """
+    # Get the latest completed reconciliation run
+    recon_run = ReconciliationRun.objects.filter(
+        pay_period=pay_period,
+        status='completed'
+    ).order_by('-completed_at').first()
+
+    if not recon_run:
+        return {
+            'items': [],
+            'grand_total': Decimal('0')
+        }
+
+    # Get journal items that are included in total cost (same as dashboard)
+    journal_items = JournalReconciliation.objects.filter(
+        recon_run=recon_run,
+        include_in_total_cost=True
+    ).order_by('gl_account')
+
+    # Build result
+    items = []
+    grand_total = Decimal('0')
+
+    for item in journal_items:
+        amount = item.journal_net
+        grand_total += amount
+        items.append({
+            'gl_account': item.gl_account,
+            'gl_name': item.description,
+            'total': amount
+        })
+
+    return {
+        'items': items,
+        'grand_total': grand_total
+    }
 
 
 def _calculate_gl_totals(iqb_upload):
