@@ -240,9 +240,12 @@
             <div class="alert alert-success">
                 <strong>Cost Allocation Complete!</strong> You can view the detailed allocation results, generate journal entries, or export to Sage Intacct.
             </div>
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
+                <button onclick="saveAllEmployeeSnapshots()" class="btn btn-success" style="font-size: 16px; padding: 10px 20px;" id="saveSnapshotsBtn">
+                    💾 Save ALL Employees
+                </button>
                 <a href="{% url 'reconciliation:cost_allocation_view' pay_period.period_id %}" class="btn btn-primary">
-                    Cost Allocation View
+                    View/Edit Cost Allocation
                 </a>
                 <a href="{% url 'reconciliation:generate_journal' pay_period.period_id %}" class="btn btn-primary">
                     📊 Generate Journal
@@ -251,6 +254,9 @@
                     Export to Sage Intacct
                 </button>
             </div>
+            <p style="margin-top: 8px; font-size: 13px; color: #666;">
+                <em>💡 <strong>Save ALL Employees</strong> uses their current source selections (IQB, Tanda, or Override). To change sources, go to "View/Edit Cost Allocation".</em>
+            </p>
         </div>
     {% else %}
         <!-- Variance is 0 but cost allocation not run yet -->
@@ -258,11 +264,17 @@
             <div class="alert alert-success">
                 <strong>Ready for Cost Allocation!</strong> The journal reconciliation is balanced. You can now verify Tanda mappings and run cost allocation.
             </div>
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
+                <button onclick="saveAllEmployeeSnapshots()" class="btn btn-success" style="font-size: 16px; padding: 10px 20px;" id="saveSnapshotsBtn2">
+                    💾 Save ALL Employees
+                </button>
                 <a href="{% url 'reconciliation:verify_mapping' pay_period.period_id %}" class="btn btn-primary">
                     Verify Tanda Mappings & Run Cost Allocation
                 </a>
             </div>
+            <p style="margin-top: 8px; font-size: 13px; color: #666;">
+                <em>💡 Save ALL Employees to generate journal entries. Uses current source selections.</em>
+            </p>
         </div>
     {% endif %}
 {% else %}
@@ -318,5 +330,55 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 </style>
+
+<script>
+function saveAllEmployeeSnapshots() {
+    if (!confirm('This will save ALL employees for this pay period using their current source selections (IQB, Tanda, or Override).\n\nTo change sources, go to "View/Edit Cost Allocation" first.\n\nContinue?')) {
+        return;
+    }
+
+    const payPeriodId = '{{ pay_period.period_id }}';
+    const saveBtn1 = document.getElementById('saveSnapshotsBtn');
+    const saveBtn2 = document.getElementById('saveSnapshotsBtn2');
+
+    // Disable buttons and show loading
+    [saveBtn1, saveBtn2].forEach(btn => {
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = '⏳ Saving...';
+        }
+    });
+
+    fetch(`/api/save-all-allocations/${payPeriodId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`✓ Successfully saved ${data.saved_count} employee snapshot(s)!\n\nYou can now generate journal entries.`);
+            // Reload the page to update any snapshot counts
+            location.reload();
+        } else {
+            alert(`Error: ${data.error || 'Unknown error occurred'}`);
+        }
+    })
+    .catch(error => {
+        console.error('Error saving snapshots:', error);
+        alert('Failed to save snapshots. Please check the console for details.');
+    })
+    .finally(() => {
+        // Re-enable buttons
+        [saveBtn1, saveBtn2].forEach(btn => {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '💾 Save ALL Employees';
+            }
+        });
+    });
+}
+</script>
 
 {% endblock %}

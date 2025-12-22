@@ -1340,3 +1340,64 @@ def save_all_allocations(request, pay_period_id):
         import traceback
         traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def apply_bulk_source(request, pay_period_id):
+    """
+    Apply a bulk source selection to ALL employees in the pay period
+    This updates the CostAllocationRule.source field for all employees
+    """
+    try:
+        pay_period = PayPeriod.objects.get(period_id=pay_period_id)
+        data = json.loads(request.body)
+        source = data.get('source')
+
+        if not source or source not in ['iqb', 'tanda', 'override']:
+            return JsonResponse({'error': 'Invalid source specified'}, status=400)
+
+        # Get all cost allocation rules for this pay period
+        all_rules = CostAllocationRule.objects.filter(pay_period=pay_period)
+
+        if not all_rules.exists():
+            return JsonResponse({'error': 'No cost allocation rules found for this pay period'}, status=400)
+
+        # Update all rules with the new source
+        updated_count = 0
+
+        with transaction.atomic():
+            for rule in all_rules:
+                # Skip Tanda if employee doesn't have Tanda data
+                if source == 'tanda':
+                    # Check if employee has Tanda data
+                    tanda_upload = Upload.objects.filter(
+                        pay_period=pay_period,
+                        source_system='Tanda_Timesheet',
+                        is_active=True
+                    ).first()
+
+                    if tanda_upload:
+                        has_tanda = TandaTimesheet.objects.filter(
+                            upload=tanda_upload,
+                            employee_id=rule.employee_code
+                        ).exists()
+
+                        if not has_tanda:
+                            # Skip this employee, no Tanda data
+                            continue
+
+                # Update the source
+                rule.source = source
+                rule.save()
+                updated_count += 1
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Applied {source} to {updated_count} employees',
+            'updated_count': updated_count
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)

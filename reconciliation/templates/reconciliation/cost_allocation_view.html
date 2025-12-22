@@ -113,37 +113,40 @@
     <p><small>Total Employees: {{ employees|length }}</small></p>
 
     <!-- Bulk Actions Section -->
-    <div class="bulk-actions-section" style="background-color: #f8f9fa; padding: 15px; margin-bottom: 20px; border-radius: 5px; border: 1px solid #dee2e6;">
-        <h3 style="margin-top: 0; margin-bottom: 10px; font-size: 16px;">Bulk Source Selection</h3>
+    <div class="bulk-actions-section" style="background-color: #f0f8ff; padding: 20px; margin-bottom: 20px; border-radius: 5px; border: 2px solid #2196F3;">
+        <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 18px; color: #2c3e50;">📋 Quick Source Selection (Visible Employees Only)</h3>
         <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
             <div style="display: flex; gap: 15px;">
-                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                    <input type="radio" name="bulk-source" value="iqb" checked>
+                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 15px;">
+                    <input type="radio" name="bulk-source" value="iqb" onchange="applyBulkSourceToVisible('iqb')" style="width: 18px; height: 18px;">
                     <strong>IQB</strong>
                 </label>
-                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                    <input type="radio" name="bulk-source" value="tanda">
+                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 15px;">
+                    <input type="radio" name="bulk-source" value="tanda" onchange="applyBulkSourceToVisible('tanda')" style="width: 18px; height: 18px;">
                     <strong>Tanda</strong>
                 </label>
-                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                    <input type="radio" name="bulk-source" value="override">
+                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 15px;">
+                    <input type="radio" name="bulk-source" value="override" onchange="applyBulkSourceToVisible('override')" style="width: 18px; height: 18px;">
                     <strong>Override</strong>
                 </label>
             </div>
-            <div style="display: flex; gap: 10px;">
-                <button onclick="applyBulkToAll()" class="btn btn-primary" style="padding: 5px 15px;">Apply to All Visible</button>
-                <button onclick="applyBulkToSelected()" class="btn btn-primary" style="padding: 5px 15px;">Apply to Selected</button>
-            </div>
         </div>
-        <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">
-            <em>Note: Tanda will only be applied if Tanda data exists for the employee. Override requires manual input.</em>
+        <p style="margin: 15px 0 0 0; font-size: 14px; color: #555; background-color: #fff; padding: 12px; border-radius: 4px; border-left: 4px solid #2196F3;">
+            <strong>💡 How it works:</strong> Selecting a source above will <strong>immediately update all {{ employees|length }} visible employees</strong> on this page.
+            Then click "Save Visible Employees" below to save only these employees.
+            <br><br>
+            <em>Note: Employees not shown on this page will not be affected.</em>
         </p>
     </div>
 
     <div style="margin-bottom: 15px;">
-        <button onclick="saveAllocations()" class="btn btn-primary">Save Changes (Visible Only)</button>
-        <button onclick="saveAllEmployees()" class="btn btn-success">Save All Employees (All Locations/Departments)</button>
+        <button onclick="saveVisibleEmployees()" class="btn btn-success" style="font-size: 16px; padding: 10px 20px;">
+            💾 Save Visible Employees ({{ employees|length }})
+        </button>
         <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">Back to Dashboard</a>
+        <p style="margin-top: 8px; font-size: 13px; color: #666;">
+            <em>💡 This will save only the {{ employees|length }} employees shown on this page. Other employees will not be affected.</em>
+        </p>
     </div>
 
     <table class="allocation-table">
@@ -257,7 +260,9 @@
     </table>
 
     <div style="margin-top: 15px;">
-        <button onclick="saveAllocations()" class="btn btn-primary">Save Changes</button>
+        <button onclick="saveVisibleEmployees()" class="btn btn-success" style="font-size: 16px; padding: 10px 20px;">
+            💾 Save Visible Employees ({{ employees|length }})
+        </button>
         <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-secondary">Back to Dashboard</a>
     </div>
     {% endif %}
@@ -760,45 +765,132 @@ function saveAllocations() {
     });
 }
 
-// Save All Employees across all locations and departments
-function saveAllEmployees() {
-    if (!confirm('This will save ALL employees for this pay period across ALL locations and departments using their current source selections. Are you sure?')) {
+// Apply bulk source selection to all visible employees
+function applyBulkSourceToVisible(source) {
+    let appliedCount = 0;
+    let skippedCount = 0;
+
+    // Loop through all visible employee rows
+    document.querySelectorAll('[data-employee]').forEach(row => {
+        const empCode = row.getAttribute('data-employee');
+        const hasTanda = row.getAttribute('data-has-tanda') === 'true';
+
+        // Skip if trying to apply Tanda but employee doesn't have Tanda data
+        if (source === 'tanda' && !hasTanda) {
+            skippedCount++;
+            return;
+        }
+
+        // Find and check the appropriate radio button for this employee
+        const radio = row.querySelector(`input[name="source-${empCode}"][value="${source}"]`);
+        if (radio && !radio.disabled) {
+            radio.checked = true;
+            appliedCount++;
+        } else {
+            skippedCount++;
+        }
+    });
+
+    console.log(`Applied ${source} to ${appliedCount} visible employees. Skipped ${skippedCount}.`);
+}
+
+// Save only the visible employees on this page
+function saveVisibleEmployees() {
+    const visibleEmployees = document.querySelectorAll('[data-employee]');
+
+    if (!confirm(`This will save ${visibleEmployees.length} visible employees with their selected sources. Continue?`)) {
         return;
     }
 
     const payPeriodId = '{{ pay_period.period_id }}';
-    const saveAllButton = document.querySelector('button[onclick="saveAllEmployees()"]');
+    const saveButtons = document.querySelectorAll('button[onclick="saveVisibleEmployees()"]');
 
-    // Disable button and show loading
-    if (saveAllButton) {
-        saveAllButton.disabled = true;
-        saveAllButton.textContent = 'Saving All...';
+    // Disable buttons and show loading
+    saveButtons.forEach(btn => {
+        btn.disabled = true;
+        btn.textContent = '⏳ Saving...';
+    });
+
+    // Collect changes for visible employees only
+    const changes = [];
+    let hasErrors = false;
+
+    visibleEmployees.forEach(row => {
+        const empCode = row.getAttribute('data-employee');
+        const sourceRadio = row.querySelector(`input[name="source-${empCode}"]:checked`);
+
+        if (!sourceRadio) {
+            console.warn(`No source selected for employee ${empCode}`);
+            return;
+        }
+
+        const source = sourceRadio.value;
+        const change = {
+            employee_code: empCode,
+            source: source
+        };
+
+        // If override is selected, get the override value
+        if (source === 'override') {
+            const overrideInput = row.querySelector(`#override-${empCode}`);
+            if (overrideInput && overrideInput.value.trim()) {
+                const validation = validateOverride(overrideInput.value);
+                if (!validation.valid) {
+                    alert(`Validation error for employee ${empCode}: ${validation.error}`);
+                    hasErrors = true;
+                    return;
+                }
+                change.override = validation.allocations;
+            }
+        }
+
+        changes.push(change);
+    });
+
+    if (hasErrors) {
+        saveButtons.forEach(btn => {
+            btn.disabled = false;
+            btn.textContent = '💾 Save Visible Employees';
+        });
+        return;
     }
 
-    fetch(`/api/save-all-allocations/${payPeriodId}/`, {
+    if (changes.length === 0) {
+        alert('No employees to save');
+        saveButtons.forEach(btn => {
+            btn.disabled = false;
+            btn.textContent = '💾 Save Visible Employees';
+        });
+        return;
+    }
+
+    // Save visible employees
+    fetch(`/api/save-cost-allocations/${payPeriodId}/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-        }
+        },
+        body: JSON.stringify({ changes: changes })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert(`Successfully saved ${data.saved_count} allocation snapshot(s) across all employees!`);
+            alert(`✓ Successfully saved ${data.saved_count} employee allocation(s)!`);
+            location.reload();
         } else {
             alert(`Error: ${data.error || 'Unknown error occurred'}`);
         }
     })
     .catch(error => {
-        console.error('Error saving all allocations:', error);
-        alert('Failed to save all allocations. Please check the console for details.');
+        console.error('Error saving allocations:', error);
+        alert('Failed to save allocations. Please check the console for details.');
     })
     .finally(() => {
-        // Re-enable button
-        if (saveAllButton) {
-            saveAllButton.disabled = false;
-            saveAllButton.textContent = 'Save All Employees (All Locations/Departments)';
-        }
+        // Re-enable buttons
+        saveButtons.forEach(btn => {
+            btn.disabled = false;
+            btn.textContent = '💾 Save Visible Employees';
+        });
     });
 }
 

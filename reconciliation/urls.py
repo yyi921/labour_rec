@@ -18,6 +18,7 @@ urlpatterns = [
     path('cost-allocation/<str:pay_period_id>/', mapping_views.cost_allocation_view, name='cost_allocation_view'),
     path('api/save-cost-allocations/<str:pay_period_id>/', mapping_views.save_cost_allocations, name='save_cost_allocations'),
     path('api/save-all-allocations/<str:pay_period_id>/', mapping_views.save_all_allocations, name='save_all_allocations'),
+    path('api/apply-bulk-source/<str:pay_period_id>/', mapping_views.apply_bulk_source, name='apply_bulk_source'),
 
     # Data validation endpoints
     path('validation/summary/<str:pay_period_id>/', data_validation_views.validation_summary_view, name='validation_summary'),
