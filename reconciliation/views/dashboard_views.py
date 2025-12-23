@@ -2,8 +2,11 @@
 Reconciliation Dashboard Views
 """
 from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
 from django.db.models import Sum, Count, Avg, Q
 from decimal import Decimal
+import json
 
 from reconciliation.models import (
     PayPeriod, ReconciliationRun, EmployeeReconciliation,
@@ -256,3 +259,46 @@ def pay_period_list(request):
     return render(request, 'reconciliation/pay_period_list.html', {
         'pay_periods': pay_periods
     })
+
+
+@require_http_methods(["POST"])
+def delete_pay_periods(request):
+    """
+    Delete selected pay periods and all associated data
+    """
+    try:
+        data = json.loads(request.body)
+        period_ids = data.get('period_ids', [])
+
+        if not period_ids:
+            return JsonResponse({
+                'success': False,
+                'error': 'No pay periods specified'
+            }, status=400)
+
+        # Delete pay periods (cascading deletes will handle related data)
+        deleted_count = 0
+        for period_id in period_ids:
+            try:
+                pay_period = PayPeriod.objects.get(period_id=period_id)
+                pay_period.delete()
+                deleted_count += 1
+            except PayPeriod.DoesNotExist:
+                continue
+
+        return JsonResponse({
+            'success': True,
+            'deleted_count': deleted_count,
+            'message': f'Successfully deleted {deleted_count} pay period(s)'
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)

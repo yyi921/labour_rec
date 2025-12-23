@@ -6,11 +6,20 @@
 <header>
     <h1>Reconciliation Dashboards</h1>
     <p>Select a pay period to view the reconciliation dashboard</p>
+    <div style="margin-top: 15px;">
+        <a href="{% url 'reconciliation:multi_upload' %}" class="btn btn-primary" style="background-color: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block;">
+            📁 Multi-File Upload
+        </a>
+        <button id="deleteSelectedBtn" class="btn btn-danger" style="background-color: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px;" onclick="deleteSelected()">
+            🗑️ Delete Selected
+        </button>
+    </div>
 </header>
 
 <table>
     <thead>
         <tr>
+            <th><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
             <th>Pay Period</th>
             <th>Period Start</th>
             <th>Period End</th>
@@ -23,6 +32,7 @@
     <tbody>
         {% for pp in pay_periods %}
         <tr>
+            <td><input type="checkbox" class="period-checkbox" value="{{ pp.period_id }}"></td>
             <td><strong>{{ pp.period_id }}</strong></td>
             <td>{{ pp.period_start|date:"d M Y" }}</td>
             <td>{{ pp.period_end|date:"d M Y" }}</td>
@@ -58,12 +68,73 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="7" style="text-align: center; padding: 40px; color: #95a5a6;">
+            <td colspan="8" style="text-align: center; padding: 40px; color: #95a5a6;">
                 No pay periods found
             </td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
+
+<script>
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.period-checkbox');
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+}
+
+function deleteSelected() {
+    const checkboxes = document.querySelectorAll('.period-checkbox:checked');
+    if (checkboxes.length === 0) {
+        alert('Please select at least one pay period to delete.');
+        return;
+    }
+
+    const periodIds = Array.from(checkboxes).map(cb => cb.value);
+    const confirmMsg = `Are you sure you want to delete ${periodIds.length} pay period(s)?\n\nPay Periods: ${periodIds.join(', ')}\n\nThis will delete all associated reconciliations, uploads, and data.`;
+
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    // Send delete request to backend
+    fetch('/api/pay-periods/delete/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ period_ids: periodIds })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Successfully deleted ${data.deleted_count} pay period(s)`);
+            location.reload();
+        } else {
+            alert(`Error: ${data.error || 'Failed to delete pay periods'}`);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to delete pay periods. Please check the console for details.');
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
 
 {% endblock %}

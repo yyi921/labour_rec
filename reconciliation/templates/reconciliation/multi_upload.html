@@ -311,10 +311,43 @@
         <div class="header">
             <h1>Multi-File Upload</h1>
             <p class="subtitle">Upload multiple files for validation and processing</p>
+            <div style="margin-top: 15px;">
+                <a href="{% url 'reconciliation:pay_period_list' %}" class="btn btn-primary" style="background-color: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                    📊 Dashboard
+                </a>
+            </div>
         </div>
 
-        <!-- Pay Period Input -->
+        <!-- Function Selection -->
         <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+            <label style="display: block; font-weight: 500; margin-bottom: 15px; color: #333; font-size: 16px;">
+                Select Function:
+            </label>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <label style="display: flex; align-items: center; cursor: pointer; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; transition: all 0.2s;">
+                    <input type="radio" name="function" value="cost_allocation" checked onchange="updatePeriodInputs()" style="margin-right: 10px; width: 18px; height: 18px;">
+                    <span style="font-size: 15px;">Actual Pay Period Cost Allocation</span>
+                </label>
+                <label style="display: flex; align-items: center; cursor: pointer; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; transition: all 0.2s;">
+                    <input type="radio" name="function" value="leave_calculation" onchange="updatePeriodInputs()" style="margin-right: 10px; width: 18px; height: 18px;">
+                    <span style="font-size: 15px;">Annual Leave, Long Service Leave, Time-in-lieu Calculation</span>
+                </label>
+                <label style="display: flex; align-items: center; cursor: pointer; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; transition: all 0.2s;">
+                    <input type="radio" name="function" value="accrual_wages" onchange="updatePeriodInputs()" style="margin-right: 10px; width: 18px; height: 18px;">
+                    <span style="font-size: 15px;">Accrual Wages and Superannuation Costs</span>
+                </label>
+                <label style="display: flex; align-items: center; cursor: pointer; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; transition: all 0.2s;">
+                    <input type="radio" name="function" value="payroll_tax" onchange="updatePeriodInputs()" style="margin-right: 10px; width: 18px; height: 18px;">
+                    <span style="font-size: 15px;">Payroll Tax and Work Cover Calculation</span>
+                </label>
+            </div>
+            <p style="margin-top: 12px; font-size: 13px; color: #666;">
+                <strong>Pay Period ID</strong> indicates when the journals generated from the above functions will be posted to the accounting system Sage Intacct.
+            </p>
+        </div>
+
+        <!-- Pay Period Input (conditional based on function selection) -->
+        <div id="payPeriodIdSection" style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
             <label for="payPeriodInput" style="display: block; font-weight: 500; margin-bottom: 10px; color: #333;">
                 Pay Period ID (e.g., 2025-11-16):
             </label>
@@ -328,6 +361,89 @@
             <p style="margin-top: 8px; font-size: 13px; color: #666;">
                 Enter the pay period end date in YYYY-MM-DD format
             </p>
+        </div>
+
+        <!-- Start and End Period Inputs (for Accrual Wages function) -->
+        <div id="periodRangeSection" style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: none;">
+            <div style="margin-bottom: 15px;">
+                <label for="startPeriodInput" style="display: block; font-weight: 500; margin-bottom: 10px; color: #333;">
+                    Start Period (e.g., 2025-01-01):
+                </label>
+                <input
+                    type="text"
+                    id="startPeriodInput"
+                    placeholder="YYYY-MM-DD"
+                    style="width: 300px; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px;"
+                    value=""
+                >
+            </div>
+            <div>
+                <label for="endPeriodInput" style="display: block; font-weight: 500; margin-bottom: 10px; color: #333;">
+                    End Period (e.g., 2025-12-31):
+                </label>
+                <input
+                    type="text"
+                    id="endPeriodInput"
+                    placeholder="YYYY-MM-DD"
+                    style="width: 300px; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px;"
+                    value=""
+                >
+            </div>
+            <p style="margin-top: 8px; font-size: 13px; color: #666;">
+                Enter the start and end dates for the accrual period in YYYY-MM-DD format
+            </p>
+        </div>
+
+        <!-- Month-End and Tax Inputs (for Payroll Tax function) -->
+        <div id="payrollTaxSection" style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: none;">
+            <div style="margin-bottom: 15px;">
+                <label for="monthEndSelect" style="display: block; font-weight: 500; margin-bottom: 10px; color: #333;">
+                    Select Month-End:
+                </label>
+                <select
+                    id="monthEndSelect"
+                    style="width: 300px; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px;"
+                >
+                    <!-- Options will be generated by JavaScript -->
+                </select>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label for="payrollTaxInput" style="display: block; font-weight: 500; margin-bottom: 10px; color: #333;">
+                    Payroll Tax for the Month ($):
+                </label>
+                <input
+                    type="number"
+                    id="payrollTaxInput"
+                    placeholder="0.00"
+                    step="0.01"
+                    style="width: 300px; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px;"
+                    value=""
+                >
+            </div>
+            <div>
+                <label for="workcoverInput" style="display: block; font-weight: 500; margin-bottom: 10px; color: #333;">
+                    Workcover %:
+                </label>
+                <input
+                    type="number"
+                    id="workcoverInput"
+                    placeholder="1.384"
+                    step="0.001"
+                    style="width: 300px; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px;"
+                    value="1.384"
+                >
+            </div>
+            <p style="margin-top: 8px; font-size: 13px; color: #666;">
+                Select the month-end and enter payroll tax amount and workcover percentage
+            </p>
+        </div>
+
+        <!-- Instructions Section -->
+        <div id="instructionsSection" style="background: #fff9e6; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); border-left: 4px solid #ffc107;">
+            <h3 style="margin-bottom: 10px; color: #333; font-size: 16px;">📋 Required Files:</h3>
+            <div id="instructionsContent" style="font-size: 14px; color: #555;">
+                <!-- Content will be updated by JavaScript -->
+            </div>
         </div>
 
         <div class="upload-zone" id="uploadZone">
@@ -381,6 +497,162 @@
         const summary = document.getElementById('summary');
         const payPeriodInput = document.getElementById('payPeriodInput');
 
+        // File requirements for each function
+        const fileRequirements = {
+            'cost_allocation': {
+                title: 'Actual Pay Period Cost Allocation',
+                files: [
+                    'Micropay_TSV GL Batch',
+                    'Micropay_TSV RET002',
+                    'Tanda_Timesheet Report'
+                ],
+                patterns: [
+                    /^Micropay_TSV GL Batch/i,
+                    /^Micropay_TSV RET002/i,
+                    /^Tanda_Timesheet Report/i
+                ]
+            },
+            'leave_calculation': {
+                title: 'Annual Leave, LSL and TOIL Calculation',
+                files: [
+                    'annual_leave_IQB LV008 Balances LP',
+                    'annual_leave_IQB LV008 Balances TP',
+                    'annual_leave_TSV RET002'
+                ],
+                patterns: [
+                    /^annual_leave_IQB LV008 Balances LP/i,
+                    /^annual_leave_IQB LV008 Balances TP/i,
+                    /^annual_leave_TSV RET002/i
+                ]
+            },
+            'accrual_wages': {
+                title: 'Accrual Wages and Superannuation Costs',
+                files: [
+                    'Tanda_Timesheet Report'
+                ],
+                patterns: [
+                    /^Tanda_Timesheet Report/i
+                ]
+            },
+            'payroll_tax': {
+                title: 'Payroll Tax and Work Cover Calculation',
+                files: [
+                    'GL_Labour Costs for the month',
+                    'Micropay_TSV RET002',
+                    'TSV Payroll Summary'
+                ],
+                patterns: [
+                    /^GL_Labour Costs for the month/i,
+                    /^Micropay_TSV RET002/i,
+                    /^TSV Payroll Summary/i
+                ]
+            }
+        };
+
+        // Function to generate month-end options (Jul-2020 to Jun-2030)
+        function generateMonthEndOptions() {
+            const monthEndSelect = document.getElementById('monthEndSelect');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+            // Generate from Jul-2020 to Jun-2030
+            for (let year = 2020; year <= 2030; year++) {
+                const startMonth = (year === 2020) ? 6 : 0; // Start from Jul for 2020
+                const endMonth = (year === 2030) ? 5 : 11;  // End at Jun for 2030
+
+                for (let month = startMonth; month <= endMonth; month++) {
+                    const option = document.createElement('option');
+                    option.value = `${months[month]}-${year}`;
+                    option.textContent = `${months[month]}-${year}`;
+                    monthEndSelect.appendChild(option);
+                }
+            }
+
+            // Set current month as default
+            const now = new Date();
+            const currentMonth = months[now.getMonth()];
+            const currentYear = now.getFullYear();
+            const currentValue = `${currentMonth}-${currentYear}`;
+            if (monthEndSelect.querySelector(`option[value="${currentValue}"]`)) {
+                monthEndSelect.value = currentValue;
+            }
+        }
+
+        // Function to update instructions based on selected function
+        function updateInstructions() {
+            const selectedFunction = document.querySelector('input[name="function"]:checked').value;
+            const requirements = fileRequirements[selectedFunction];
+            const instructionsContent = document.getElementById('instructionsContent');
+
+            let html = `<p style="margin-bottom: 10px;"><strong>${requirements.title}</strong></p>`;
+            html += '<ul style="margin-left: 20px; line-height: 1.8;">';
+            requirements.files.forEach(file => {
+                html += `<li>${file}...</li>`;
+            });
+            html += '</ul>';
+            html += '<p style="margin-top: 10px; font-size: 13px; color: #856404;"><em>⚠️ File names must start with the exact prefix shown above.</em></p>';
+
+            instructionsContent.innerHTML = html;
+        }
+
+        // Function to validate file name against requirements
+        function validateFileName(fileName, selectedFunction) {
+            const requirements = fileRequirements[selectedFunction];
+            if (!requirements) return { valid: false, error: 'Unknown function selected' };
+
+            // Check if file matches any of the required patterns
+            const matched = requirements.patterns.some(pattern => pattern.test(fileName));
+
+            if (!matched) {
+                return {
+                    valid: false,
+                    error: `File name must start with one of: ${requirements.files.join(', ')}`
+                };
+            }
+
+            return { valid: true };
+        }
+
+        // Function to update period input display based on selected function
+        function updatePeriodInputs() {
+            const selectedFunction = document.querySelector('input[name="function"]:checked').value;
+            const payPeriodIdSection = document.getElementById('payPeriodIdSection');
+            const periodRangeSection = document.getElementById('periodRangeSection');
+            const payrollTaxSection = document.getElementById('payrollTaxSection');
+
+            // Hide all sections first
+            payPeriodIdSection.style.display = 'none';
+            periodRangeSection.style.display = 'none';
+            payrollTaxSection.style.display = 'none';
+
+            // Show appropriate section based on function
+            if (selectedFunction === 'accrual_wages') {
+                periodRangeSection.style.display = 'block';
+            } else if (selectedFunction === 'payroll_tax') {
+                payrollTaxSection.style.display = 'block';
+            } else {
+                payPeriodIdSection.style.display = 'block';
+            }
+
+            // Update radio button styling to highlight selected
+            document.querySelectorAll('input[name="function"]').forEach(radio => {
+                const label = radio.parentElement;
+                if (radio.checked) {
+                    label.style.borderColor = '#667eea';
+                    label.style.backgroundColor = '#f0f4ff';
+                } else {
+                    label.style.borderColor = '#e0e0e0';
+                    label.style.backgroundColor = 'white';
+                }
+            });
+
+            // Update instructions
+            updateInstructions();
+        }
+
+        // Initialize on page load
+        generateMonthEndOptions();
+        updatePeriodInputs();
+
         // Get CSRF token from cookies
         function getCookie(name) {
             let cookieValue = null;
@@ -418,14 +690,19 @@
         });
 
         function handleFiles(fileList) {
+            const selectedFunction = document.querySelector('input[name="function"]:checked').value;
+
             for (let file of fileList) {
+                // Validate file name
+                const validation = validateFileName(file.name, selectedFunction);
+
                 files.push({
                     file: file,
                     id: Date.now() + Math.random(),
-                    status: 'pending',
+                    status: validation.valid ? 'pending' : 'error',
                     uploadId: null,
                     validationResult: null,
-                    error: null
+                    error: validation.valid ? null : validation.error
                 });
             }
             renderFiles();
@@ -458,7 +735,7 @@
                         <span class="file-status status-${fileObj.status}">${formatStatus(fileObj.status)}</span>
                         ${fileObj.uploadId && fileObj.status === 'success' ?
                             `<a href="/validation/${fileObj.uploadId}/" class="view-btn" target="_blank">View Details</a>` : ''}
-                        ${fileObj.status === 'pending' ?
+                        ${fileObj.status === 'pending' || fileObj.status === 'error' ?
                             `<button class="remove-btn" onclick="removeFile(${index})">Remove</button>` : ''}
                     </div>
                 </div>
@@ -530,19 +807,80 @@
         }
 
         uploadAllBtn.addEventListener('click', async () => {
-            // Validate pay period input
-            const payPeriod = payPeriodInput.value.trim();
-            if (!payPeriod) {
-                alert('Please enter a pay period ID (e.g., 2025-11-16)');
-                payPeriodInput.focus();
+            const selectedFunction = document.querySelector('input[name="function"]:checked').value;
+            let payPeriod = null;
+
+            // Check for files with errors
+            const errorFiles = files.filter(f => f.status === 'error');
+            if (errorFiles.length > 0) {
+                alert('Please remove or fix files with validation errors before uploading.');
                 return;
             }
 
-            // Validate format (basic check)
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(payPeriod)) {
-                alert('Please enter pay period ID in YYYY-MM-DD format');
-                payPeriodInput.focus();
-                return;
+            // Validate inputs based on selected function
+            if (selectedFunction === 'accrual_wages') {
+                // Validate start and end period
+                const startPeriod = document.getElementById('startPeriodInput').value.trim();
+                const endPeriod = document.getElementById('endPeriodInput').value.trim();
+
+                if (!startPeriod || !endPeriod) {
+                    alert('Please enter both start and end period dates (e.g., 2025-01-01)');
+                    return;
+                }
+
+                // Validate format (basic check)
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(startPeriod) || !/^\d{4}-\d{2}-\d{2}$/.test(endPeriod)) {
+                    alert('Please enter dates in YYYY-MM-DD format');
+                    return;
+                }
+
+                // Use end period as the pay period for now (can be modified as needed)
+                payPeriod = endPeriod;
+            } else if (selectedFunction === 'payroll_tax') {
+                // Validate payroll tax inputs
+                const monthEnd = document.getElementById('monthEndSelect').value;
+                const payrollTax = document.getElementById('payrollTaxInput').value.trim();
+                const workcover = document.getElementById('workcoverInput').value.trim();
+
+                if (!monthEnd) {
+                    alert('Please select a month-end');
+                    return;
+                }
+
+                if (!payrollTax || parseFloat(payrollTax) < 0) {
+                    alert('Please enter a valid payroll tax amount');
+                    return;
+                }
+
+                if (!workcover || parseFloat(workcover) < 0) {
+                    alert('Please enter a valid workcover percentage');
+                    return;
+                }
+
+                // Use month-end as identifier (can be stored in metadata)
+                payPeriod = monthEnd.replace('-', '_'); // e.g., "Jan_2025"
+
+                // Store payroll tax data in sessionStorage for later use
+                sessionStorage.setItem('payrollTaxData', JSON.stringify({
+                    monthEnd: monthEnd,
+                    payrollTax: payrollTax,
+                    workcover: workcover
+                }));
+            } else {
+                // Validate pay period input
+                payPeriod = payPeriodInput.value.trim();
+                if (!payPeriod) {
+                    alert('Please enter a pay period ID (e.g., 2025-11-16)');
+                    payPeriodInput.focus();
+                    return;
+                }
+
+                // Validate format (basic check)
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(payPeriod)) {
+                    alert('Please enter pay period ID in YYYY-MM-DD format');
+                    payPeriodInput.focus();
+                    return;
+                }
             }
 
             uploadAllBtn.disabled = true;

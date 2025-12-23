@@ -10,6 +10,7 @@ urlpatterns = [
     # Dashboard endpoints
     path('dashboard/', dashboard_views.pay_period_list, name='pay_period_list'),
     path('dashboard/<str:pay_period_id>/', dashboard_views.reconciliation_dashboard, name='dashboard'),
+    path('api/pay-periods/delete/', dashboard_views.delete_pay_periods, name='delete_pay_periods'),
 
     # Mapping verification and cost allocation endpoints
     path('verify-mapping/<str:pay_period_id>/', mapping_views.verify_tanda_mapping, name='verify_mapping'),
