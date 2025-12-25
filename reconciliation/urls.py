@@ -43,5 +43,5 @@ urlpatterns = [
     path('api/uploads/<uuid:upload_id>/', upload_views.upload_detail, name='upload_detail'),
 
     # Admin endpoints
-    path('admin/import-employees/', admin_views.import_employees, name='import_employees'),
+    path('employees/import/', admin_views.import_employees, name='import_employees'),
 ]
