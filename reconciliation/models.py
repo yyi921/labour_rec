@@ -10,72 +10,69 @@ from decimal import Decimal
 
 
 class Employee(models.Model):
-    """Master employee record"""
-    employee_code = models.CharField(primary_key=True, max_length=20)  # Primary identifier
+    """Master employee record - matches master_employee_file.csv format"""
+    code = models.CharField(primary_key=True, max_length=20, verbose_name='Employee Code')  # Code column
 
     # Personal details
-    first_name = models.CharField(max_length=100)
     surname = models.CharField(max_length=100)
-    full_name = models.CharField(max_length=200)
+    first_name = models.CharField(max_length=100, verbose_name='First Name')
+    date_of_birth = models.DateField(null=True, blank=True, verbose_name='Date of Birth')
 
     # Employment details
-    EMPLOYMENT_TYPE_CHOICES = [
-        ('Full Time', 'Full Time'),
-        ('Part Time', 'Part Time'),
-        ('Casual', 'Casual'),
-        ('Contract', 'Contract'),
-    ]
-    employment_type = models.CharField(max_length=50, choices=EMPLOYMENT_TYPE_CHOICES, default='Full Time')
-
-    EMPLOYMENT_STATUS_CHOICES = [
-        ('Active', 'Active'),
-        ('Terminated', 'Terminated'),
-        ('On Leave', 'On Leave'),
-        ('Suspended', 'Suspended'),
-    ]
-    employment_status = models.CharField(max_length=50, choices=EMPLOYMENT_STATUS_CHOICES, default='Active')
-
-    is_salaried = models.BooleanField(default=False, help_text='True if employee receives auto pay (salaried)')
-
-    # Organizational details
-    location = models.CharField(max_length=200, blank=True, help_text='Primary location/cost center')
-    department = models.CharField(max_length=100, blank=True)
-    job_title = models.CharField(max_length=100, blank=True)
-    manager = models.CharField(max_length=200, blank=True)
-
-    # Dates
-    hire_date = models.DateField(null=True, blank=True)
-    termination_date = models.DateField(null=True, blank=True)
-
-    # Contact information
-    email = models.EmailField(blank=True)
-    phone = models.CharField(max_length=20, blank=True)
+    location = models.CharField(max_length=200, blank=True)
+    employment_type = models.CharField(max_length=50, blank=True, verbose_name='Employment Type')  # e.g., "SF - Salaried Full Time"
+    date_hired = models.DateField(null=True, blank=True, verbose_name='Date Hired')
+    pay_point = models.CharField(max_length=100, blank=True, verbose_name='Pay Point')
+    termination_date = models.DateField(null=True, blank=True, verbose_name='Termination Date')
+    job_classification = models.CharField(max_length=200, blank=True, verbose_name='Job Classification')
 
     # Pay information
-    base_salary = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text='Annual salary or hourly rate')
-    pay_rate_type = models.CharField(max_length=20, choices=[('annual', 'Annual Salary'), ('hourly', 'Hourly Rate')], default='annual')
+    auto_pay = models.CharField(max_length=10, blank=True, verbose_name='Auto Pay')  # "Yes" or "No"
+    normal_hours_paid = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name='Normal Hours Paid')
+    yearly_salary = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name='Yearly Salary')
+    auto_pay_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name='Auto Pay Amount')
+    award_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name='Award Rate')
+    pay_class_description = models.CharField(max_length=200, blank=True, verbose_name='Pay Class Description')
+    normal_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name='Normal Rate')
+
+    # Cost center
+    default_cost_account = models.CharField(max_length=50, blank=True, verbose_name='Default Cost Account')
+    default_cost_account_description = models.CharField(max_length=200, blank=True, verbose_name='Default Cost Account Description')
+
+    # Additional information
+    notes = models.TextField(blank=True, help_text='Additional notes about this employee')
 
     # Metadata
-    notes = models.TextField(blank=True, help_text='Additional notes about this employee')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['surname', 'first_name']
         indexes = [
-            models.Index(fields=['employment_status']),
             models.Index(fields=['employment_type']),
             models.Index(fields=['location']),
+            models.Index(fields=['termination_date']),
         ]
+        verbose_name = 'Employee'
+        verbose_name_plural = 'Employees'
 
     def __str__(self):
-        return f"{self.employee_code} - {self.full_name}"
+        return f"{self.code} - {self.surname}, {self.first_name}"
 
-    def save(self, *args, **kwargs):
-        # Auto-generate full_name from first_name and surname if not provided
-        if not self.full_name and (self.first_name or self.surname):
-            self.full_name = f"{self.first_name} {self.surname}".strip()
-        super().save(*args, **kwargs)
+    @property
+    def full_name(self):
+        """Generate full name from first_name and surname"""
+        return f"{self.first_name} {self.surname}".strip()
+
+    @property
+    def is_salaried(self):
+        """Check if employee is salaried based on auto_pay field"""
+        return self.auto_pay == 'Yes'
+
+    @property
+    def is_active(self):
+        """Check if employee is active (no termination date)"""
+        return self.termination_date is None
 
 
 class PayPeriod(models.Model):

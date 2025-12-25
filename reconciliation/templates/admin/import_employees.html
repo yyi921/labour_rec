@@ -1,0 +1,109 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}Import Employees{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Home</a>
+    &rsaquo; <a href="{% url 'admin:reconciliation_employee_changelist' %}">Employees</a>
+    &rsaquo; Import from CSV
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h1>Import Employees from CSV</h1>
+
+    <div class="module">
+        <p>Upload a CSV file to import or update employee records. The CSV file should match the format of <code>master_employee_file.csv</code>.</p>
+
+        <h2>CSV Format Requirements:</h2>
+        <p>The CSV file must include the following columns (in this order):</p>
+        <ul style="margin-left: 20px; margin-bottom: 20px;">
+            <li>Surname</li>
+            <li>First Name</li>
+            <li>Code (Employee Code - <strong>required</strong>)</li>
+            <li>Location</li>
+            <li>Employment Type</li>
+            <li>Date Hired (format: DD/MM/YYYY)</li>
+            <li>Pay Point</li>
+            <li>Auto Pay (Yes/No)</li>
+            <li>Normal Hours Paid</li>
+            <li>Yearly Salary</li>
+            <li>Auto Pay Amount</li>
+            <li>Award Rate</li>
+            <li>Date of Birth (format: DD/MM/YYYY)</li>
+            <li>Pay Class Description</li>
+            <li>Normal Rate</li>
+            <li>Termination Date (format: DD/MM/YYYY, can be blank)</li>
+            <li>Job Classification</li>
+            <li>Default Cost Account</li>
+            <li>Default Cost Account Description</li>
+            <li>Notes</li>
+        </ul>
+
+        <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+            <strong>⚠️ Important:</strong>
+            <ul style="margin: 10px 0 0 20px;">
+                <li>If an employee with the same <strong>Code</strong> already exists, it will be <strong>updated</strong> with the new data</li>
+                <li>If the Code is new, a new employee record will be <strong>created</strong></li>
+                <li>Termination Date can be blank and can be added later from the admin page</li>
+            </ul>
+        </div>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-row">
+                <div>
+                    <label for="csv_file">CSV File:</label>
+                    <input type="file" name="csv_file" id="csv_file" accept=".csv" required>
+                </div>
+            </div>
+            <div class="submit-row">
+                <input type="submit" value="Import" class="default" style="background-color: #417690; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
+                <a href="{% url 'admin:reconciliation_employee_changelist' %}" class="button cancel-link" style="margin-left: 10px;">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.module {
+    background: white;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+}
+
+.module h2 {
+    font-size: 16px;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.module p {
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+.form-row {
+    margin-bottom: 20px;
+}
+
+.form-row label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-row input[type="file"] {
+    padding: 5px;
+}
+
+.submit-row {
+    margin-top: 20px;
+    padding: 10px 0;
+}
+</style>
+{% endblock %}

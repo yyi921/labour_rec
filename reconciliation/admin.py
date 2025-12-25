@@ -11,32 +11,33 @@ from .models import (
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
     list_display = [
-        'employee_code', 'full_name', 'employment_type', 'employment_status',
-        'is_salaried', 'location', 'department', 'hire_date', 'termination_date'
+        'code', 'surname', 'first_name', 'employment_type', 'location',
+        'job_classification', 'date_hired', 'termination_date', 'auto_pay'
     ]
-    list_filter = ['employment_status', 'employment_type', 'is_salaried', 'location', 'department']
-    search_fields = ['employee_code', 'first_name', 'surname', 'full_name', 'email']
-    list_editable = ['employment_status']
-    date_hierarchy = 'hire_date'
+    list_filter = ['employment_type', 'location', 'pay_point', 'auto_pay']
+    search_fields = ['code', 'first_name', 'surname', 'job_classification']
+    date_hierarchy = 'date_hired'
+
+    change_list_template = 'admin/employee_changelist.html'
 
     fieldsets = (
         ('Employee Information', {
-            'fields': ('employee_code', 'first_name', 'surname', 'full_name')
+            'fields': ('code', 'surname', 'first_name', 'date_of_birth')
         }),
         ('Employment Details', {
             'fields': (
-                'employment_type', 'employment_status', 'is_salaried',
-                'hire_date', 'termination_date'
+                'location', 'employment_type', 'date_hired', 'pay_point',
+                'termination_date', 'job_classification'
             )
         }),
-        ('Organizational Details', {
-            'fields': ('location', 'department', 'job_title', 'manager')
-        }),
         ('Pay Information', {
-            'fields': ('base_salary', 'pay_rate_type')
+            'fields': (
+                'auto_pay', 'normal_hours_paid', 'yearly_salary', 'auto_pay_amount',
+                'award_rate', 'pay_class_description', 'normal_rate'
+            )
         }),
-        ('Contact Information', {
-            'fields': ('email', 'phone')
+        ('Cost Center', {
+            'fields': ('default_cost_account', 'default_cost_account_description')
         }),
         ('Additional Information', {
             'fields': ('notes',),
@@ -49,49 +50,59 @@ class EmployeeAdmin(admin.ModelAdmin):
     )
     readonly_fields = ['created_at', 'updated_at']
 
-    # Enable CSV export
+    # Enable CSV export and import
     actions = ['export_as_csv']
 
     def export_as_csv(self, request, queryset):
-        """Export selected employees to CSV"""
+        """Export selected employees to CSV matching master_employee_file.csv format"""
         import csv
         from django.http import HttpResponse
 
         response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="employees.csv"'
+        response['Content-Disposition'] = 'attachment; filename="employees_export.csv"'
 
         writer = csv.writer(response)
         writer.writerow([
-            'Employee Code', 'First Name', 'Surname', 'Full Name',
-            'Employment Type', 'Employment Status', 'Is Salaried',
-            'Location', 'Department', 'Job Title', 'Manager',
-            'Hire Date', 'Termination Date', 'Email', 'Phone',
-            'Base Salary', 'Pay Rate Type'
+            'Surname', 'First Name', 'Code', 'Location', 'Employment Type',
+            'Date Hired', 'Pay Point', 'Auto Pay', 'Normal Hours Paid',
+            'Yearly Salary', 'Auto Pay Amount', 'Award Rate', 'Date of Birth',
+            'Pay Class Description', 'Normal Rate', 'Termination Date',
+            'Job Classification', 'Default Cost Account',
+            'Default Cost Account Description', 'Notes'
         ])
 
         for employee in queryset:
             writer.writerow([
-                employee.employee_code,
-                employee.first_name,
                 employee.surname,
-                employee.full_name,
-                employee.employment_type,
-                employee.employment_status,
-                employee.is_salaried,
+                employee.first_name,
+                employee.code,
                 employee.location,
-                employee.department,
-                employee.job_title,
-                employee.manager,
-                employee.hire_date,
-                employee.termination_date,
-                employee.email,
-                employee.phone,
-                employee.base_salary,
-                employee.pay_rate_type,
+                employee.employment_type,
+                employee.date_hired.strftime('%d/%m/%Y') if employee.date_hired else '',
+                employee.pay_point,
+                employee.auto_pay,
+                employee.normal_hours_paid if employee.normal_hours_paid else '',
+                f"${employee.yearly_salary:,.2f}" if employee.yearly_salary else '',
+                f"${employee.auto_pay_amount:,.2f}" if employee.auto_pay_amount else '',
+                f"${employee.award_rate:.2f}" if employee.award_rate else '',
+                employee.date_of_birth.strftime('%d/%m/%Y') if employee.date_of_birth else '',
+                employee.pay_class_description,
+                f"${employee.normal_rate:.2f}" if employee.normal_rate else '',
+                employee.termination_date.strftime('%d/%m/%Y') if employee.termination_date else '',
+                employee.job_classification,
+                employee.default_cost_account,
+                employee.default_cost_account_description,
+                employee.notes,
             ])
 
         return response
     export_as_csv.short_description = 'Export selected employees to CSV'
+
+    def changelist_view(self, request, extra_context=None):
+        """Add import functionality to changelist"""
+        extra_context = extra_context or {}
+        extra_context['show_import'] = True
+        return super().changelist_view(request, extra_context=extra_context)
 
 
 @admin.register(PayPeriod)

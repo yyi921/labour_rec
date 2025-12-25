@@ -2,7 +2,7 @@
 URL configuration for reconciliation app
 """
 from django.urls import path
-from reconciliation.views import upload_views, dashboard_views, mapping_views, data_validation_views, journal_views
+from reconciliation.views import upload_views, dashboard_views, mapping_views, data_validation_views, journal_views, admin_views
 
 app_name = 'reconciliation'
 
@@ -41,4 +41,7 @@ urlpatterns = [
     path('api/uploads/<uuid:upload_id>/override/', upload_views.override_upload, name='override_upload'),
     path('api/uploads/', upload_views.list_uploads, name='list_uploads'),
     path('api/uploads/<uuid:upload_id>/', upload_views.upload_detail, name='upload_detail'),
+
+    # Admin endpoints
+    path('admin/import-employees/', admin_views.import_employees, name='import_employees'),
 ]
