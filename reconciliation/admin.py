@@ -16,7 +16,6 @@ class EmployeeAdmin(admin.ModelAdmin):
     ]
     list_filter = ['employment_type', 'location', 'pay_point', 'auto_pay']
     search_fields = ['code', 'first_name', 'surname', 'job_classification']
-    date_hierarchy = 'date_hired'
 
     change_list_template = 'admin/employee_changelist.html'
 
