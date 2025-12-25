@@ -9,19 +9,88 @@ from datetime import datetime
 from decimal import Decimal
 
 
+class Employee(models.Model):
+    """Master employee record"""
+    employee_code = models.CharField(primary_key=True, max_length=20)  # Primary identifier
+
+    # Personal details
+    first_name = models.CharField(max_length=100)
+    surname = models.CharField(max_length=100)
+    full_name = models.CharField(max_length=200)
+
+    # Employment details
+    EMPLOYMENT_TYPE_CHOICES = [
+        ('Full Time', 'Full Time'),
+        ('Part Time', 'Part Time'),
+        ('Casual', 'Casual'),
+        ('Contract', 'Contract'),
+    ]
+    employment_type = models.CharField(max_length=50, choices=EMPLOYMENT_TYPE_CHOICES, default='Full Time')
+
+    EMPLOYMENT_STATUS_CHOICES = [
+        ('Active', 'Active'),
+        ('Terminated', 'Terminated'),
+        ('On Leave', 'On Leave'),
+        ('Suspended', 'Suspended'),
+    ]
+    employment_status = models.CharField(max_length=50, choices=EMPLOYMENT_STATUS_CHOICES, default='Active')
+
+    is_salaried = models.BooleanField(default=False, help_text='True if employee receives auto pay (salaried)')
+
+    # Organizational details
+    location = models.CharField(max_length=200, blank=True, help_text='Primary location/cost center')
+    department = models.CharField(max_length=100, blank=True)
+    job_title = models.CharField(max_length=100, blank=True)
+    manager = models.CharField(max_length=200, blank=True)
+
+    # Dates
+    hire_date = models.DateField(null=True, blank=True)
+    termination_date = models.DateField(null=True, blank=True)
+
+    # Contact information
+    email = models.EmailField(blank=True)
+    phone = models.CharField(max_length=20, blank=True)
+
+    # Pay information
+    base_salary = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text='Annual salary or hourly rate')
+    pay_rate_type = models.CharField(max_length=20, choices=[('annual', 'Annual Salary'), ('hourly', 'Hourly Rate')], default='annual')
+
+    # Metadata
+    notes = models.TextField(blank=True, help_text='Additional notes about this employee')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['surname', 'first_name']
+        indexes = [
+            models.Index(fields=['employment_status']),
+            models.Index(fields=['employment_type']),
+            models.Index(fields=['location']),
+        ]
+
+    def __str__(self):
+        return f"{self.employee_code} - {self.full_name}"
+
+    def save(self, *args, **kwargs):
+        # Auto-generate full_name from first_name and surname if not provided
+        if not self.full_name and (self.first_name or self.surname):
+            self.full_name = f"{self.first_name} {self.surname}".strip()
+        super().save(*args, **kwargs)
+
+
 class PayPeriod(models.Model):
     """Master table tracking pay periods"""
     period_id = models.CharField(primary_key=True, max_length=20)  # '2025-10-05' (ending date)
     period_start = models.DateField(null=True, blank=True)  # Nullable for Journal-only periods
     period_end = models.DateField()
     period_type = models.CharField(max_length=20, default='fortnightly')
-    
+
     # Track upload status
     has_tanda = models.BooleanField(default=False)
     has_iqb = models.BooleanField(default=False)
     has_journal = models.BooleanField(default=False)
     has_cost_allocation = models.BooleanField(default=False)
-    
+
     # Reconciliation status
     STATUS_CHOICES = [
         ('incomplete', 'Incomplete - Missing Files'),
@@ -32,13 +101,13 @@ class PayPeriod(models.Model):
         ('posted', 'Posted to Sage Intacct'),
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='incomplete')
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         ordering = ['-period_end']
-    
+
     def __str__(self):
         return f"Pay Period ending {self.period_end}"
 

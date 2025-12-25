@@ -1,11 +1,98 @@
 from django.contrib import admin
 from .models import (
-    PayPeriod, Upload, TandaTimesheet, IQBDetail, JournalEntry,
+    Employee, PayPeriod, Upload, TandaTimesheet, IQBDetail, JournalEntry,
     CostCenterSplit, ReconciliationRun, ReconciliationItem,
     ExceptionResolution, LabourCostSummary, SageIntacctExport,
     EmployeeReconciliation, JournalReconciliation, LocationMapping,
     ValidationResult, EmployeePayPeriodSnapshot, IQBLeaveBalance
 )
+
+
+@admin.register(Employee)
+class EmployeeAdmin(admin.ModelAdmin):
+    list_display = [
+        'employee_code', 'full_name', 'employment_type', 'employment_status',
+        'is_salaried', 'location', 'department', 'hire_date', 'termination_date'
+    ]
+    list_filter = ['employment_status', 'employment_type', 'is_salaried', 'location', 'department']
+    search_fields = ['employee_code', 'first_name', 'surname', 'full_name', 'email']
+    list_editable = ['employment_status']
+    date_hierarchy = 'hire_date'
+
+    fieldsets = (
+        ('Employee Information', {
+            'fields': ('employee_code', 'first_name', 'surname', 'full_name')
+        }),
+        ('Employment Details', {
+            'fields': (
+                'employment_type', 'employment_status', 'is_salaried',
+                'hire_date', 'termination_date'
+            )
+        }),
+        ('Organizational Details', {
+            'fields': ('location', 'department', 'job_title', 'manager')
+        }),
+        ('Pay Information', {
+            'fields': ('base_salary', 'pay_rate_type')
+        }),
+        ('Contact Information', {
+            'fields': ('email', 'phone')
+        }),
+        ('Additional Information', {
+            'fields': ('notes',),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    readonly_fields = ['created_at', 'updated_at']
+
+    # Enable CSV export
+    actions = ['export_as_csv']
+
+    def export_as_csv(self, request, queryset):
+        """Export selected employees to CSV"""
+        import csv
+        from django.http import HttpResponse
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="employees.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow([
+            'Employee Code', 'First Name', 'Surname', 'Full Name',
+            'Employment Type', 'Employment Status', 'Is Salaried',
+            'Location', 'Department', 'Job Title', 'Manager',
+            'Hire Date', 'Termination Date', 'Email', 'Phone',
+            'Base Salary', 'Pay Rate Type'
+        ])
+
+        for employee in queryset:
+            writer.writerow([
+                employee.employee_code,
+                employee.first_name,
+                employee.surname,
+                employee.full_name,
+                employee.employment_type,
+                employee.employment_status,
+                employee.is_salaried,
+                employee.location,
+                employee.department,
+                employee.job_title,
+                employee.manager,
+                employee.hire_date,
+                employee.termination_date,
+                employee.email,
+                employee.phone,
+                employee.base_salary,
+                employee.pay_rate_type,
+            ])
+
+        return response
+    export_as_csv.short_description = 'Export selected employees to CSV'
+
 
 @admin.register(PayPeriod)
 class PayPeriodAdmin(admin.ModelAdmin):
