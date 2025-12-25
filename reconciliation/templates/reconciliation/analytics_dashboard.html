@@ -1,0 +1,632 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard - Payroll Intelligence</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            background: #f5f7fa;
+        }
+
+        .dashboard-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Left Panel - Results */
+        .results-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #ffffff;
+            border-right: 1px solid #e1e4e8;
+        }
+
+        .results-header {
+            padding: 20px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .results-header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .results-header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .results-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+        }
+
+        .result-card {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid #e1e4e8;
+        }
+
+        .result-card h3 {
+            font-size: 18px;
+            color: #24292e;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .chart-container {
+            min-height: 400px;
+            margin-top: 15px;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .metric-label {
+            font-size: 13px;
+            color: #6a737d;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #24292e;
+        }
+
+        .metric-change {
+            font-size: 13px;
+            margin-top: 5px;
+        }
+
+        .metric-change.positive {
+            color: #22863a;
+        }
+
+        .metric-change.negative {
+            color: #d73a49;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6a737d;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: #24292e;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+        }
+
+        /* Right Panel - Chat */
+        .chat-panel {
+            width: 450px;
+            display: flex;
+            flex-direction: column;
+            background: #fafbfc;
+        }
+
+        .chat-header {
+            padding: 20px 25px;
+            background: white;
+            border-bottom: 1px solid #e1e4e8;
+        }
+
+        .chat-header h2 {
+            font-size: 18px;
+            color: #24292e;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            font-size: 13px;
+            color: #6a737d;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message-content {
+            display: inline-block;
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .message.user .message-content {
+            background: #667eea;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            color: #24292e;
+            border: 1px solid #e1e4e8;
+            border-bottom-left-radius: 4px;
+            text-align: left;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #6a737d;
+            margin-top: 5px;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            background: white;
+            border: 1px solid #e1e4e8;
+            border-radius: 12px;
+            border-bottom-left-radius: 4px;
+            max-width: 85%;
+        }
+
+        .typing-indicator.active {
+            display: inline-block;
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #6a737d;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: 0.5;
+            }
+            30% {
+                transform: translateY(-10px);
+                opacity: 1;
+            }
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e1e4e8;
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e1e4e8;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .send-button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .send-button:hover {
+            background: #5568d3;
+        }
+
+        .send-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .example-questions {
+            margin-top: 15px;
+        }
+
+        .example-questions-title {
+            font-size: 12px;
+            color: #6a737d;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .example-question {
+            display: inline-block;
+            padding: 6px 12px;
+            margin: 4px;
+            background: white;
+            border: 1px solid #e1e4e8;
+            border-radius: 16px;
+            font-size: 12px;
+            color: #667eea;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .example-question:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f6f8fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #24292e;
+            border-bottom: 2px solid #e1e4e8;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e1e4e8;
+            color: #24292e;
+        }
+
+        tr:hover {
+            background: #f6f8fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Left Panel - Results -->
+        <div class="results-panel">
+            <div class="results-header">
+                <h1>📊 Payroll Analytics</h1>
+                <p>AI-powered insights and visualizations</p>
+            </div>
+            <div class="results-content" id="resultsContent">
+                <div class="empty-state">
+                    <div class="empty-state-icon">💬</div>
+                    <h3>Welcome to Analytics Dashboard</h3>
+                    <p>Ask a question in the chat to get started with insights and visualizations</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel - Chat -->
+        <div class="chat-panel">
+            <div class="chat-header">
+                <h2>💡 Ask Analytics Questions</h2>
+                <p>Natural language queries powered by Claude AI</p>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="message assistant">
+                    <div class="message-content">
+                        Hello! I'm your payroll analytics assistant. Ask me anything about your payroll data, employee statistics, cost variances, or trends. For example:
+                        <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
+                            <li>What percentage of culinary employees are salaried?</li>
+                            <li>Compare pay period 2025-11-30 to 2025-11-16</li>
+                            <li>Show me month-over-month cost trends</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="chat-input-container">
+                <div class="example-questions">
+                    <div class="example-questions-title">Quick Questions:</div>
+                    <span class="example-question" onclick="askQuestion('What percentage of culinary employees are salaried?')">Culinary salary %</span>
+                    <span class="example-question" onclick="askQuestion('Show total headcount by location')">Headcount by location</span>
+                    <span class="example-question" onclick="askQuestion('Compare last two pay periods')">Compare periods</span>
+                </div>
+                <div class="chat-input-wrapper">
+                    <input
+                        type="text"
+                        class="chat-input"
+                        id="chatInput"
+                        placeholder="Ask a question about your payroll data..."
+                        onkeypress="handleKeyPress(event)"
+                    >
+                    <button class="send-button" id="sendButton" onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let conversationHistory = [];
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function askQuestion(question) {
+            document.getElementById('chatInput').value = question;
+            sendMessage();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            // Disable input
+            input.disabled = true;
+            document.getElementById('sendButton').disabled = true;
+
+            // Add user message to chat
+            addMessage('user', message);
+            input.value = '';
+
+            // Show typing indicator
+            showTypingIndicator();
+
+            try {
+                // Send to backend
+                const response = await fetch('/analytics/query/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        conversation_history: conversationHistory
+                    })
+                });
+
+                const data = await response.json();
+
+                // Hide typing indicator
+                hideTypingIndicator();
+
+                if (data.success) {
+                    // Add assistant response
+                    addMessage('assistant', data.response);
+
+                    // Update conversation history
+                    conversationHistory = data.conversation_history || [];
+
+                    // Render results
+                    if (data.visualization) {
+                        renderResults(data.visualization);
+                    }
+                } else {
+                    addMessage('assistant', 'Sorry, I encountered an error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                hideTypingIndicator();
+                addMessage('assistant', 'Sorry, there was an error processing your request. Please try again.');
+                console.error('Error:', error);
+            }
+
+            // Re-enable input
+            input.disabled = false;
+            document.getElementById('sendButton').disabled = false;
+            input.focus();
+        }
+
+        function addMessage(role, content) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.innerHTML = content.replace(/\n/g, '<br>');
+
+            messageDiv.appendChild(contentDiv);
+            messagesContainer.appendChild(messageDiv);
+
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const messagesContainer = document.getElementById('chatMessages');
+            const indicator = document.createElement('div');
+            indicator.className = 'message assistant';
+            indicator.id = 'typingIndicator';
+            indicator.innerHTML = '<div class="typing-indicator active"><span></span><span></span><span></span></div>';
+            messagesContainer.appendChild(indicator);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        function renderResults(visualization) {
+            const resultsContent = document.getElementById('resultsContent');
+            resultsContent.innerHTML = '';
+
+            const resultCard = document.createElement('div');
+            resultCard.className = 'result-card';
+
+            // Add title
+            if (visualization.title) {
+                const title = document.createElement('h3');
+                title.textContent = visualization.title;
+                resultCard.appendChild(title);
+            }
+
+            // Render based on type
+            if (visualization.type === 'chart') {
+                const chartContainer = document.createElement('div');
+                chartContainer.className = 'chart-container';
+                chartContainer.id = 'chartDiv';
+                resultCard.appendChild(chartContainer);
+                resultsContent.appendChild(resultCard);
+
+                // Render Plotly chart
+                Plotly.newPlot('chartDiv', visualization.data, visualization.layout || {}, {responsive: true});
+            } else if (visualization.type === 'metrics') {
+                const metricGrid = document.createElement('div');
+                metricGrid.className = 'metric-grid';
+
+                visualization.metrics.forEach(metric => {
+                    const metricCard = document.createElement('div');
+                    metricCard.className = 'metric-card';
+
+                    let html = `
+                        <div class="metric-label">${metric.label}</div>
+                        <div class="metric-value">${metric.value}</div>
+                    `;
+
+                    if (metric.change !== undefined) {
+                        const changeClass = metric.change >= 0 ? 'positive' : 'negative';
+                        const changeSymbol = metric.change >= 0 ? '↑' : '↓';
+                        html += `<div class="metric-change ${changeClass}">${changeSymbol} ${Math.abs(metric.change)}%</div>`;
+                    }
+
+                    metricCard.innerHTML = html;
+                    metricGrid.appendChild(metricCard);
+                });
+
+                resultCard.appendChild(metricGrid);
+                resultsContent.appendChild(resultCard);
+            } else if (visualization.type === 'table') {
+                const tableContainer = document.createElement('div');
+                tableContainer.className = 'table-container';
+
+                let tableHTML = '<table><thead><tr>';
+                visualization.columns.forEach(col => {
+                    tableHTML += `<th>${col}</th>`;
+                });
+                tableHTML += '</tr></thead><tbody>';
+
+                visualization.rows.forEach(row => {
+                    tableHTML += '<tr>';
+                    row.forEach(cell => {
+                        tableHTML += `<td>${cell}</td>`;
+                    });
+                    tableHTML += '</tr>';
+                });
+
+                tableHTML += '</tbody></table>';
+                tableContainer.innerHTML = tableHTML;
+                resultCard.appendChild(tableContainer);
+                resultsContent.appendChild(resultCard);
+            }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 URL configuration for reconciliation app
 """
 from django.urls import path
-from reconciliation.views import upload_views, dashboard_views, mapping_views, data_validation_views, journal_views, admin_views
+from reconciliation.views import upload_views, dashboard_views, mapping_views, data_validation_views, journal_views, admin_views, analytics_views
 
 app_name = 'reconciliation'
 
@@ -11,6 +11,10 @@ urlpatterns = [
     path('dashboard/', dashboard_views.pay_period_list, name='pay_period_list'),
     path('dashboard/<str:pay_period_id>/', dashboard_views.reconciliation_dashboard, name='dashboard'),
     path('api/pay-periods/delete/', dashboard_views.delete_pay_periods, name='delete_pay_periods'),
+
+    # Analytics dashboard
+    path('analytics/', analytics_views.analytics_dashboard, name='analytics_dashboard'),
+    path('analytics/query/', analytics_views.analytics_query, name='analytics_query'),
 
     # Mapping verification and cost allocation endpoints
     path('verify-mapping/<str:pay_period_id>/', mapping_views.verify_tanda_mapping, name='verify_mapping'),
