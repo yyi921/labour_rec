@@ -96,12 +96,22 @@ Available data includes:
         tool_results = []
 
         while response.stop_reason == "tool_use":
-            # Extract tool calls
+            # Extract tool calls and text blocks
+            assistant_content = []
+
             for content_block in response.content:
                 if content_block.type == "tool_use":
                     tool_name = content_block.name
                     tool_input = content_block.input
                     tool_use_id = content_block.id
+
+                    # Add tool use to assistant content
+                    assistant_content.append({
+                        "type": "tool_use",
+                        "id": tool_use_id,
+                        "name": tool_name,
+                        "input": tool_input
+                    })
 
                     # Execute the tool
                     if tool_name in TOOL_FUNCTIONS:
@@ -123,9 +133,14 @@ Available data includes:
                                 "tool_use_id": tool_use_id,
                                 "content": json.dumps({"error": str(e)})
                             })
+                elif content_block.type == "text":
+                    assistant_content.append({
+                        "type": "text",
+                        "text": content_block.text
+                    })
 
             # Continue conversation with tool results
-            messages.append({"role": "assistant", "content": response.content})
+            messages.append({"role": "assistant", "content": assistant_content})
             messages.append({"role": "user", "content": tool_results})
 
             response = client.messages.create(
@@ -139,11 +154,16 @@ Available data includes:
             tool_results = []
 
         # Extract final text response
+        final_content = []
         for content_block in response.content:
-            if hasattr(content_block, 'text'):
+            if content_block.type == "text":
                 final_response += content_block.text
+                final_content.append({
+                    "type": "text",
+                    "text": content_block.text
+                })
 
-        # Update conversation history
+        # Update conversation history (keep only text for history)
         updated_history = messages + [{"role": "assistant", "content": final_response}]
 
         # Return response
