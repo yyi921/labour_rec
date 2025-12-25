@@ -39,7 +39,8 @@ def analytics_query(request):
     try:
         data = json.loads(request.body)
         user_message = data.get('message', '').strip()
-        conversation_history = data.get('conversation_history', [])
+        # For now, we'll start fresh each time to avoid conversation history issues
+        # conversation_history = data.get('conversation_history', [])
 
         if not user_message:
             return JsonResponse({
@@ -59,8 +60,8 @@ def analytics_query(request):
         # Initialize Anthropic client
         client = anthropic.Anthropic(api_key=api_key)
 
-        # Build messages for API
-        messages = conversation_history + [
+        # Build messages for API (start fresh each time)
+        messages = [
             {"role": "user", "content": user_message}
         ]
 
@@ -163,15 +164,11 @@ Available data includes:
                     "text": content_block.text
                 })
 
-        # Update conversation history (keep only text for history)
-        updated_history = messages + [{"role": "assistant", "content": final_response}]
-
         # Return response
         return JsonResponse({
             'success': True,
             'response': final_response,
-            'visualization': visualization_data,
-            'conversation_history': updated_history[-10:]  # Keep last 10 messages
+            'visualization': visualization_data
         })
 
     except json.JSONDecodeError:

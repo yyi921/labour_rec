@@ -430,8 +430,6 @@
     </div>
 
     <script>
-        let conversationHistory = [];
-
         function handleKeyPress(event) {
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
@@ -470,8 +468,7 @@
                         'X-CSRFToken': getCookie('csrftoken')
                     },
                     body: JSON.stringify({
-                        message: message,
-                        conversation_history: conversationHistory
+                        message: message
                     })
                 });
 
@@ -483,9 +480,6 @@
                 if (data.success) {
                     // Add assistant response
                     addMessage('assistant', data.response);
-
-                    // Update conversation history
-                    conversationHistory = data.conversation_history || [];
 
                     // Render results
                     if (data.visualization) {
