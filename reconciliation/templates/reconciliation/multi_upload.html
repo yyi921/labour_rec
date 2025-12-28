@@ -913,11 +913,26 @@
             renderFiles();
             updateSummary();
 
+            const selectedFunction = document.querySelector('input[name="function"]:checked').value;
             const formData = new FormData();
             formData.append('file', fileObj.file);
 
+            // Determine endpoint and add function-specific parameters
+            let endpoint = '/api/uploads/smart/';
+
+            if (selectedFunction === 'accrual_wages') {
+                // Use accrual endpoint with period parameters
+                endpoint = '/api/uploads/accrual/';
+                const startPeriod = document.getElementById('startPeriodInput').value.trim();
+                const endPeriod = document.getElementById('endPeriodInput').value.trim();
+
+                formData.append('start_period', startPeriod);
+                formData.append('end_period', endPeriod);
+                formData.append('pay_period_id', endPeriod);  // Use end period as pay period ID
+            }
+
             try {
-                const response = await fetch('/api/uploads/smart/', {
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': csrftoken
@@ -930,35 +945,40 @@
                 if (response.ok) {
                     fileObj.status = 'success';
                     fileObj.uploadId = data.upload_id;
-                    fileObj.validationResult = data.validation_result;
+                    fileObj.validationResult = data.validation_result || data.accrual_results;
                 } else if (response.status === 409 && data.status === 'duplicate_detected') {
-                    // Duplicate detected - automatically override
-                    fileObj.status = 'uploading';
-                    fileObj.error = 'Duplicate detected, overriding...';
-                    renderFiles();
+                    // Duplicate detected - automatically override (only for non-accrual uploads)
+                    if (selectedFunction !== 'accrual_wages') {
+                        fileObj.status = 'uploading';
+                        fileObj.error = 'Duplicate detected, overriding...';
+                        renderFiles();
 
-                    const overrideFormData = new FormData();
-                    overrideFormData.append('file', fileObj.file);
-                    overrideFormData.append('reason', 'Auto-override from multi-upload');
+                        const overrideFormData = new FormData();
+                        overrideFormData.append('file', fileObj.file);
+                        overrideFormData.append('reason', 'Auto-override from multi-upload');
 
-                    const overrideResponse = await fetch(data.actions.override, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRFToken': csrftoken
-                        },
-                        body: overrideFormData
-                    });
+                        const overrideResponse = await fetch(data.actions.override, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': csrftoken
+                            },
+                            body: overrideFormData
+                        });
 
-                    const overrideData = await overrideResponse.json();
+                        const overrideData = await overrideResponse.json();
 
-                    if (overrideResponse.ok) {
-                        fileObj.status = 'success';
-                        fileObj.uploadId = overrideData.upload_id;
-                        fileObj.validationResult = overrideData.validation_result;
-                        fileObj.error = null;
+                        if (overrideResponse.ok) {
+                            fileObj.status = 'success';
+                            fileObj.uploadId = overrideData.upload_id;
+                            fileObj.validationResult = overrideData.validation_result;
+                            fileObj.error = null;
+                        } else {
+                            fileObj.status = 'error';
+                            fileObj.error = overrideData.detail || overrideData.error || 'Override failed';
+                        }
                     } else {
                         fileObj.status = 'error';
-                        fileObj.error = overrideData.detail || overrideData.error || 'Override failed';
+                        fileObj.error = data.message || 'Duplicate detected';
                     }
                 } else {
                     fileObj.status = 'error';

@@ -36,6 +36,190 @@
     {% endif %}
 </div>
 
+{% if is_accrual %}
+<!-- Accrual Processing Results -->
+<div class="accrual-results">
+    <h2>Accrual Processing Results</h2>
+
+    <!-- Summary Cards -->
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="summary-value">{{ accrual_summary.total_processed|default:0 }}</div>
+            <div class="summary-label">Employees Processed</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value">${{ accrual_summary.total_accrued|default:0|floatformat:2 }}</div>
+            <div class="summary-label">Total Accrued</div>
+        </div>
+        <div class="summary-card warning">
+            <div class="summary-value">{{ accrual_summary.total_skipped|default:0 }}</div>
+            <div class="summary-label">Employees Skipped</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value">{{ accrual_period.days|default:0 }}</div>
+            <div class="summary-label">Days in Period</div>
+        </div>
+    </div>
+
+    <!-- Issues Summary (if any) -->
+    {% if accrual_summary.employees_not_found_count > 0 or accrual_summary.employees_terminated_count > 0 or accrual_summary.gl_code_errors_count > 0 or accrual_summary.validation_errors_count > 0 %}
+    <div class="issues-summary">
+        <h3>⚠️ Issues Detected</h3>
+        <ul>
+            {% if accrual_summary.employees_not_found_count > 0 %}
+            <li class="issue-item error"><strong>{{ accrual_summary.employees_not_found_count }}</strong> employees from Tanda not found in employee database</li>
+            {% endif %}
+            {% if accrual_summary.employees_terminated_count > 0 %}
+            <li class="issue-item warning"><strong>{{ accrual_summary.employees_terminated_count }}</strong> employees terminated before start period</li>
+            {% endif %}
+            {% if accrual_summary.gl_code_errors_count > 0 %}
+            <li class="issue-item error"><strong>{{ accrual_summary.gl_code_errors_count }}</strong> employees with invalid GL codes</li>
+            {% endif %}
+            {% if accrual_summary.validation_errors_count > 0 %}
+            <li class="issue-item error"><strong>{{ accrual_summary.validation_errors_count }}</strong> processing errors</li>
+            {% endif %}
+        </ul>
+        <p class="scroll-hint">⬇️ Scroll down to see detailed lists of affected employees</p>
+    </div>
+    {% endif %}
+
+    <!-- Accrual Period Info -->
+    <div class="period-info">
+        <h3>Accrual Period</h3>
+        <p><strong>Start Date:</strong> {{ accrual_period.start_date }}</p>
+        <p><strong>End Date:</strong> {{ accrual_period.end_date }}</p>
+        <p><strong>Pay Period ID:</strong> {{ accrual_period.pay_period_id }}</p>
+    </div>
+
+    <!-- Employees Not Found -->
+    {% if accrual_details.employees_not_found %}
+    <div class="error-section">
+        <h3>Employees Not Found ({{ accrual_summary.employees_not_found_count }})</h3>
+        <p class="error-description">The following employees from Tanda timesheet were not found in the employee database:</p>
+        <table class="error-table">
+            <thead>
+                <tr>
+                    <th>Employee Code</th>
+                    <th>Shift Cost</th>
+                    <th>GL Codes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in accrual_details.employees_not_found %}
+                <tr>
+                    <td>{{ emp.employee_code }}</td>
+                    <td>${{ emp.shift_cost|floatformat:2 }}</td>
+                    <td>{{ emp.gl_codes|join:", " }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Employees with Auto Pay Only (Not in Tanda) -->
+    {% if accrual_details.employees_auto_pay_only %}
+    <div class="info-section">
+        <h3>Employees Accrued from Auto Pay Only ({{ accrual_summary.employees_auto_pay_only_count }})</h3>
+        <p class="info-description">These employees were not in the Tanda timesheet but were accrued based on their auto pay amount:</p>
+        <table class="info-table">
+            <thead>
+                <tr>
+                    <th>Employee Code</th>
+                    <th>Employee Name</th>
+                    <th>Auto Pay Amount</th>
+                    <th>Accrued Amount</th>
+                    <th>Cost Allocation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in accrual_details.employees_auto_pay_only %}
+                <tr>
+                    <td>{{ emp.employee_code }}</td>
+                    <td>{{ emp.employee_name }}</td>
+                    <td>${{ emp.auto_pay_amount|floatformat:2 }}</td>
+                    <td>${{ emp.accrued_amount|floatformat:2 }}</td>
+                    <td>{{ emp.cost_allocation }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Employees Terminated -->
+    {% if accrual_details.employees_terminated %}
+    <div class="warning-section">
+        <h3>Employees Terminated Before Period ({{ accrual_summary.employees_terminated_count }})</h3>
+        <p class="warning-description">These employees were terminated before the accrual start period and were skipped:</p>
+        <table class="warning-table">
+            <thead>
+                <tr>
+                    <th>Employee Code</th>
+                    <th>Employee Name</th>
+                    <th>Termination Date</th>
+                    <th>Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in accrual_details.employees_terminated %}
+                <tr>
+                    <td>{{ emp.employee_code }}</td>
+                    <td>{{ emp.employee_name }}</td>
+                    <td>{{ emp.termination_date }}</td>
+                    <td>{{ emp.reason }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- GL Code Errors -->
+    {% if accrual_details.gl_code_errors %}
+    <div class="error-section">
+        <h3>GL Code Validation Errors ({{ accrual_summary.gl_code_errors_count }})</h3>
+        <p class="error-description">Invalid GL codes found:</p>
+        {% for error in accrual_details.gl_code_errors %}
+        <div class="error-detail">
+            <p><strong>Employee:</strong> {{ error.employee_name }} ({{ error.employee_code }})</p>
+            <p><strong>GL Codes:</strong> {{ error.gl_codes|join:", " }}</p>
+            <ul class="error-list">
+                {% for err in error.errors %}
+                <li>{{ err }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Validation Errors -->
+    {% if accrual_details.validation_errors %}
+    <div class="error-section">
+        <h3>Processing Errors ({{ accrual_summary.validation_errors_count }})</h3>
+        <table class="error-table">
+            <thead>
+                <tr>
+                    <th>Employee Code</th>
+                    <th>Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for error in accrual_details.validation_errors %}
+                <tr>
+                    <td>{{ error.employee_code }}</td>
+                    <td>{{ error.error }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+{% else %}
+
 <!-- Validation Tests -->
 <div class="validation-tests">
     <h2>Validation Test Results</h2>
@@ -164,6 +348,8 @@
     </div>
     {% endfor %}
 </div>
+
+{% endif %}
 
 <!-- Action Buttons -->
 <div class="action-buttons">
@@ -414,6 +600,176 @@
     background-color: #fff3cd;
     border: 1px solid #ffc107;
     color: #856404;
+}
+
+/* Accrual Results Styles */
+.accrual-results {
+    margin: 30px 0;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.summary-card {
+    background: white;
+    border: 2px solid #3498db;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+}
+
+.summary-card.warning {
+    border-color: #ffc107;
+}
+
+.summary-value {
+    font-size: 32px;
+    font-weight: bold;
+    color: #3498db;
+    margin-bottom: 10px;
+}
+
+.summary-card.warning .summary-value {
+    color: #ffc107;
+}
+
+.summary-label {
+    font-size: 14px;
+    color: #6c757d;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.period-info {
+    background: #f8f9fa;
+    border-left: 4px solid #3498db;
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 4px;
+}
+
+.period-info h3 {
+    margin-top: 0;
+    color: #333;
+}
+
+.period-info p {
+    margin: 5px 0;
+}
+
+.error-section, .warning-section, .info-section {
+    background: white;
+    border: 2px solid #dc3545;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.warning-section {
+    border-color: #ffc107;
+}
+
+.info-section {
+    border-color: #17a2b8;
+}
+
+.error-section h3, .warning-section h3, .info-section h3 {
+    margin-top: 0;
+    color: #dc3545;
+}
+
+.warning-section h3 {
+    color: #856404;
+}
+
+.info-section h3 {
+    color: #17a2b8;
+}
+
+.error-description, .warning-description, .info-description {
+    color: #6c757d;
+    margin-bottom: 15px;
+}
+
+.error-table, .warning-table, .info-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.error-table th, .warning-table th, .info-table th {
+    background: #f8f9fa;
+    padding: 12px;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+}
+
+.error-table td, .warning-table td, .info-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.error-table tr:hover, .warning-table tr:hover, .info-table tr:hover {
+    background: #f8f9fa;
+}
+
+/* Issues Summary */
+.issues-summary {
+    background: #fff3cd;
+    border: 3px solid #ffc107;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.issues-summary h3 {
+    margin-top: 0;
+    color: #856404;
+    font-size: 20px;
+}
+
+.issues-summary ul {
+    list-style: none;
+    padding: 0;
+    margin: 15px 0;
+}
+
+.issue-item {
+    padding: 10px;
+    margin: 8px 0;
+    border-radius: 4px;
+    font-size: 15px;
+}
+
+.issue-item.error {
+    background: #f8d7da;
+    border-left: 4px solid #dc3545;
+    color: #721c24;
+}
+
+.issue-item.warning {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    color: #856404;
+}
+
+.scroll-hint {
+    text-align: center;
+    color: #856404;
+    font-weight: 600;
+    margin-top: 15px;
+    font-size: 14px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
 }
 </style>
 

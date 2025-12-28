@@ -1,0 +1,352 @@
+{% extends "reconciliation/base.html" %}
+{% load humanize %}
+
+{% block title %}Accrual Wage Dashboard - {{ pay_period.period_id }}{% endblock %}
+
+{% block content %}
+<header>
+    <div class="breadcrumb">
+        <a href="{% url 'reconciliation:pay_period_list' %}">Pay Periods</a> /
+        Accrual Dashboard
+    </div>
+    <h1>Wage Accrual Dashboard</h1>
+    <p class="period-info"><strong>Pay Period:</strong> {{ pay_period.period_id }}</p>
+</header>
+
+<!-- Summary Section -->
+<div class="summary-section">
+    <h2>Accrual Summary</h2>
+
+    <!-- First Row: Key Metrics -->
+    <div class="summary-grid-main">
+        <div class="summary-card highlight">
+            <div class="summary-value">{{ summary.total_employees }}</div>
+            <div class="summary-label">Total Employees</div>
+        </div>
+        <div class="summary-card highlight-primary">
+            <div class="summary-value">${{ summary.total_accrued|floatformat:2|intcomma }}</div>
+            <div class="summary-label">Total Accrued</div>
+        </div>
+    </div>
+
+    <!-- Second Row: GL Breakdown -->
+    <div class="summary-grid-details">
+        <div class="summary-card">
+            <div class="summary-value">${{ summary.total_base_wages|floatformat:2|intcomma }}</div>
+            <div class="summary-label">Base Wages (6345)</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value">${{ summary.total_superannuation|floatformat:2|intcomma }}</div>
+            <div class="summary-label">Superannuation (6370)</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value">${{ summary.total_annual_leave|floatformat:2|intcomma }}</div>
+            <div class="summary-label">Annual Leave (6300)</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value">${{ summary.total_payroll_tax|floatformat:2|intcomma }}</div>
+            <div class="summary-label">Payroll Tax (6335)</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value">${{ summary.total_workcover|floatformat:2|intcomma }}</div>
+            <div class="summary-label">WorkCover (6380)</div>
+        </div>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="actions-section">
+    <a href="{% url 'reconciliation:download_accrual_journal' pay_period.period_id %}" class="btn btn-primary">
+        📥 Download Sage Journal
+    </a>
+    <a href="{% url 'reconciliation:pay_period_list' %}" class="btn btn-secondary">
+        ← Back to Pay Periods
+    </a>
+</div>
+
+<!-- Employee Breakdown Table -->
+<div class="employee-breakdown">
+    <h2>Employee Accrual Breakdown</h2>
+    <div class="table-container">
+        <table class="employee-table">
+            <thead>
+                <tr>
+                    <th>Employee Code</th>
+                    <th>Employee Name</th>
+                    <th>Employee Type</th>
+                    <th>Department</th>
+                    <th>Location</th>
+                    <th class="amount">6345 Salaries</th>
+                    <th class="amount">6300 Annual Leave</th>
+                    <th class="amount">6370 Super</th>
+                    <th class="amount">6380 WorkCover</th>
+                    <th class="amount">6335 Payroll Tax</th>
+                    <th class="amount total-col">Total</th>
+                    <th>Source</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in employee_data %}
+                <tr>
+                    <td>{{ emp.employee_code }}</td>
+                    <td>{{ emp.employee_name }}</td>
+                    <td>{{ emp.employee_type }}</td>
+                    <td>{{ emp.department }}</td>
+                    <td>{{ emp.location }}</td>
+                    <td class="amount">${{ emp.gl_6345_salaries|floatformat:2|intcomma }}</td>
+                    <td class="amount">${{ emp.gl_6300_annual_leave|floatformat:2|intcomma }}</td>
+                    <td class="amount">${{ emp.gl_6370_superannuation|floatformat:2|intcomma }}</td>
+                    <td class="amount">${{ emp.gl_6380_workcover|floatformat:2|intcomma }}</td>
+                    <td class="amount">${{ emp.gl_6335_payroll_tax|floatformat:2|intcomma }}</td>
+                    <td class="amount total-col">${{ emp.total|floatformat:2|intcomma }}</td>
+                    <td>
+                        <span class="source-badge source-{{ emp.source }}">
+                            {% if emp.source == 'tanda_auto_pay' %}Auto Pay
+                            {% elif emp.source == 'tanda_shift_cost' %}Tanda
+                            {% else %}Default{% endif %}
+                        </span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="12" class="empty-state">No accrual data found for this period</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="totals-row">
+                    <td colspan="5"><strong>TOTAL</strong></td>
+                    <td class="amount"><strong>${{ summary.total_base_wages|floatformat:2|intcomma }}</strong></td>
+                    <td class="amount"><strong>${{ summary.total_annual_leave|floatformat:2|intcomma }}</strong></td>
+                    <td class="amount"><strong>${{ summary.total_superannuation|floatformat:2|intcomma }}</strong></td>
+                    <td class="amount"><strong>${{ summary.total_workcover|floatformat:2|intcomma }}</strong></td>
+                    <td class="amount"><strong>${{ summary.total_payroll_tax|floatformat:2|intcomma }}</strong></td>
+                    <td class="amount total-col"><strong>${{ summary.total_accrued|floatformat:2|intcomma }}</strong></td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<style>
+.period-info {
+    color: #666;
+    margin-top: 5px;
+}
+
+.summary-section {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    margin: 20px 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.summary-section h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.summary-grid-main {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.summary-grid-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 20px;
+}
+
+.summary-card {
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+}
+
+.summary-card.highlight {
+    background: #fff9e6;
+    border-color: #ffc107;
+}
+
+.summary-card.highlight-primary {
+    background: #d4edda;
+    border-color: #28a745;
+}
+
+.summary-value {
+    font-size: 28px;
+    font-weight: bold;
+    color: #3498db;
+    margin-bottom: 8px;
+}
+
+.summary-card.highlight .summary-value {
+    font-size: 36px;
+    color: #f39c12;
+}
+
+.summary-card.highlight-primary .summary-value {
+    font-size: 40px;
+    color: #28a745;
+}
+
+.summary-label {
+    font-size: 13px;
+    color: #666;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.actions-section {
+    display: flex;
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: #28a745;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.employee-breakdown {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    margin: 20px 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.employee-breakdown h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+.employee-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.employee-table thead {
+    background: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.employee-table th {
+    padding: 12px 8px;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap;
+}
+
+.employee-table th.amount {
+    text-align: right;
+}
+
+.employee-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.employee-table td.amount {
+    text-align: right;
+    font-family: monospace;
+}
+
+.employee-table td.total-col {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+.employee-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.employee-table tfoot tr {
+    background: #e7f3ff;
+    border-top: 3px solid #3498db;
+}
+
+.totals-row td {
+    padding: 15px 8px;
+    font-size: 15px;
+}
+
+.source-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.source-tanda_auto_pay {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.source-tanda_shift_cost {
+    background: #d4edda;
+    color: #155724;
+}
+
+.source-employee_default {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+    font-style: italic;
+}
+</style>
+
+{% endblock %}

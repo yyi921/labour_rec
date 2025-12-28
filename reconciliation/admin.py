@@ -273,15 +273,24 @@ class EmployeePayPeriodSnapshotAdmin(admin.ModelAdmin):
             'fields': ('formatted_cost_allocation', 'allocation_source', 'allocation_finalized_at', 'allocation_finalized_by')
         }),
         ('Payroll Liability GL Accounts (2xxx)', {
-            'fields': ('gl_2310_annual_leave', 'gl_2317_long_service_leave', 'gl_2318_toil_liability', 'gl_2320_sick_leave'),
+            'fields': ('gl_2055_accrued_expenses', 'gl_2310_annual_leave', 'gl_2317_long_service_leave', 'gl_2318_toil_liability', 'gl_2320_sick_leave'),
             'classes': ('collapse',),
         }),
         ('Labour Expense GL Accounts (6xxx)', {
             'fields': (
-                'gl_6302', 'gl_6305', 'gl_6309', 'gl_6310', 'gl_6312', 'gl_6315',
+                'gl_6300', 'gl_6302', 'gl_6305', 'gl_6309', 'gl_6310', 'gl_6312', 'gl_6315',
                 'gl_6325', 'gl_6330', 'gl_6331', 'gl_6332', 'gl_6335', 'gl_6338',
                 'gl_6340', 'gl_6345_salaries', 'gl_6350', 'gl_6355_sick_leave',
                 'gl_6370_superannuation', 'gl_6372_toil', 'gl_6375', 'gl_6380'
+            ),
+            'classes': ('collapse',),
+        }),
+        ('Accrual Information', {
+            'fields': (
+                'accrual_period_start', 'accrual_period_end', 'accrual_days_in_period',
+                'accrual_base_wages', 'accrual_superannuation', 'accrual_annual_leave',
+                'accrual_payroll_tax', 'accrual_workcover', 'accrual_total',
+                'accrual_source', 'accrual_employee_type', 'accrual_calculated_at'
             ),
             'classes': ('collapse',),
         }),

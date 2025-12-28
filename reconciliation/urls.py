@@ -10,6 +10,7 @@ urlpatterns = [
     # Dashboard endpoints
     path('dashboard/', dashboard_views.pay_period_list, name='pay_period_list'),
     path('dashboard/<str:pay_period_id>/', dashboard_views.reconciliation_dashboard, name='dashboard'),
+    path('dashboard/<str:pay_period_id>/download-accrual-journal/', dashboard_views.download_accrual_sage_journal, name='download_accrual_journal'),
     path('api/pay-periods/delete/', dashboard_views.delete_pay_periods, name='delete_pay_periods'),
 
     # Analytics dashboard
@@ -42,6 +43,7 @@ urlpatterns = [
     # Upload endpoints
     path('uploads/multi/', upload_views.multi_upload, name='multi_upload'),
     path('api/uploads/smart/', upload_views.smart_upload, name='smart_upload'),
+    path('api/uploads/accrual/', upload_views.accrual_upload, name='accrual_upload'),
     path('api/uploads/<uuid:upload_id>/override/', upload_views.override_upload, name='override_upload'),
     path('api/uploads/', upload_views.list_uploads, name='list_uploads'),
     path('api/uploads/<uuid:upload_id>/', upload_views.upload_detail, name='upload_detail'),

@@ -872,6 +872,7 @@ class EmployeePayPeriodSnapshot(models.Model):
     # GL Account Totals (from IQB)
     # Payroll Liability Accounts (2xxx)
     # Note: Field names may not match GL descriptions due to legacy naming, see mapping in mapping_views.py
+    gl_2055_accrued_expenses = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # Accrued Expenses - Employment Related
     gl_2310_annual_leave = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     gl_2317_long_service_leave = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     gl_2318_toil_liability = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -885,6 +886,7 @@ class EmployeePayPeriodSnapshot(models.Model):
     gl_2391_super_sal_sacrifice = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     # Labour Expense Accounts (6xxx)
+    gl_6300 = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # Annual Leave Accrual
     gl_6302 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     gl_6305 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     gl_6309 = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -919,7 +921,25 @@ class EmployeePayPeriodSnapshot(models.Model):
     # Total cost for this employee this period
     total_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     total_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    
+
+    # Accrual Wages fields (for month-end accruals)
+    accrual_period_start = models.DateField(null=True, blank=True)
+    accrual_period_end = models.DateField(null=True, blank=True)
+    accrual_days_in_period = models.IntegerField(null=True, blank=True)
+
+    # Accrual amounts
+    accrual_base_wages = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    accrual_superannuation = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # 12%
+    accrual_annual_leave = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # 7.7% for non-casual
+    accrual_payroll_tax = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # 4.95%
+    accrual_workcover = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # 1.384%
+    accrual_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # Sum of all accruals
+
+    # Accrual metadata
+    accrual_source = models.CharField(max_length=50, blank=True)  # 'tanda_auto_pay' or 'tanda_shift_cost'
+    accrual_calculated_at = models.DateTimeField(null=True, blank=True)
+    accrual_employee_type = models.CharField(max_length=50, blank=True)  # Store employee type at time of accrual
+
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

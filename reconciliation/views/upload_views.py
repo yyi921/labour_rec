@@ -494,3 +494,268 @@ def multi_upload(request):
     from django.shortcuts import render
 
     return render(request, 'reconciliation/multi_upload.html')
+
+
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+def accrual_upload(request):
+    """
+    Upload Tanda timesheet for accrual wage calculation
+
+    POST /api/uploads/accrual/
+
+    Form data:
+        file: Tanda timesheet file
+        start_period: Start date (YYYY-MM-DD)
+        end_period: End date (YYYY-MM-DD)
+        pay_period_id: Pay period ID for posting journals (YYYY-MM-DD)
+
+    Returns:
+        - 200: File processed successfully
+        - 400: Invalid file or parameters
+        - 500: Processing error
+    """
+    # Check if file was provided
+    if 'file' not in request.FILES:
+        return Response({
+            'status': 'error',
+            'message': 'No file provided. Please upload a Tanda timesheet file.'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Get period parameters
+    start_period = request.data.get('start_period')
+    end_period = request.data.get('end_period')
+    pay_period_id = request.data.get('pay_period_id')
+
+    if not start_period or not end_period or not pay_period_id:
+        return Response({
+            'status': 'error',
+            'message': 'Missing required parameters: start_period, end_period, pay_period_id'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Validate date formats
+    try:
+        start_date = datetime.strptime(start_period, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_period, '%Y-%m-%d').date()
+        pay_period_date = datetime.strptime(pay_period_id, '%Y-%m-%d').date()
+    except ValueError as e:
+        return Response({
+            'status': 'error',
+            'message': f'Invalid date format. Please use YYYY-MM-DD: {str(e)}'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    if end_date < start_date:
+        return Response({
+            'status': 'error',
+            'message': 'End period must be after or equal to start period'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    uploaded_file = request.FILES['file']
+
+    # Save file temporarily
+    temp_filename = f"temp_{uuid.uuid4()}_{uploaded_file.name}"
+    temp_path = default_storage.save(f'temp/{temp_filename}', ContentFile(uploaded_file.read()))
+    full_temp_path = default_storage.path(temp_path)
+
+    try:
+        # Step 1: Detect file type (must be Tanda_Timesheet)
+        file_type, confidence, df = FileDetector.detect_file_type(full_temp_path)
+
+        if file_type != 'Tanda_Timesheet':
+            default_storage.delete(temp_path)
+            return Response({
+                'status': 'error',
+                'message': f'Invalid file type. Expected Tanda_Timesheet, got {file_type}',
+                'detected_type': file_type,
+                'confidence': f"{confidence * 100:.1f}%"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Step 2: Get or create pay period
+        pay_period, period_created = PayPeriod.objects.get_or_create(
+            period_id=pay_period_id,
+            defaults={
+                'period_start': start_date,
+                'period_end': end_date,
+                'period_type': 'accrual'
+            }
+        )
+
+        # Step 3: Move file to permanent location
+        permanent_filename = f"Accrual_Tanda_{pay_period_id}_{uuid.uuid4().hex[:8]}{os.path.splitext(uploaded_file.name)[1]}"
+        permanent_path = default_storage.save(f'uploads/{permanent_filename}', ContentFile(open(full_temp_path, 'rb').read()))
+
+        # Clean up temp file
+        default_storage.delete(temp_path)
+
+        # Step 4: Create upload record
+        user = request.user if request.user.is_authenticated else get_or_create_default_user()
+
+        upload = Upload.objects.create(
+            pay_period=pay_period,
+            source_system='Accrual_Tanda',
+            file_name=uploaded_file.name,
+            file_path=permanent_path,
+            uploaded_by=user,
+            version=1,
+            is_active=True,
+            status='processing'
+        )
+
+        # Step 5: Parse the Tanda file
+        try:
+            record_count = TandaParser.parse(upload, df)
+
+            upload.record_count = record_count
+            upload.status = 'completed'
+            upload.save()
+
+            # Step 6: Process accruals
+            from reconciliation.accrual_processor import AccrualWageProcessor
+
+            accrual_results = AccrualWageProcessor.process_accruals(
+                upload=upload,
+                start_date=start_date,
+                end_date=end_date,
+                pay_period=pay_period
+            )
+
+            # Update pay period status
+            pay_period.status = 'accrual_processed'
+            pay_period.save()
+
+            # Create reversal pay period for next month
+            from datetime import timedelta
+            reversal_date = end_date + timedelta(days=1)
+            reversal_period_id = reversal_date.strftime('%Y-%m-%d')
+
+            reversal_period, reversal_created = PayPeriod.objects.get_or_create(
+                period_id=reversal_period_id,
+                defaults={
+                    'period_start': reversal_date,
+                    'period_end': reversal_date,
+                    'period_type': 'accrual_reversal'
+                }
+            )
+
+            # Copy all snapshots with negative amounts for reversal
+            if reversal_created:
+                original_snapshots = EmployeePayPeriodSnapshot.objects.filter(
+                    pay_period=pay_period
+                )
+
+                for snapshot in original_snapshots:
+                    EmployeePayPeriodSnapshot.objects.create(
+                        pay_period=reversal_period,
+                        employee_code=snapshot.employee_code,
+                        employee_name=snapshot.employee_name,
+                        employment_status=snapshot.employment_status,
+                        termination_date=snapshot.termination_date,
+
+                        # Accrual period info (same as original)
+                        accrual_period_start=snapshot.accrual_period_start,
+                        accrual_period_end=snapshot.accrual_period_end,
+                        accrual_days_in_period=snapshot.accrual_days_in_period,
+
+                        # Negative amounts for reversal
+                        accrual_base_wages=-snapshot.accrual_base_wages,
+                        accrual_superannuation=-snapshot.accrual_superannuation,
+                        accrual_annual_leave=-snapshot.accrual_annual_leave,
+                        accrual_payroll_tax=-snapshot.accrual_payroll_tax,
+                        accrual_workcover=-snapshot.accrual_workcover,
+                        accrual_total=-snapshot.accrual_total,
+
+                        # Metadata
+                        accrual_source=f"reversal_{snapshot.accrual_source}",
+                        accrual_calculated_at=timezone.now(),
+                        accrual_employee_type=snapshot.accrual_employee_type,
+
+                        # Negative GL Account totals
+                        gl_6345_salaries=-snapshot.gl_6345_salaries,
+                        gl_6370_superannuation=-snapshot.gl_6370_superannuation,
+                        gl_6300=-snapshot.gl_6300,
+                        gl_6335=-snapshot.gl_6335,
+                        gl_6380=-snapshot.gl_6380,
+                        gl_2055_accrued_expenses=-snapshot.gl_2055_accrued_expenses,
+
+                        # Negative total cost
+                        total_cost=-snapshot.total_cost,
+
+                        # Same cost allocation
+                        cost_allocation=snapshot.cost_allocation,
+                        allocation_source=f"reversal_{snapshot.allocation_source}",
+                        allocation_finalized_at=timezone.now()
+                    )
+
+                reversal_period.status = 'accrual_reversed'
+                reversal_period.save()
+
+            # Build validation result
+            validation_passed = (
+                len(accrual_results['validation_errors']) == 0 and
+                len(accrual_results['gl_code_errors']) == 0
+            )
+
+            validation_data = {
+                'passed': validation_passed,
+                'summary': {
+                    'total_processed': accrual_results['processed_count'],
+                    'total_skipped': accrual_results['skipped_count'],
+                    'total_accrued': accrual_results['total_accrued'],
+                    'employees_not_found_count': len(accrual_results['employees_not_found']),
+                    'employees_terminated_count': len(accrual_results['employees_terminated']),
+                    'employees_auto_pay_only_count': len(accrual_results['employees_auto_pay_only']),
+                    'validation_errors_count': len(accrual_results['validation_errors']),
+                    'gl_code_errors_count': len(accrual_results['gl_code_errors'])
+                },
+                'details': accrual_results,
+                'period': {
+                    'start_date': str(start_date),
+                    'end_date': str(end_date),
+                    'pay_period_id': pay_period_id,
+                    'days': (end_date - start_date).days + 1
+                }
+            }
+
+            # Save validation results
+            ValidationResult.objects.update_or_create(
+                upload=upload,
+                defaults={
+                    'passed': validation_passed,
+                    'validation_data': validation_data
+                }
+            )
+
+            return Response({
+                'status': 'success',
+                'message': f'Accrual processing completed. Processed {accrual_results["processed_count"]} employees. Reversal period {reversal_period_id} created.',
+                'upload_id': str(upload.upload_id),
+                'file_type': 'Accrual_Tanda',
+                'file_name': uploaded_file.name,
+                'records_imported': record_count,
+                'accrual_results': accrual_results,
+                'validation_result': validation_data,
+                'validation_url': f'/validation/{upload.upload_id}/',
+                'reversal_period_id': reversal_period_id,
+                'reversal_period_created': reversal_created
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            upload.status = 'failed'
+            upload.error_message = str(e)
+            upload.save()
+
+            return Response({
+                'status': 'error',
+                'message': f'Error processing accrual file: {str(e)}',
+                'upload_id': str(upload.upload_id)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    except Exception as e:
+        # Clean up temp file
+        if default_storage.exists(temp_path):
+            default_storage.delete(temp_path)
+
+        return Response({
+            'status': 'error',
+            'message': f'Unexpected error: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
