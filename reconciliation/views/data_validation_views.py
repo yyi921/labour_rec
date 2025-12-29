@@ -75,13 +75,29 @@ def validation_summary_view(request, pay_period_id):
             validations = validation_data.get('validations', [])
         except ValidationResult.DoesNotExist:
             validation = None
+            validation_data = {}
             validations = []
+
+        # Check if this is an accrual upload and extract accrual data
+        is_accrual = upload.source_system == 'Accrual_Tanda'
+        accrual_summary = None
+        accrual_details = None
+        accrual_period = None
+
+        if is_accrual and validation_data:
+            accrual_summary = validation_data.get('summary', {})
+            accrual_details = validation_data.get('details', {})
+            accrual_period = validation_data.get('period', {})
 
         uploads_data.append({
             'upload': upload,
             'validation': validation,
             'validation_passed': validation.passed if validation else None,
-            'validations': validations
+            'validations': validations,
+            'is_accrual': is_accrual,
+            'accrual_summary': accrual_summary,
+            'accrual_details': accrual_details,
+            'accrual_period': accrual_period
         })
 
     # Calculate overall status

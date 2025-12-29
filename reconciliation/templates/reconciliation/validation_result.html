@@ -6,14 +6,18 @@
 <header>
     <div class="breadcrumb">
         <a href="{% url 'reconciliation:pay_period_list' %}">Pay Periods</a> /
+        {% if pay_period and pay_period.period_id %}
         <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}">{{ pay_period.period_id }}</a> /
+        {% endif %}
         Validation Results
     </div>
     <h1>Data Validation Results</h1>
     <div class="upload-info">
         <p><strong>File:</strong> {{ upload.file_name }}</p>
         <p><strong>File Type:</strong> {{ upload.source_system }}</p>
+        {% if pay_period and pay_period.period_id %}
         <p><strong>Pay Period:</strong> {{ pay_period.period_id }}</p>
+        {% endif %}
         <p><strong>Records Imported:</strong> {{ upload.record_count|default:"N/A" }}</p>
         <p><strong>Uploaded:</strong> {{ upload.uploaded_at|date:"d M Y H:i" }}</p>
     </div>
@@ -354,9 +358,11 @@
 <!-- Action Buttons -->
 <div class="action-buttons">
     {% if validation_passed %}
+        {% if pay_period and pay_period.period_id %}
         <a href="{% url 'reconciliation:dashboard' pay_period.period_id %}" class="btn btn-primary">
             Go to Reconciliation Dashboard
         </a>
+        {% endif %}
     {% else %}
         <a href="{% url 'reconciliation:pay_period_list' %}" class="btn btn-warning">
             Back to Upload - Re-upload Corrected File

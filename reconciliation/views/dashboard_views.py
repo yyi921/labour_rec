@@ -432,32 +432,32 @@ def download_accrual_sage_journal(request, pay_period_id):
                     cost_account = f"{location}-{dept}"
 
                     if cost_account.startswith('SPL-'):
-                        # Look up the split
-                        try:
-                            split = CostCenterSplit.objects.get(split_code=cost_account)
-                            # Get target accounts and percentages
-                            targets = split.get_targets()  # Returns list of (cost_account, percentage) tuples
+                        # Look up all split targets for this source account
+                        splits = CostCenterSplit.objects.filter(
+                            source_account=cost_account,
+                            is_active=True
+                        )
 
-                            for target_account, split_pct in targets:
-                                # Parse target account
-                                if '-' in target_account:
-                                    parts = target_account.split('-')
-                                    target_loc = parts[0]
-                                    target_dept = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
+                        for split in splits:
+                            target_account = split.target_account
+                            split_pct = split.percentage * 100  # Convert to percentage
 
-                                    key = (target_loc, target_dept)
+                            # Parse target account
+                            if '-' in target_account:
+                                parts = target_account.split('-')
+                                target_loc = parts[0]
+                                target_dept = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
 
-                                    # Combined percentage: allocation % * split %
-                                    combined_pct = Decimal(str(percentage)) / 100 * Decimal(str(split_pct)) / 100
+                                key = (target_loc, target_dept)
 
-                                    location_dept_totals[key]['gl_6345'] += snapshot.gl_6345_salaries * combined_pct
-                                    location_dept_totals[key]['gl_6300'] += snapshot.gl_6300 * combined_pct
-                                    location_dept_totals[key]['gl_6370'] += snapshot.gl_6370_superannuation * combined_pct
-                                    location_dept_totals[key]['gl_6335'] += snapshot.gl_6335 * combined_pct
-                                    location_dept_totals[key]['gl_6380'] += snapshot.gl_6380 * combined_pct
-                        except CostCenterSplit.DoesNotExist:
-                            # If split not found, skip or use as-is
-                            pass
+                                # Combined percentage: allocation % * split %
+                                combined_pct = Decimal(str(percentage)) / 100 * Decimal(str(split_pct)) / 100
+
+                                location_dept_totals[key]['gl_6345'] += snapshot.gl_6345_salaries * combined_pct
+                                location_dept_totals[key]['gl_6300'] += snapshot.gl_6300 * combined_pct
+                                location_dept_totals[key]['gl_6370'] += snapshot.gl_6370_superannuation * combined_pct
+                                location_dept_totals[key]['gl_6335'] += snapshot.gl_6335 * combined_pct
+                                location_dept_totals[key]['gl_6380'] += snapshot.gl_6380 * combined_pct
                     else:
                         # Regular account
                         key = (location, dept)

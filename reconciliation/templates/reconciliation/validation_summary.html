@@ -258,6 +258,16 @@
             <div style="font-size: 13px; color: #666;">
                 Uploaded: {{ data.upload.uploaded_at|date:"d M Y H:i" }} by {{ data.upload.uploaded_by.username }}
             </div>
+
+            <!-- Add quick link to detailed validation page -->
+            {% if data.upload.source_system == 'Accrual_Tanda' %}
+            <div style="margin-top: 10px;">
+                <a href="{% url 'reconciliation:validation_result' data.upload.upload_id %}"
+                   style="display: inline-block; padding: 8px 16px; background: #3498db; color: white; border-radius: 4px; text-decoration: none; font-size: 14px;">
+                    View Detailed Accrual Report →
+                </a>
+            </div>
+            {% endif %}
         </div>
         {% endfor %}
     </div>
@@ -269,6 +279,210 @@
     <h2 style="background: #f5f5f5; padding: 15px; border-radius: 8px; border-left: 4px solid {% if data.validation_passed %}#28a745{% else %}#dc3545{% endif %};">
         {{ data.upload.source_system }} - {{ data.upload.file_name }}
     </h2>
+
+    {% if data.is_accrual and data.accrual_summary %}
+    <!-- Accrual Processing Results -->
+    <div class="accrual-results" style="background: white; padding: 20px; border-radius: 8px; margin: 15px 0; border: 2px solid #3498db;">
+        <h3 style="margin-top: 0; color: #3498db;">Accrual Processing Results</h3>
+
+        <!-- Summary Cards -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
+            <div style="background: #e7f3ff; border: 2px solid #3498db; border-radius: 8px; padding: 15px; text-align: center;">
+                <div style="font-size: 28px; font-weight: bold; color: #3498db;">{{ data.accrual_summary.total_processed|default:0 }}</div>
+                <div style="font-size: 12px; color: #666; text-transform: uppercase; margin-top: 5px;">Employees Processed</div>
+            </div>
+            <div style="background: #d4edda; border: 2px solid #28a745; border-radius: 8px; padding: 15px; text-align: center;">
+                <div style="font-size: 28px; font-weight: bold; color: #28a745;">${{ data.accrual_summary.total_accrued|default:0|floatformat:2 }}</div>
+                <div style="font-size: 12px; color: #666; text-transform: uppercase; margin-top: 5px;">Total Accrued</div>
+            </div>
+            <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; text-align: center;">
+                <div style="font-size: 28px; font-weight: bold; color: #ffc107;">{{ data.accrual_summary.total_skipped|default:0 }}</div>
+                <div style="font-size: 12px; color: #666; text-transform: uppercase; margin-top: 5px;">Employees Skipped</div>
+            </div>
+            <div style="background: #d1ecf1; border: 2px solid #17a2b8; border-radius: 8px; padding: 15px; text-align: center;">
+                <div style="font-size: 28px; font-weight: bold; color: #17a2b8;">{{ data.accrual_summary.employees_auto_pay_only_count|default:0 }}</div>
+                <div style="font-size: 12px; color: #666; text-transform: uppercase; margin-top: 5px;">Auto Pay Only</div>
+            </div>
+        </div>
+
+        <!-- Issues Summary (if any) -->
+        {% if data.accrual_summary.employees_not_found_count > 0 or data.accrual_summary.employees_terminated_count > 0 or data.accrual_summary.gl_code_errors_count > 0 or data.accrual_summary.validation_errors_count > 0 %}
+        <div style="background: #fff3cd; border: 3px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <h4 style="margin-top: 0; color: #856404; font-size: 18px;">Issues Detected</h4>
+            <div style="display: grid; gap: 10px;">
+                {% if data.accrual_summary.employees_not_found_count > 0 %}
+                <div style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 12px; border-radius: 4px; color: #721c24;">
+                    <strong>{{ data.accrual_summary.employees_not_found_count }}</strong> employees from Tanda not found in employee database
+                </div>
+                {% endif %}
+                {% if data.accrual_summary.employees_terminated_count > 0 %}
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; border-radius: 4px; color: #856404;">
+                    <strong>{{ data.accrual_summary.employees_terminated_count }}</strong> employees terminated before start period
+                </div>
+                {% endif %}
+                {% if data.accrual_summary.gl_code_errors_count > 0 %}
+                <div style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 12px; border-radius: 4px; color: #721c24;">
+                    <strong>{{ data.accrual_summary.gl_code_errors_count }}</strong> employees with invalid GL codes
+                </div>
+                {% endif %}
+                {% if data.accrual_summary.validation_errors_count > 0 %}
+                <div style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 12px; border-radius: 4px; color: #721c24;">
+                    <strong>{{ data.accrual_summary.validation_errors_count }}</strong> processing errors
+                </div>
+                {% endif %}
+            </div>
+            <p style="text-align: center; color: #856404; font-weight: 600; margin-top: 15px; margin-bottom: 5px;">
+                Scroll down for detailed employee lists
+            </p>
+        </div>
+        {% endif %}
+
+        <!-- Detailed Employee Lists -->
+        <div style="margin-top: 30px;">
+            <!-- Employees Not Found -->
+            {% if data.accrual_details.employees_not_found %}
+            <div style="background: white; border: 2px solid #dc3545; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h4 style="margin-top: 0; color: #dc3545;">Employees Not Found ({{ data.accrual_summary.employees_not_found_count }})</h4>
+                <p style="color: #6c757d; margin-bottom: 15px;">The following employees from Tanda timesheet were not found in the employee database:</p>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Employee Code</th>
+                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #dee2e6;">Shift Cost</th>
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">GL Codes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for emp in data.accrual_details.employees_not_found %}
+                            <tr style="border-bottom: 1px solid #dee2e6;">
+                                <td style="padding: 10px 12px;">{{ emp.employee_code }}</td>
+                                <td style="padding: 10px 12px; text-align: right; font-family: monospace;">${{ emp.shift_cost|floatformat:2 }}</td>
+                                <td style="padding: 10px 12px;">{{ emp.gl_codes|join:", " }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Employees with Auto Pay Only (Not in Tanda) -->
+            {% if data.accrual_details.employees_auto_pay_only %}
+            <div style="background: white; border: 2px solid #17a2b8; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h4 style="margin-top: 0; color: #17a2b8;">Employees Accrued from Auto Pay Only ({{ data.accrual_summary.employees_auto_pay_only_count }})</h4>
+                <p style="color: #6c757d; margin-bottom: 15px;">These employees were not in the Tanda timesheet but were accrued based on their auto pay amount:</p>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Employee Code</th>
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Employee Name</th>
+                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #dee2e6;">Auto Pay Amount</th>
+                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #dee2e6;">Accrued Amount</th>
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Cost Allocation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for emp in data.accrual_details.employees_auto_pay_only %}
+                            <tr style="border-bottom: 1px solid #dee2e6;">
+                                <td style="padding: 10px 12px;">{{ emp.employee_code }}</td>
+                                <td style="padding: 10px 12px;">{{ emp.employee_name }}</td>
+                                <td style="padding: 10px 12px; text-align: right; font-family: monospace;">${{ emp.auto_pay_amount|floatformat:2 }}</td>
+                                <td style="padding: 10px 12px; text-align: right; font-family: monospace;">${{ emp.accrued_amount|floatformat:2 }}</td>
+                                <td style="padding: 10px 12px;">{{ emp.cost_allocation }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Employees Terminated -->
+            {% if data.accrual_details.employees_terminated %}
+            <div style="background: white; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h4 style="margin-top: 0; color: #856404;">Employees Terminated Before Period ({{ data.accrual_summary.employees_terminated_count }})</h4>
+                <p style="color: #6c757d; margin-bottom: 15px;">These employees were terminated before the accrual start period and were skipped:</p>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Employee Code</th>
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Employee Name</th>
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Termination Date</th>
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for emp in data.accrual_details.employees_terminated %}
+                            <tr style="border-bottom: 1px solid #dee2e6;">
+                                <td style="padding: 10px 12px;">{{ emp.employee_code }}</td>
+                                <td style="padding: 10px 12px;">{{ emp.employee_name }}</td>
+                                <td style="padding: 10px 12px;">{{ emp.termination_date }}</td>
+                                <td style="padding: 10px 12px;">{{ emp.reason }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- GL Code Errors -->
+            {% if data.accrual_details.gl_code_errors %}
+            <div style="background: white; border: 2px solid #dc3545; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h4 style="margin-top: 0; color: #dc3545;">GL Code Validation Errors ({{ data.accrual_summary.gl_code_errors_count }})</h4>
+                <p style="color: #6c757d; margin-bottom: 15px;">Invalid GL codes found:</p>
+                {% for error in data.accrual_details.gl_code_errors %}
+                <div style="background: #f8f9fa; border-left: 4px solid #dc3545; padding: 15px; margin: 15px 0;">
+                    <p><strong>Employee:</strong> {{ error.employee_name }} ({{ error.employee_code }})</p>
+                    <p><strong>GL Codes:</strong> {{ error.gl_codes|join:", " }}</p>
+                    <ul style="background: white; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px 10px 10px 30px; margin: 10px 0;">
+                        {% for err in error.errors %}
+                        <li style="margin: 5px 0;">{{ err }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Validation/Processing Errors -->
+            {% if data.accrual_details.validation_errors %}
+            <div style="background: white; border: 2px solid #dc3545; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h4 style="margin-top: 0; color: #dc3545;">Processing Errors ({{ data.accrual_summary.validation_errors_count }})</h4>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Employee Code</th>
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Error</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for error in data.accrual_details.validation_errors %}
+                            <tr style="border-bottom: 1px solid #dee2e6;">
+                                <td style="padding: 10px 12px;">{{ error.employee_code }}</td>
+                                <td style="padding: 10px 12px;">{{ error.error }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Link to detailed page -->
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="{% url 'reconciliation:validation_result' data.upload.upload_id %}"
+               style="display: inline-block; padding: 12px 24px; background: #3498db; color: white; border-radius: 6px; text-decoration: none; font-size: 16px; font-weight: 500;">
+                View Full Detailed Report →
+            </a>
+        </div>
+    </div>
+    {% endif %}
 
     {% if data.validations %}
     <div class="validation-tests">

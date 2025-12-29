@@ -237,25 +237,26 @@ class AccrualWageProcessor:
                 if employee.default_cost_account:
                     # Check if this is a SPL- account
                     if employee.default_cost_account.startswith('SPL-'):
-                        # Look up the split
-                        try:
-                            split = CostCenterSplit.objects.get(split_code=employee.default_cost_account)
-                            targets = split.get_targets()
+                        # Look up all split targets for this source account
+                        splits = CostCenterSplit.objects.filter(
+                            source_account=employee.default_cost_account,
+                            is_active=True
+                        )
 
-                            # Build cost allocation from split targets
-                            for target_account, split_pct in targets:
-                                if '-' in target_account:
-                                    parts = target_account.split('-')
-                                    if len(parts) >= 2:
-                                        location_code = parts[0]
-                                        dept_code = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
+                        # Build cost allocation from split targets
+                        for split in splits:
+                            target_account = split.target_account
+                            split_pct = split.percentage * 100  # Convert to percentage (e.g., 0.075 -> 7.5)
 
-                                        if location_code not in cost_allocation:
-                                            cost_allocation[location_code] = {}
-                                        cost_allocation[location_code][dept_code] = float(split_pct)
-                        except CostCenterSplit.DoesNotExist:
-                            # If split not found, skip allocation
-                            pass
+                            if '-' in target_account:
+                                parts = target_account.split('-')
+                                if len(parts) >= 2:
+                                    location_code = parts[0]
+                                    dept_code = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
+
+                                    if location_code not in cost_allocation:
+                                        cost_allocation[location_code] = {}
+                                    cost_allocation[location_code][dept_code] = float(split_pct)
                     else:
                         # Parse default_cost_account (format: location-department)
                         if '-' in employee.default_cost_account:
@@ -361,6 +362,15 @@ class AccrualWageProcessor:
         """
         errors = []
         valid = True
+
+        # Check if gl_codes list is empty
+        if not gl_codes or len(gl_codes) == 0:
+            errors.append("No GL codes found for employee in Tanda timesheet")
+            valid = False
+            return {
+                'valid': valid,
+                'errors': errors
+            }
 
         for gl_code in gl_codes:
             if not gl_code or '-' not in gl_code:

@@ -1,0 +1,117 @@
+    pay_period = get_object_or_404(PayPeriod, period_id=pay_period_id)
+
+    # Get uploads
+    closing_upload = Upload.objects.filter(
+        pay_period=pay_period,
+        source_system='Micropay_IQB_Leave',
+        is_active=True
+    ).first()
+
+    if not closing_upload:
+        return render(request, 'reconciliation/leave_accrual_error.html', {
+            'error': f'No IQB Leave Balance file found for pay period {pay_period_id}',
+            'pay_period': pay_period
+        })
+
+    opening_upload = Upload.objects.filter(
+        source_system='Micropay_IQB_Leave',
+        is_active=True,
+        pay_period__period_id__lt=pay_period_id
+    ).order_by('-pay_period__period_id').first()
+
+    if not opening_upload:
+        return render(request, 'reconciliation/leave_accrual_error.html', {
+            'error': f'No opening IQB Leave Balance found before {pay_period_id}',
+            'pay_period': pay_period
+        })
+
+    iqb_upload = Upload.objects.filter(
+        pay_period=pay_period,
+        source_system='Micropay_IQB',
+        is_active=True
+    ).first()
+
+    if not iqb_upload:
+        return render(request, 'reconciliation/leave_accrual_error.html', {
+            'error': f'No IQB Detail file found for pay period {pay_period_id}',
+            'pay_period': pay_period
+        })
+
+    # Get PayComp to GL mapping
+    paycomp_mappings = {
+        mapping.pay_comp_code: mapping.gl_account
+        for mapping in PayCompCodeMapping.objects.all()
+    }
+
+    # Location and department lookups
+    location_lookup = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}
+    department_lookup = {dept.department_id: dept.department_name for dept in SageDepartment.objects.all()}
+
+    # Calculate accruals for all three leave types
+    annual_leave_accruals = _calculate_leave_accruals_for_type(
+        'Annual Leave', '2310', '6300',
+        opening_upload, closing_upload, iqb_upload, pay_period, paycomp_mappings
+    )
+
+    lsl_accruals = _calculate_leave_accruals_for_type(
+        'Long Service Leave', '2317', '6345',
+        opening_upload, closing_upload, iqb_upload, pay_period, paycomp_mappings
+    )
+
+    toil_accruals = _calculate_leave_accruals_for_type(
+        'User Defined Leave', '2318', '6372',
+        opening_upload, closing_upload, iqb_upload, pay_period, paycomp_mappings
+    )
+
+    # Aggregate journal entries by location/department
+    annual_journal = _aggregate_journal_by_location_department(annual_leave_accruals, location_lookup, department_lookup)
+    lsl_journal = _aggregate_journal_by_location_department(lsl_accruals, location_lookup, department_lookup)
+    toil_journal = _aggregate_journal_by_location_department(toil_accruals, location_lookup, department_lookup)
+
+    # Calculate totals for each leave type
+    def calc_totals(accruals, journal):
+        return {
+            'employee_count': len(accruals),
+            'total_base': sum(a['accrual_amount'] for a in accruals),
+            'total_super': sum(a['super_amount'] for a in accruals),
+            'total_prt': sum(a['prt_amount'] for a in accruals),
+            'total_workcover': sum(a['workcover_amount'] for a in accruals),
+            'total_with_oncosts': sum(a['total_with_oncosts'] for a in accruals),
+            'total_debit': sum(j['debit'] for j in journal),
+            'total_credit': sum(j['credit'] for j in journal),
+        }
+
+    annual_totals = calc_totals(annual_leave_accruals, annual_journal)
+    lsl_totals = calc_totals(lsl_accruals, lsl_journal)
+    toil_totals = calc_totals(toil_accruals, toil_journal)
+
+    # Check if balanced
+    annual_balanced = abs(annual_totals['total_debit'] - annual_totals['total_credit']) < Decimal('0.01')
+    lsl_balanced = abs(lsl_totals['total_debit'] - lsl_totals['total_credit']) < Decimal('0.01')
+    toil_balanced = abs(toil_totals['total_debit'] - toil_totals['total_credit']) < Decimal('0.01')
+
+    context = {
+        'pay_period': pay_period,
+        'opening_date': opening_upload.pay_period.period_end,
+        'closing_date': pay_period.period_end,
+
+        # Annual Leave
+        'annual_accruals': annual_leave_accruals,
+        'annual_journal': annual_journal,
+        'annual_totals': annual_totals,
+        'annual_balanced': annual_balanced,
+
+        # Long Service Leave
+        'lsl_accruals': lsl_accruals,
+        'lsl_journal': lsl_journal,
+        'lsl_totals': lsl_totals,
+        'lsl_balanced': lsl_balanced,
+
+        # Time-in-Lieu
+        'toil_accruals': toil_accruals,
+        'toil_journal': toil_journal,
+        'toil_totals': toil_totals,
+        'toil_balanced': toil_balanced,
+    }
+
+    return render(request, 'reconciliation/leave_accrual_journal.html', context)

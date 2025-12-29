@@ -8,10 +8,11 @@ from rest_framework import status
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.contrib.auth.models import User
+from django.utils import timezone
 import os
 import uuid
 
-from reconciliation.models import Upload, PayPeriod, ValidationResult
+from reconciliation.models import Upload, PayPeriod, ValidationResult, EmployeePayPeriodSnapshot
 from reconciliation.file_detector import FileDetector
 from reconciliation.parsers import TandaParser, IQBParser, JournalParser, IQBLeaveBalanceParser
 from reconciliation.data_validator import DataValidator
