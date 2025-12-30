@@ -24,18 +24,22 @@ import pandas as pd
 
 def _load_transaction_types_for_costs():
     """
-    Load transaction types from CSV that should be included in cost calculations
+    Load transaction types from database that should be included in cost calculations
     Same logic as the reconciliation engine
     """
-    config_path = os.path.join('data', 'iqb_transaction_types.csv')
-
     try:
-        df = pd.read_csv(config_path)
-        # Get transaction types for costs (Include in Costs = Yes)
-        costs_types = df[df['Include in Costs'].str.strip().str.lower() == 'yes']['Transaction Type'].tolist()
+        from reconciliation.models import IQBTransactionType
+
+        # Get active transaction types with include_in_costs=True
+        costs_types = list(
+            IQBTransactionType.objects.filter(
+                is_active=True,
+                include_in_costs=True
+            ).values_list('transaction_type', flat=True)
+        )
         return costs_types
     except Exception as e:
-        # Fallback to default list if file can't be loaded
+        # Fallback to default list if database can't be queried
         return [
             'Annual Leave', 'Auto Pay', 'Hours By Rate', 'Long Service Leave',
             'Non Standard Add Before', 'Other Leave', 'Sick Leave',

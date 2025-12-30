@@ -4,7 +4,8 @@ from .models import (
     CostCenterSplit, ReconciliationRun, ReconciliationItem,
     ExceptionResolution, LabourCostSummary, SageIntacctExport,
     EmployeeReconciliation, JournalReconciliation, LocationMapping,
-    ValidationResult, EmployeePayPeriodSnapshot, IQBLeaveBalance
+    ValidationResult, EmployeePayPeriodSnapshot, IQBLeaveBalance,
+    IQBTransactionType
 )
 
 
@@ -236,6 +237,58 @@ class LocationMappingAdmin(admin.ModelAdmin):
     list_filter = ['department_code', 'department_name', 'is_active']
     search_fields = ['tanda_location', 'cost_account_code']
     list_editable = ['is_active']
+
+
+@admin.register(IQBTransactionType)
+class IQBTransactionTypeAdmin(admin.ModelAdmin):
+    list_display = ['transaction_type', 'include_in_hours', 'include_in_costs', 'is_active', 'notes']
+    list_filter = ['include_in_hours', 'include_in_costs', 'is_active']
+    search_fields = ['transaction_type', 'notes']
+    list_editable = ['include_in_hours', 'include_in_costs', 'is_active']
+
+    fieldsets = (
+        ('Transaction Type', {
+            'fields': ('transaction_type', 'notes')
+        }),
+        ('Configuration', {
+            'fields': ('include_in_hours', 'include_in_costs', 'is_active')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    readonly_fields = ['created_at', 'updated_at']
+
+    actions = ['export_as_csv', 'import_from_csv']
+
+    def export_as_csv(self, request, queryset):
+        """Export selected transaction types to CSV"""
+        import csv
+        from django.http import HttpResponse
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="iqb_transaction_types.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(['Transaction Type', 'Include in Hours', 'Include in Costs', 'Notes'])
+
+        for item in queryset:
+            writer.writerow([
+                item.transaction_type,
+                'Yes' if item.include_in_hours else 'No',
+                'Yes' if item.include_in_costs else 'No',
+                item.notes
+            ])
+
+        return response
+    export_as_csv.short_description = 'Export selected transaction types to CSV'
+
+    def changelist_view(self, request, extra_context=None):
+        """Add import functionality to changelist"""
+        extra_context = extra_context or {}
+        extra_context['show_import'] = True
+        return super().changelist_view(request, extra_context=extra_context)
 
 
 @admin.register(ValidationResult)

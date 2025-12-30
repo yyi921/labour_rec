@@ -38,7 +38,7 @@ class ReconciliationEngine:
 
     def _load_transaction_type_config(self):
         """
-        Load IQB transaction type configuration from CSV
+        Load IQB transaction type configuration from database
 
         Returns:
             dict: {
@@ -46,23 +46,24 @@ class ReconciliationEngine:
                 'costs': list of transaction types to include in costs calculation
             }
         """
-        config_path = os.path.join('data', 'iqb_transaction_types.csv')
-
         try:
-            df = pd.read_csv(config_path)
+            from .models import IQBTransactionType
 
-            # Get transaction types for hours (Include in Hours = Yes)
-            hours_types = df[df['Include in Hours'].str.strip().str.lower() == 'yes']['Transaction Type'].tolist()
+            # Get active transaction types from database
+            transaction_types = IQBTransactionType.objects.filter(is_active=True)
 
-            # Get transaction types for costs (Include in Costs = Yes)
-            costs_types = df[df['Include in Costs'].str.strip().str.lower() == 'yes']['Transaction Type'].tolist()
+            # Get transaction types for hours (include_in_hours = True)
+            hours_types = list(transaction_types.filter(include_in_hours=True).values_list('transaction_type', flat=True))
+
+            # Get transaction types for costs (include_in_costs = True)
+            costs_types = list(transaction_types.filter(include_in_costs=True).values_list('transaction_type', flat=True))
 
             return {
                 'hours': hours_types,
                 'costs': costs_types
             }
         except Exception as e:
-            print(f"Warning: Could not load transaction type config from {config_path}: {e}")
+            print(f"Warning: Could not load transaction type config from database: {e}")
             print("Using default transaction types")
             # Fallback to default list
             return {

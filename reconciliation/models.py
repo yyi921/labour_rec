@@ -678,15 +678,38 @@ class LocationMapping(models.Model):
     cost_account_code = models.CharField(max_length=20)
     department_code = models.CharField(max_length=10)  # e.g., '50' for Food
     department_name = models.CharField(max_length=100)  # e.g., 'Food'
-    
+
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['tanda_location']
-    
+
     def __str__(self):
         return f"{self.tanda_location} -> {self.cost_account_code}"
+
+
+class IQBTransactionType(models.Model):
+    """
+    Configuration for IQB transaction types
+    Defines which transaction types should be included in hours and costs calculations
+    """
+    transaction_type = models.CharField(max_length=100, unique=True, verbose_name='Transaction Type')
+    include_in_hours = models.BooleanField(default=False, verbose_name='Include in Hours')
+    include_in_costs = models.BooleanField(default=False, verbose_name='Include in Costs')
+    notes = models.TextField(blank=True, help_text='Description or notes about this transaction type')
+
+    is_active = models.BooleanField(default=True, verbose_name='Active')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['transaction_type']
+        verbose_name = 'IQB Transaction Type'
+        verbose_name_plural = 'IQB Transaction Types'
+
+    def __str__(self):
+        return self.transaction_type
 
 
 class DepartmentCostSummary(models.Model):
@@ -930,7 +953,9 @@ class EmployeePayPeriodSnapshot(models.Model):
     # Accrual amounts
     accrual_base_wages = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     accrual_superannuation = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # 12%
-    accrual_annual_leave = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # 7.7% for non-casual
+    accrual_annual_leave = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # 7.7% for non-casual or calculated from balances
+    accrual_long_service_leave = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # LSL accrual from leave balances
+    accrual_toil = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # Time-in-lieu accrual from leave balances
     accrual_payroll_tax = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # 4.95%
     accrual_workcover = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # 1.384%
     accrual_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # Sum of all accruals

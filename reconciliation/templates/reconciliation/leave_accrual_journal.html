@@ -204,14 +204,16 @@
 
             <div class="download-section">
                 <h3>Download Options:</h3>
-                <a href="{% url 'reconciliation:download_leave_journal_sage' pay_period.period_id 'annual' %}" class="btn-download sage">
+                <a href="{% url 'reconciliation:download_leave_journal_sage' lp_pay_period.period_id tp_pay_period.period_id 'annual' %}" class="btn-download sage">
                     📊 Sage Journal
                 </a>
-                <a href="{% url 'reconciliation:download_leave_employee_breakdown' pay_period.period_id 'annual' %}" class="btn-download">
+                <a href="{% url 'reconciliation:download_leave_employee_breakdown' lp_pay_period.period_id tp_pay_period.period_id 'annual' %}" class="btn-download">
                     👥 Employee Breakdown
                 </a>
             </div>
 
+            <!-- Journal entries hidden - available via download only -->
+            {% comment %}
             <h3>Journal Entries by Location & Department</h3>
             <table>
                 <thead>
@@ -246,6 +248,7 @@
             {% else %}
             <div class="unbalanced">⚠ Journal is NOT Balanced</div>
             {% endif %}
+            {% endcomment %}
         </div>
 
         <!-- LONG SERVICE LEAVE SECTION -->
@@ -293,14 +296,16 @@
 
             <div class="download-section">
                 <h3>Download Options:</h3>
-                <a href="{% url 'reconciliation:download_leave_journal_sage' pay_period.period_id 'lsl' %}" class="btn-download sage">
+                <a href="{% url 'reconciliation:download_leave_journal_sage' lp_pay_period.period_id tp_pay_period.period_id 'lsl' %}" class="btn-download sage">
                     📊 Sage Journal
                 </a>
-                <a href="{% url 'reconciliation:download_leave_employee_breakdown' pay_period.period_id 'lsl' %}" class="btn-download">
+                <a href="{% url 'reconciliation:download_leave_employee_breakdown' lp_pay_period.period_id tp_pay_period.period_id 'lsl' %}" class="btn-download">
                     👥 Employee Breakdown
                 </a>
             </div>
 
+            <!-- Journal entries hidden - available via download only -->
+            {% comment %}
             <h3>Journal Entries by Location & Department</h3>
             <table>
                 <thead>
@@ -335,6 +340,7 @@
             {% else %}
             <div class="unbalanced">⚠ Journal is NOT Balanced</div>
             {% endif %}
+            {% endcomment %}
         </div>
 
         <!-- TIME-IN-LIEU SECTION -->
@@ -382,14 +388,16 @@
 
             <div class="download-section">
                 <h3>Download Options:</h3>
-                <a href="{% url 'reconciliation:download_leave_journal_sage' pay_period.period_id 'toil' %}" class="btn-download sage">
+                <a href="{% url 'reconciliation:download_leave_journal_sage' lp_pay_period.period_id tp_pay_period.period_id 'toil' %}" class="btn-download sage">
                     📊 Sage Journal
                 </a>
-                <a href="{% url 'reconciliation:download_leave_employee_breakdown' pay_period.period_id 'toil' %}" class="btn-download">
+                <a href="{% url 'reconciliation:download_leave_employee_breakdown' lp_pay_period.period_id tp_pay_period.period_id 'toil' %}" class="btn-download">
                     👥 Employee Breakdown
                 </a>
             </div>
 
+            <!-- Journal entries hidden - available via download only -->
+            {% comment %}
             <h3>Journal Entries by Location & Department</h3>
             <table>
                 <thead>
@@ -424,6 +432,7 @@
             {% else %}
             <div class="unbalanced">⚠ Journal is NOT Balanced</div>
             {% endif %}
+            {% endcomment %}
         </div>
 
         <div style="margin: 40px 0;">

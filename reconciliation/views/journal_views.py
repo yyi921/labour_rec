@@ -1108,9 +1108,18 @@ def download_employee_snapshot(request, pay_period_id):
 
 def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expense_account,
                                         opening_upload, closing_upload, iqb_upload,
-                                        pay_period, paycomp_mappings):
+                                        tp_pay_period):
     """
-    Calculate accruals for a specific leave type
+    Calculate accruals for a specific leave type using direct transaction type matching
+
+    Args:
+        leave_type: 'Annual Leave', 'Long Service Leave', or 'User Defined Leave'
+        gl_liability_account: GL account for liability (2310, 2317, or 2318)
+        gl_expense_account: GL account for expense (6300, 6345, or 6372)
+        opening_upload: Opening balance upload (LP)
+        closing_upload: Closing balance upload (TP)
+        iqb_upload: IQB detail upload (RET002) for TP period
+        tp_pay_period: This Period pay period object
 
     Returns: List of employee-level accrual dictionaries
     """
@@ -1118,7 +1127,6 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
     accruals = []
 
     # Get unique employees with closing balances for this leave type
-    # Group by employee_code and sum their balances
     closing_employees = IQBLeaveBalance.objects.filter(
         upload=closing_upload,
         leave_type=leave_type
@@ -1129,12 +1137,13 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
 
     for emp_data in closing_employees:
         emp_code = emp_data['employee_code']
-        # Include Leave Loading in closing balance
+
+        # Closing balance (value in $, including leave loading)
         closing_balance = emp_data['total_balance'] or Decimal('0')
         closing_loading = emp_data['total_loading'] or Decimal('0')
         closing_value = closing_balance + closing_loading
 
-        # Get employee name from any record for this employee
+        # Get employee name
         emp_record = IQBLeaveBalance.objects.filter(
             upload=closing_upload,
             employee_code=emp_code,
@@ -1142,7 +1151,7 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
         ).first()
         emp_name = emp_record.full_name if emp_record else emp_code
 
-        # Get opening balance (sum all records for this employee and leave type)
+        # Get opening balance (value in $, including leave loading)
         opening_aggregation = IQBLeaveBalance.objects.filter(
             upload=opening_upload,
             employee_code=emp_code,
@@ -1152,28 +1161,23 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
             total_loading=Sum('leave_loading')
         )
 
-        # Include Leave Loading in opening balance
         opening_balance = opening_aggregation['total_balance'] or Decimal('0')
         opening_loading = opening_aggregation['total_loading'] or Decimal('0')
         opening_value = opening_balance + opening_loading
 
-        # Calculate leave taken
-        leave_taken_records = IQBDetail.objects.filter(
+        # Calculate leave taken directly from IQB Detail using transaction_type
+        leave_taken_aggregation = IQBDetail.objects.filter(
             upload=iqb_upload,
-            employee_code=emp_code
+            employee_code=emp_code,
+            transaction_type=leave_type
+        ).aggregate(
+            total_amount=Sum('amount')
         )
 
-        leave_taken = Decimal('0')
-        for record in leave_taken_records:
-            gl_account = paycomp_mappings.get(record.pay_comp_code)
-            if gl_account == gl_liability_account:
-                leave_taken += record.amount
+        leave_taken = leave_taken_aggregation['total_amount'] or Decimal('0')
 
-        # Calculate accrual
+        # Calculate accrual: Closing - Opening + Leave Taken
         accrual_amount = closing_value - opening_value + leave_taken
-
-        if accrual_amount == 0:
-            continue
 
         # Calculate oncosts
         super_amount = accrual_amount * Decimal('0.12')
@@ -1181,14 +1185,15 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
         workcover_amount = accrual_amount * Decimal('0.01384')
         total_with_oncosts = accrual_amount + super_amount + prt_amount + workcover_amount
 
-        # Get employee allocation
+        # Get employee allocation from TP period snapshot
         try:
             snapshot = EmployeePayPeriodSnapshot.objects.get(
-                pay_period=pay_period,
+                pay_period=tp_pay_period,
                 employee_code=emp_code
             )
             cost_allocation = snapshot.cost_allocation or {}
         except EmployeePayPeriodSnapshot.DoesNotExist:
+            # No cost allocation - skip this employee
             continue
 
         accruals.append({
@@ -1204,7 +1209,8 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
             'total_with_oncosts': total_with_oncosts,
             'cost_allocation': cost_allocation,
             'gl_liability': gl_liability_account,
-            'gl_expense': gl_expense_account
+            'gl_expense': gl_expense_account,
+            'snapshot': snapshot  # Keep reference to update later
         })
 
     return accruals
@@ -1261,7 +1267,7 @@ def _aggregate_journal_by_location_department(accruals, location_lookup, departm
     return journal_entries
 
 
-def generate_leave_accrual_journal(request, pay_period_id):
+def generate_leave_accrual_journal(request, last_period_id, this_period_id):
     """
     Generate Leave accrual journal entries with oncosts for Annual Leave, LSL, and TOIL
 
@@ -1280,51 +1286,53 @@ def generate_leave_accrual_journal(request, pay_period_id):
     Time-in-Lieu (User Defined Leave):
     - Base: DR 6372, CR 2318
     - Super/PRT/Workcover: CR 2055
-    """
-    pay_period = get_object_or_404(PayPeriod, period_id=pay_period_id)
 
-    # Get uploads
+    Args:
+        last_period_id: Pay Period ID for Last Period (LP) - opening balance
+        this_period_id: Pay Period ID for This Period (TP) - closing balance
+    """
+    # Get pay periods
+    lp_pay_period = get_object_or_404(PayPeriod, period_id=last_period_id)
+    tp_pay_period = get_object_or_404(PayPeriod, period_id=this_period_id)
+
+    # Get opening balance upload (LP)
+    opening_upload = Upload.objects.filter(
+        pay_period=lp_pay_period,
+        source_system='Micropay_IQB_Leave',
+        is_active=True
+    ).first()
+
+    if not opening_upload:
+        return render(request, 'reconciliation/leave_accrual_error.html', {
+            'error': f'No IQB Leave Balance file (LP) found for pay period {last_period_id}',
+            'pay_period': lp_pay_period
+        })
+
+    # Get closing balance upload (TP)
     closing_upload = Upload.objects.filter(
-        pay_period=pay_period,
+        pay_period=tp_pay_period,
         source_system='Micropay_IQB_Leave',
         is_active=True
     ).first()
 
     if not closing_upload:
         return render(request, 'reconciliation/leave_accrual_error.html', {
-            'error': f'No IQB Leave Balance file found for pay period {pay_period_id}',
-            'pay_period': pay_period
+            'error': f'No IQB Leave Balance file (TP) found for pay period {this_period_id}',
+            'pay_period': tp_pay_period
         })
 
-    opening_upload = Upload.objects.filter(
-        source_system='Micropay_IQB_Leave',
-        is_active=True,
-        pay_period__period_id__lt=pay_period_id
-    ).order_by('-pay_period__period_id').first()
-
-    if not opening_upload:
-        return render(request, 'reconciliation/leave_accrual_error.html', {
-            'error': f'No opening IQB Leave Balance found before {pay_period_id}',
-            'pay_period': pay_period
-        })
-
+    # Get IQB Detail upload (RET002) from TP period
     iqb_upload = Upload.objects.filter(
-        pay_period=pay_period,
+        pay_period=tp_pay_period,
         source_system='Micropay_IQB',
         is_active=True
     ).first()
 
     if not iqb_upload:
         return render(request, 'reconciliation/leave_accrual_error.html', {
-            'error': f'No IQB Detail file found for pay period {pay_period_id}',
-            'pay_period': pay_period
+            'error': f'No IQB Detail file (RET002) found for pay period {this_period_id}',
+            'pay_period': tp_pay_period
         })
-
-    # Get PayComp to GL mapping
-    paycomp_mappings = {
-        mapping.pay_comp_code: mapping.gl_account
-        for mapping in PayCompCodeMapping.objects.all()
-    }
 
     # Location and department lookups
     location_lookup = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}
@@ -1333,18 +1341,47 @@ def generate_leave_accrual_journal(request, pay_period_id):
     # Calculate accruals for all three leave types
     annual_leave_accruals = _calculate_leave_accruals_for_type(
         'Annual Leave', '2310', '6300',
-        opening_upload, closing_upload, iqb_upload, pay_period, paycomp_mappings
+        opening_upload, closing_upload, iqb_upload, tp_pay_period
     )
 
     lsl_accruals = _calculate_leave_accruals_for_type(
         'Long Service Leave', '2317', '6345',
-        opening_upload, closing_upload, iqb_upload, pay_period, paycomp_mappings
+        opening_upload, closing_upload, iqb_upload, tp_pay_period
     )
 
     toil_accruals = _calculate_leave_accruals_for_type(
         'User Defined Leave', '2318', '6372',
-        opening_upload, closing_upload, iqb_upload, pay_period, paycomp_mappings
+        opening_upload, closing_upload, iqb_upload, tp_pay_period
     )
+
+    # Store accruals in EmployeePayPeriodSnapshot for TP period
+    from django.utils import timezone
+    from datetime import datetime
+
+    # Get period dates for accrual information
+    accrual_start_date = lp_pay_period.period_end  # Opening balance date (LP period end)
+    accrual_end_date = tp_pay_period.period_end  # Closing balance date (TP period end)
+
+    for accrual in annual_leave_accruals:
+        snapshot = accrual['snapshot']
+        snapshot.accrual_annual_leave = accrual['accrual_amount']
+        snapshot.accrual_period_start = accrual_start_date
+        snapshot.accrual_period_end = accrual_end_date
+        snapshot.save(update_fields=['accrual_annual_leave', 'accrual_period_start', 'accrual_period_end'])
+
+    for accrual in lsl_accruals:
+        snapshot = accrual['snapshot']
+        snapshot.accrual_long_service_leave = accrual['accrual_amount']
+        snapshot.accrual_period_start = accrual_start_date
+        snapshot.accrual_period_end = accrual_end_date
+        snapshot.save(update_fields=['accrual_long_service_leave', 'accrual_period_start', 'accrual_period_end'])
+
+    for accrual in toil_accruals:
+        snapshot = accrual['snapshot']
+        snapshot.accrual_toil = accrual['accrual_amount']
+        snapshot.accrual_period_start = accrual_start_date
+        snapshot.accrual_period_end = accrual_end_date
+        snapshot.save(update_fields=['accrual_toil', 'accrual_period_start', 'accrual_period_end'])
 
     # Aggregate journal entries by location/department
     annual_journal = _aggregate_journal_by_location_department(annual_leave_accruals, location_lookup, department_lookup)
@@ -1376,12 +1413,12 @@ def generate_leave_accrual_journal(request, pay_period_id):
         )
         total_closing = (closing_agg['total_balance'] or Decimal('0')) + (closing_agg['total_loading'] or Decimal('0'))
 
-        # Leave taken total (ALL employees)
-        total_leave_taken = Decimal('0')
-        for record in IQBDetail.objects.filter(upload=iqb_upload):
-            gl_account = paycomp_mappings.get(record.pay_comp_code)
-            if gl_account == gl_liability:
-                total_leave_taken += record.amount
+        # Leave taken total (ALL employees) - use transaction_type directly
+        leave_taken_agg = IQBDetail.objects.filter(
+            upload=iqb_upload,
+            transaction_type=leave_type
+        ).aggregate(total=Sum('amount'))
+        total_leave_taken = leave_taken_agg['total'] or Decimal('0')
 
         return {
             'employee_count': len(accruals),
@@ -1407,9 +1444,11 @@ def generate_leave_accrual_journal(request, pay_period_id):
     toil_balanced = abs(toil_totals['total_debit'] - toil_totals['total_credit']) < Decimal('0.01')
 
     context = {
-        'pay_period': pay_period,
-        'opening_date': opening_upload.pay_period.period_end,
-        'closing_date': pay_period.period_end,
+        'pay_period': tp_pay_period,  # Use TP period as the main period
+        'lp_pay_period': lp_pay_period,  # Also pass LP period
+        'tp_pay_period': tp_pay_period,
+        'opening_date': lp_pay_period.period_end,
+        'closing_date': tp_pay_period.period_end,
 
         # Annual Leave
         'annual_accruals': annual_leave_accruals,
@@ -1434,7 +1473,7 @@ def generate_leave_accrual_journal(request, pay_period_id):
 
 
 
-def download_leave_journal_sage(request, pay_period_id, leave_type):
+def download_leave_journal_sage(request, last_period_id, this_period_id, leave_type):
     """Download leave accrual journal in Sage Intacct format"""
     # Map leave type to GL accounts
     leave_configs = {
@@ -1442,43 +1481,42 @@ def download_leave_journal_sage(request, pay_period_id, leave_type):
         'lsl': {'name': 'Long Service Leave', 'liability': '2317', 'expense': '6345'},
         'toil': {'name': 'User Defined Leave', 'liability': '2318', 'expense': '6372'},
     }
-    
+
     if leave_type not in leave_configs:
         return HttpResponse("Invalid leave type", status=400)
-    
+
     config = leave_configs[leave_type]
-    pay_period = get_object_or_404(PayPeriod, period_id=pay_period_id)
-    
-    # Get uploads (same as main function)
-    closing_upload = Upload.objects.filter(
-        pay_period=pay_period, source_system='Micropay_IQB_Leave', is_active=True
-    ).first()
+    lp_pay_period = get_object_or_404(PayPeriod, period_id=last_period_id)
+    tp_pay_period = get_object_or_404(PayPeriod, period_id=this_period_id)
+
+    # Get uploads from specific periods
     opening_upload = Upload.objects.filter(
-        source_system='Micropay_IQB_Leave', is_active=True,
-        pay_period__period_id__lt=pay_period_id
-    ).order_by('-pay_period__period_id').first()
-    iqb_upload = Upload.objects.filter(
-        pay_period=pay_period, source_system='Micropay_IQB', is_active=True
+        pay_period=lp_pay_period, source_system='Micropay_IQB_Leave', is_active=True
     ).first()
-    
+    closing_upload = Upload.objects.filter(
+        pay_period=tp_pay_period, source_system='Micropay_IQB_Leave', is_active=True
+    ).first()
+    iqb_upload = Upload.objects.filter(
+        pay_period=tp_pay_period, source_system='Micropay_IQB', is_active=True
+    ).first()
+
     if not all([closing_upload, opening_upload, iqb_upload]):
         return HttpResponse("Missing required uploads", status=400)
-    
-    paycomp_mappings = {m.pay_comp_code: m.gl_account for m in PayCompCodeMapping.objects.all()}
+
     location_lookup = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}
     department_lookup = {dept.department_id: dept.department_name for dept in SageDepartment.objects.all()}
-    
+
     # Calculate accruals
     accruals = _calculate_leave_accruals_for_type(
         config['name'], config['liability'], config['expense'],
-        opening_upload, closing_upload, iqb_upload, pay_period, paycomp_mappings
+        opening_upload, closing_upload, iqb_upload, tp_pay_period
     )
     
     journal = _aggregate_journal_by_location_department(accruals, location_lookup, department_lookup)
-    
+
     # Generate Sage Intacct CSV
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="{leave_type}_journal_sage_{pay_period_id}.csv"'
+    response['Content-Disposition'] = f'attachment; filename="{leave_type}_journal_sage_{last_period_id}_to_{this_period_id}.csv"'
 
     writer = csv.writer(response)
 
@@ -1490,9 +1528,9 @@ def download_leave_journal_sage(request, pay_period_id, leave_type):
     ])
 
     # Common values
-    journal_id = f"{leave_type.upper()}-{pay_period_id}"
-    date = pay_period.period_end.strftime('%m/%d/%Y')
-    description = f"{config['name']} Accrual - {pay_period.period_end.strftime('%Y-%m-%d')}"
+    journal_id = f"{leave_type.upper()}-{this_period_id}"
+    date = tp_pay_period.period_end.strftime('%m/%d/%Y')
+    description = f"{config['name']} Accrual - {last_period_id} to {this_period_id}"
 
     line_no = 1
     for entry in journal:
@@ -1578,135 +1616,148 @@ def download_leave_journal_sage(request, pay_period_id, leave_type):
     return response
 
 
-def download_leave_employee_breakdown(request, pay_period_id, leave_type):
-    """Download employee-level leave accrual breakdown"""
-    leave_configs = {
-        'annual': {'name': 'Annual Leave', 'liability': '2310', 'expense': '6300'},
-        'lsl': {'name': 'Long Service Leave', 'liability': '2317', 'expense': '6345'},
-        'toil': {'name': 'User Defined Leave', 'liability': '2318', 'expense': '6372'},
-    }
-    
-    if leave_type not in leave_configs:
-        return HttpResponse("Invalid leave type", status=400)
-    
-    config = leave_configs[leave_type]
-    pay_period = get_object_or_404(PayPeriod, period_id=pay_period_id)
-    
-    # Get uploads
-    closing_upload = Upload.objects.filter(
-        pay_period=pay_period, source_system='Micropay_IQB_Leave', is_active=True
-    ).first()
+def download_leave_employee_breakdown(request, last_period_id, this_period_id, leave_type):
+    """Download employee-level leave accrual breakdown - combined for all leave types"""
+    lp_pay_period = get_object_or_404(PayPeriod, period_id=last_period_id)
+    tp_pay_period = get_object_or_404(PayPeriod, period_id=this_period_id)
+
+    # Get uploads from specific periods
     opening_upload = Upload.objects.filter(
-        source_system='Micropay_IQB_Leave', is_active=True,
-        pay_period__period_id__lt=pay_period_id
-    ).order_by('-pay_period__period_id').first()
-    iqb_upload = Upload.objects.filter(
-        pay_period=pay_period, source_system='Micropay_IQB', is_active=True
+        pay_period=lp_pay_period, source_system='Micropay_IQB_Leave', is_active=True
     ).first()
-    
-    if not all([closing_upload, opening_upload, iqb_upload]):
+    closing_upload = Upload.objects.filter(
+        pay_period=tp_pay_period, source_system='Micropay_IQB_Leave', is_active=True
+    ).first()
+    iqb_upload = Upload.objects.filter(
+        pay_period=tp_pay_period, source_system='Micropay_IQB', is_active=True
+    ).first()
+
+    if not all([opening_upload, closing_upload, iqb_upload]):
         return HttpResponse("Missing required uploads", status=400)
-    
+
     from django.db.models import Sum
 
-    paycomp_mappings = {m.pay_comp_code: m.gl_account for m in PayCompCodeMapping.objects.all()}
+    # All leave type configurations
+    leave_configs = {
+        'annual': {'name': 'Annual Leave', 'transaction_type': 'Annual Leave'},
+        'lsl': {'name': 'Long Service Leave', 'transaction_type': 'Long Service Leave'},
+        'toil': {'name': 'User Defined Leave', 'transaction_type': 'Time In Lieu'},
+    }
 
-    # Get ALL unique employee codes from both opening AND closing balances
-    closing_emp_codes = set(IQBLeaveBalance.objects.filter(
-        upload=closing_upload,
-        leave_type=config['name']
-    ).values_list('employee_code', flat=True).distinct())
+    # Get ALL unique employee codes from all leave types
+    all_employee_codes = set()
+    for config in leave_configs.values():
+        closing_emp_codes = set(IQBLeaveBalance.objects.filter(
+            upload=closing_upload,
+            leave_type=config['name']
+        ).values_list('employee_code', flat=True).distinct())
+        opening_emp_codes = set(IQBLeaveBalance.objects.filter(
+            upload=opening_upload,
+            leave_type=config['name']
+        ).values_list('employee_code', flat=True).distinct())
+        all_employee_codes.update(closing_emp_codes | opening_emp_codes)
 
-    opening_emp_codes = set(IQBLeaveBalance.objects.filter(
-        upload=opening_upload,
-        leave_type=config['name']
-    ).values_list('employee_code', flat=True).distinct())
+    all_employee_codes = sorted(all_employee_codes)
 
-    all_employee_codes = sorted(closing_emp_codes | opening_emp_codes)
-
-    # Generate employee breakdown CSV
+    # Generate combined employee breakdown CSV
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="{leave_type}_employees_{pay_period_id}.csv"'
+    response['Content-Disposition'] = f'attachment; filename="all_leave_employees_{last_period_id}_to_{this_period_id}.csv"'
 
     writer = csv.writer(response)
+
+    # Header row with all leave types
     writer.writerow([
-        'Employee Code', 'Employee Name', 'Opening Balance', 'Closing Balance',
-        'Leave Taken', 'Base Accrual', 'Super (12%)', 'PRT (4.95%)',
-        'Workcover (1.384%)', 'Total with Oncosts'
+        'Employee Code', 'Employee Name',
+        'Annual Leave - Opening', 'Annual Leave - Closing', 'Annual Leave - Taken', 'Annual Leave - Accrual', 'Annual Leave - Total with Oncosts',
+        'LSL - Opening', 'LSL - Closing', 'LSL - Taken', 'LSL - Accrual', 'LSL - Total with Oncosts',
+        'TOIL - Opening', 'TOIL - Closing', 'TOIL - Taken', 'TOIL - Accrual', 'TOIL - Total with Oncosts',
+        'Total Accrual (All Leave)', 'Total with Oncosts (All Leave)'
     ])
 
     for emp_code in all_employee_codes:
-        # Closing balance (with leave loading)
-        closing_aggregation = IQBLeaveBalance.objects.filter(
-            upload=closing_upload,
-            employee_code=emp_code,
-            leave_type=config['name']
-        ).aggregate(
-            total_balance=Sum('balance_value'),
-            total_loading=Sum('leave_loading')
-        )
-        closing_balance = closing_aggregation['total_balance'] or Decimal('0')
-        closing_loading = closing_aggregation['total_loading'] or Decimal('0')
-        closing_value = closing_balance + closing_loading
+        row_data = [emp_code]
 
-        # Get employee name (try closing first, then opening)
-        emp_record = IQBLeaveBalance.objects.filter(
-            upload=closing_upload,
-            employee_code=emp_code,
-            leave_type=config['name']
-        ).first()
-        if not emp_record:
+        # Get employee name (try to find from any leave type)
+        emp_name = emp_code
+        for config in leave_configs.values():
             emp_record = IQBLeaveBalance.objects.filter(
-                upload=opening_upload,
+                upload=closing_upload,
                 employee_code=emp_code,
                 leave_type=config['name']
             ).first()
-        emp_name = emp_record.full_name if emp_record else emp_code
+            if emp_record:
+                emp_name = emp_record.full_name
+                break
+        row_data.append(emp_name)
 
-        # Opening balance (with leave loading)
-        opening_aggregation = IQBLeaveBalance.objects.filter(
-            upload=opening_upload,
-            employee_code=emp_code,
-            leave_type=config['name']
-        ).aggregate(
-            total_balance=Sum('balance_value'),
-            total_loading=Sum('leave_loading')
-        )
-        opening_balance = opening_aggregation['total_balance'] or Decimal('0')
-        opening_loading = opening_aggregation['total_loading'] or Decimal('0')
-        opening_value = opening_balance + opening_loading
+        total_accrual = Decimal('0')
+        total_with_oncosts_all = Decimal('0')
 
-        # Leave taken
-        leave_taken_records = IQBDetail.objects.filter(
-            upload=iqb_upload,
-            employee_code=emp_code
-        )
-        leave_taken = Decimal('0')
-        for record in leave_taken_records:
-            gl_account = paycomp_mappings.get(record.pay_comp_code)
-            if gl_account == config['liability']:
-                leave_taken += record.amount
+        # Process each leave type
+        for leave_key in ['annual', 'lsl', 'toil']:
+            config = leave_configs[leave_key]
 
-        # Calculate accrual
-        accrual_amount = closing_value - opening_value + leave_taken
+            # Closing balance (with leave loading)
+            closing_aggregation = IQBLeaveBalance.objects.filter(
+                upload=closing_upload,
+                employee_code=emp_code,
+                leave_type=config['name']
+            ).aggregate(
+                total_balance=Sum('balance_value'),
+                total_loading=Sum('leave_loading')
+            )
+            closing_balance = closing_aggregation['total_balance'] or Decimal('0')
+            closing_loading = closing_aggregation['total_loading'] or Decimal('0')
+            closing_value = closing_balance + closing_loading
 
-        # Calculate oncosts
-        super_amount = accrual_amount * Decimal('0.12')
-        prt_amount = accrual_amount * Decimal('0.0495')
-        workcover_amount = accrual_amount * Decimal('0.01384')
-        total_with_oncosts = accrual_amount + super_amount + prt_amount + workcover_amount
+            # Opening balance (with leave loading)
+            opening_aggregation = IQBLeaveBalance.objects.filter(
+                upload=opening_upload,
+                employee_code=emp_code,
+                leave_type=config['name']
+            ).aggregate(
+                total_balance=Sum('balance_value'),
+                total_loading=Sum('leave_loading')
+            )
+            opening_balance = opening_aggregation['total_balance'] or Decimal('0')
+            opening_loading = opening_aggregation['total_loading'] or Decimal('0')
+            opening_value = opening_balance + opening_loading
 
-        writer.writerow([
-            emp_code,
-            emp_name,
-            f"{opening_value:.2f}",
-            f"{closing_value:.2f}",
-            f"{leave_taken:.2f}",
-            f"{accrual_amount:.2f}",
-            f"{super_amount:.2f}",
-            f"{prt_amount:.2f}",
-            f"{workcover_amount:.2f}",
-            f"{total_with_oncosts:.2f}",
+            # Leave taken using transaction_type
+            leave_taken_aggregation = IQBDetail.objects.filter(
+                upload=iqb_upload,
+                employee_code=emp_code,
+                transaction_type=config['transaction_type']
+            ).aggregate(total_amount=Sum('amount'))
+            leave_taken = leave_taken_aggregation['total_amount'] or Decimal('0')
+
+            # Calculate accrual
+            accrual_amount = closing_value - opening_value + leave_taken
+
+            # Calculate oncosts
+            super_amount = accrual_amount * Decimal('0.12')
+            prt_amount = accrual_amount * Decimal('0.0495')
+            workcover_amount = accrual_amount * Decimal('0.01384')
+            total_with_oncosts = accrual_amount + super_amount + prt_amount + workcover_amount
+
+            # Add to row
+            row_data.extend([
+                f"{opening_value:.2f}",
+                f"{closing_value:.2f}",
+                f"{leave_taken:.2f}",
+                f"{accrual_amount:.2f}",
+                f"{total_with_oncosts:.2f}",
+            ])
+
+            total_accrual += accrual_amount
+            total_with_oncosts_all += total_with_oncosts
+
+        # Add totals
+        row_data.extend([
+            f"{total_accrual:.2f}",
+            f"{total_with_oncosts_all:.2f}"
         ])
+
+        writer.writerow(row_data)
 
     return response

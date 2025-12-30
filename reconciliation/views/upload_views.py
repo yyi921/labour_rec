@@ -37,60 +37,79 @@ def get_or_create_default_user():
 def smart_upload(request):
     """
     Smart file upload with auto-detection
-    
+
     POST /api/uploads/smart/
-    
+
     Form data:
         file: File to upload (CSV or Excel)
-        
+        pay_period_id: (Optional) Override pay period ID (YYYY-MM-DD format)
+
     Returns:
         - 200: File uploaded and processed successfully
         - 409: Duplicate file detected (returns override options)
         - 400: Invalid file or detection failed
         - 500: Processing error
     """
-    
+
     # Check if file was provided
     if 'file' not in request.FILES:
         return Response({
             'status': 'error',
             'message': 'No file provided. Please upload a file.'
         }, status=status.HTTP_400_BAD_REQUEST)
-    
+
     uploaded_file = request.FILES['file']
-    
+    override_pay_period_id = request.data.get('pay_period_id')  # Optional override
+
     # Save file temporarily
     temp_filename = f"temp_{uuid.uuid4()}_{uploaded_file.name}"
     temp_path = default_storage.save(f'temp/{temp_filename}', ContentFile(uploaded_file.read()))
     full_temp_path = default_storage.path(temp_path)
-    
+
     try:
         # Step 1: Detect file type
         file_type, confidence, df = FileDetector.detect_file_type(full_temp_path)
-        
+
         if file_type == 'Unknown' or confidence < 0.7:
             # Clean up temp file
             default_storage.delete(temp_path)
-            
+
             return Response({
                 'status': 'error',
                 'message': 'Could not detect file type. Please ensure this is a valid Tanda, Micropay IQB, or Micropay Journal file.',
                 'detected_type': file_type,
                 'confidence': f"{confidence * 100:.1f}%"
             }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Step 2: Extract period
-        period_info = FileDetector.extract_period(file_type, df, full_temp_path)
-        
-        if not period_info:
-            default_storage.delete(temp_path)
-            
-            return Response({
-                'status': 'error',
-                'message': 'Could not extract pay period from file. Please check the file format.',
-                'file_type': file_type
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
+
+        # Step 2: Extract period (or use override if provided)
+        if override_pay_period_id:
+            # Use provided pay period ID
+            try:
+                override_date = datetime.strptime(override_pay_period_id, '%Y-%m-%d').date()
+                period_info = {
+                    'period_id': override_pay_period_id,
+                    'period_start': override_date,  # Will be updated if pay period exists
+                    'period_end': override_date
+                }
+            except ValueError:
+                default_storage.delete(temp_path)
+                return Response({
+                    'status': 'error',
+                    'message': 'Invalid pay_period_id format. Please use YYYY-MM-DD.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Auto-detect period from file
+            period_info = FileDetector.extract_period(file_type, df, full_temp_path)
+
+            if not period_info:
+                default_storage.delete(temp_path)
+
+                return Response({
+                    'status': 'error',
+                    'message': 'Could not extract pay period from file. Please check the file format.',
+                    'file_type': file_type
+                }, status=status.HTTP_400_BAD_REQUEST)
+
         # Step 3: Get or create pay period
         pay_period, period_created = PayPeriod.objects.get_or_create(
             period_id=period_info['period_id'],
@@ -255,14 +274,15 @@ def smart_upload(request):
 def override_upload(request, upload_id):
     """
     Override an existing upload with a new version
-    
+
     POST /api/uploads/{upload_id}/override/
-    
+
     Form data:
         file: New file to upload
         reason: (optional) Reason for override
+        pay_period_id: (optional) Override pay period ID (YYYY-MM-DD format)
     """
-    
+
     try:
         # Get existing upload
         old_upload = Upload.objects.get(upload_id=upload_id, is_active=True)
@@ -271,46 +291,78 @@ def override_upload(request, upload_id):
             'status': 'error',
             'message': 'Upload not found or already superseded'
         }, status=status.HTTP_404_NOT_FOUND)
-    
+
     # Check if file was provided
     if 'file' not in request.FILES:
         return Response({
             'status': 'error',
             'message': 'No file provided'
         }, status=status.HTTP_400_BAD_REQUEST)
-    
+
     uploaded_file = request.FILES['file']
     reason = request.data.get('reason', 'User requested override')
-    
+    override_pay_period_id = request.data.get('pay_period_id')  # Optional override
+
     # Save file temporarily
     temp_filename = f"temp_{uuid.uuid4()}_{uploaded_file.name}"
     temp_path = default_storage.save(f'temp/{temp_filename}', ContentFile(uploaded_file.read()))
     full_temp_path = default_storage.path(temp_path)
-    
+
     try:
         # Detect and validate file type
         file_type, confidence, df = FileDetector.detect_file_type(full_temp_path)
-        
+
         if file_type != old_upload.source_system:
             default_storage.delete(temp_path)
             return Response({
                 'status': 'error',
                 'message': f'File type mismatch. Expected {old_upload.source_system}, got {file_type}'
             }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Extract or use overridden period
+        if override_pay_period_id:
+            # Use provided pay period ID (for leave calculation with LP/TP)
+            try:
+                override_date = datetime.strptime(override_pay_period_id, '%Y-%m-%d').date()
+                period_info = {
+                    'period_id': override_pay_period_id,
+                    'period_start': override_date,
+                    'period_end': override_date
+                }
+                # Skip period validation when overriding
+            except ValueError:
+                default_storage.delete(temp_path)
+                return Response({
+                    'status': 'error',
+                    'message': 'Invalid pay_period_id format. Please use YYYY-MM-DD.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Extract and validate period normally
+            period_info = FileDetector.extract_period(file_type, df, full_temp_path)
+            if period_info['period_id'] != old_upload.pay_period.period_id:
+                default_storage.delete(temp_path)
+                return Response({
+                    'status': 'error',
+                    'message': f'Period mismatch. Expected {old_upload.pay_period.period_id}, got {period_info["period_id"]}'
+                }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Extract and validate period
-        period_info = FileDetector.extract_period(file_type, df, full_temp_path)
-        if period_info['period_id'] != old_upload.pay_period.period_id:
-            default_storage.delete(temp_path)
-            return Response({
-                'status': 'error',
-                'message': f'Period mismatch. Expected {old_upload.pay_period.period_id}, got {period_info["period_id"]}'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
+        # Get or create the pay period (might be different if overriding)
+        if override_pay_period_id:
+            target_pay_period, _ = PayPeriod.objects.get_or_create(
+                period_id=period_info['period_id'],
+                defaults={
+                    'period_start': period_info['period_start'],
+                    'period_end': period_info['period_end'],
+                    'period_type': 'fortnightly'
+                }
+            )
+        else:
+            target_pay_period = old_upload.pay_period
+
         # Move to permanent location
         permanent_filename = f"{file_type}_{period_info['period_id']}_v{old_upload.version + 1}_{uuid.uuid4().hex[:8]}{os.path.splitext(uploaded_file.name)[1]}"
         permanent_path = default_storage.save(f'uploads/{permanent_filename}', ContentFile(open(full_temp_path, 'rb').read()))
-        
+
         # Clean up temp
         default_storage.delete(temp_path)
 
@@ -319,7 +371,7 @@ def override_upload(request, upload_id):
         user = request.user if request.user.is_authenticated else get_or_create_default_user()
 
         new_upload = Upload.objects.create(
-            pay_period=old_upload.pay_period,
+            pay_period=target_pay_period,
             source_system=old_upload.source_system,
             file_name=uploaded_file.name,
             file_path=permanent_path,
@@ -350,7 +402,7 @@ def override_upload(request, upload_id):
 
         elif file_type == 'Micropay_IQB_Leave':
             old_upload.leave_balance_records.all().delete()
-            as_of_date = datetime.strptime(pay_period.period_id, '%Y-%m-%d').date()
+            as_of_date = datetime.strptime(target_pay_period.period_id, '%Y-%m-%d').date()
             record_count = IQBLeaveBalanceParser.parse(new_upload, df, as_of_date)
         
         # Update new upload
