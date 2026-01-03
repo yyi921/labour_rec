@@ -342,6 +342,7 @@ class EmployeePayPeriodSnapshotAdmin(admin.ModelAdmin):
             'fields': (
                 'accrual_period_start', 'accrual_period_end', 'accrual_days_in_period',
                 'accrual_base_wages', 'accrual_superannuation', 'accrual_annual_leave',
+                'accrual_long_service_leave', 'accrual_toil',
                 'accrual_payroll_tax', 'accrual_workcover', 'accrual_total',
                 'accrual_source', 'accrual_employee_type', 'accrual_calculated_at'
             ),
