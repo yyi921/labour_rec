@@ -1267,6 +1267,241 @@ def _aggregate_journal_by_location_department(accruals, location_lookup, departm
     return journal_entries
 
 
+def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
+                                     opening_upload, closing_upload, iqb_upload):
+    """
+    Render leave accrual journal from cached data in EmployeePayPeriodSnapshot
+    This is much faster than recalculating from scratch
+    """
+    location_lookup = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}
+    department_lookup = {dept.department_id: dept.department_name for dept in SageDepartment.objects.all()}
+
+    # Retrieve snapshots with accrual data
+    snapshots = EmployeePayPeriodSnapshot.objects.filter(
+        pay_period=tp_pay_period,
+        accrual_period_start=lp_pay_period.period_end,
+        accrual_period_end=tp_pay_period.period_end
+    ).select_related('pay_period')
+
+    # Rebuild accrual lists from cached data
+    annual_leave_accruals = []
+    lsl_accruals = []
+    toil_accruals = []
+
+    for snapshot in snapshots:
+        if not snapshot.cost_allocation:
+            continue
+
+        # Get opening/closing/leave taken from original sources
+        emp_code = snapshot.employee_code
+
+        # Annual Leave
+        if snapshot.accrual_annual_leave != 0:
+            opening_agg = IQBLeaveBalance.objects.filter(
+                upload=opening_upload, employee_code=emp_code, leave_type='Annual Leave'
+            ).aggregate(total_balance=Sum('balance_value'), total_loading=Sum('leave_loading'))
+            opening_value = (opening_agg['total_balance'] or Decimal('0')) + (opening_agg['total_loading'] or Decimal('0'))
+
+            closing_agg = IQBLeaveBalance.objects.filter(
+                upload=closing_upload, employee_code=emp_code, leave_type='Annual Leave'
+            ).aggregate(total_balance=Sum('balance_value'), total_loading=Sum('leave_loading'))
+            closing_value = (closing_agg['total_balance'] or Decimal('0')) + (closing_agg['total_loading'] or Decimal('0'))
+
+            leave_taken_agg = IQBDetail.objects.filter(
+                upload=iqb_upload, employee_code=emp_code, transaction_type='Annual Leave'
+            ).aggregate(total=Sum('amount'))
+            leave_taken = leave_taken_agg['total'] or Decimal('0')
+
+            accrual_amount = snapshot.accrual_annual_leave
+            super_amount = accrual_amount * Decimal('0.12')
+            prt_amount = accrual_amount * Decimal('0.0495')
+            workcover_amount = accrual_amount * Decimal('0.01384')
+
+            annual_leave_accruals.append({
+                'employee_code': emp_code,
+                'employee_name': snapshot.employee_name,
+                'opening_value': opening_value,
+                'closing_value': closing_value,
+                'leave_taken': leave_taken,
+                'accrual_amount': accrual_amount,
+                'super_amount': super_amount,
+                'prt_amount': prt_amount,
+                'workcover_amount': workcover_amount,
+                'total_with_oncosts': accrual_amount + super_amount + prt_amount + workcover_amount,
+                'cost_allocation': snapshot.cost_allocation,
+                'gl_liability': '2310',
+                'gl_expense': '6300',
+                'snapshot': snapshot
+            })
+
+        # Long Service Leave
+        if snapshot.accrual_long_service_leave != 0:
+            opening_agg = IQBLeaveBalance.objects.filter(
+                upload=opening_upload, employee_code=emp_code, leave_type='Long Service Leave'
+            ).aggregate(total_balance=Sum('balance_value'), total_loading=Sum('leave_loading'))
+            opening_value = (opening_agg['total_balance'] or Decimal('0')) + (opening_agg['total_loading'] or Decimal('0'))
+
+            closing_agg = IQBLeaveBalance.objects.filter(
+                upload=closing_upload, employee_code=emp_code, leave_type='Long Service Leave'
+            ).aggregate(total_balance=Sum('balance_value'), total_loading=Sum('leave_loading'))
+            closing_value = (closing_agg['total_balance'] or Decimal('0')) + (closing_agg['total_loading'] or Decimal('0'))
+
+            leave_taken_agg = IQBDetail.objects.filter(
+                upload=iqb_upload, employee_code=emp_code, transaction_type='Long Service Leave'
+            ).aggregate(total=Sum('amount'))
+            leave_taken = leave_taken_agg['total'] or Decimal('0')
+
+            accrual_amount = snapshot.accrual_long_service_leave
+            super_amount = accrual_amount * Decimal('0.12')
+            prt_amount = accrual_amount * Decimal('0.0495')
+            workcover_amount = accrual_amount * Decimal('0.01384')
+
+            lsl_accruals.append({
+                'employee_code': emp_code,
+                'employee_name': snapshot.employee_name,
+                'opening_value': opening_value,
+                'closing_value': closing_value,
+                'leave_taken': leave_taken,
+                'accrual_amount': accrual_amount,
+                'super_amount': super_amount,
+                'prt_amount': prt_amount,
+                'workcover_amount': workcover_amount,
+                'total_with_oncosts': accrual_amount + super_amount + prt_amount + workcover_amount,
+                'cost_allocation': snapshot.cost_allocation,
+                'gl_liability': '2317',
+                'gl_expense': '6345',
+                'snapshot': snapshot
+            })
+
+        # TOIL
+        if snapshot.accrual_toil != 0:
+            opening_agg = IQBLeaveBalance.objects.filter(
+                upload=opening_upload, employee_code=emp_code, leave_type='User Defined Leave'
+            ).aggregate(total_balance=Sum('balance_value'), total_loading=Sum('leave_loading'))
+            opening_value = (opening_agg['total_balance'] or Decimal('0')) + (opening_agg['total_loading'] or Decimal('0'))
+
+            closing_agg = IQBLeaveBalance.objects.filter(
+                upload=closing_upload, employee_code=emp_code, leave_type='User Defined Leave'
+            ).aggregate(total_balance=Sum('balance_value'), total_loading=Sum('leave_loading'))
+            closing_value = (closing_agg['total_balance'] or Decimal('0')) + (closing_agg['total_loading'] or Decimal('0'))
+
+            leave_taken_agg = IQBDetail.objects.filter(
+                upload=iqb_upload, employee_code=emp_code, transaction_type='User Defined Leave'
+            ).aggregate(total=Sum('amount'))
+            leave_taken = leave_taken_agg['total'] or Decimal('0')
+
+            accrual_amount = snapshot.accrual_toil
+            super_amount = accrual_amount * Decimal('0.12')
+            prt_amount = accrual_amount * Decimal('0.0495')
+            workcover_amount = accrual_amount * Decimal('0.01384')
+
+            toil_accruals.append({
+                'employee_code': emp_code,
+                'employee_name': snapshot.employee_name,
+                'opening_value': opening_value,
+                'closing_value': closing_value,
+                'leave_taken': leave_taken,
+                'accrual_amount': accrual_amount,
+                'super_amount': super_amount,
+                'prt_amount': prt_amount,
+                'workcover_amount': workcover_amount,
+                'total_with_oncosts': accrual_amount + super_amount + prt_amount + workcover_amount,
+                'cost_allocation': snapshot.cost_allocation,
+                'gl_liability': '2318',
+                'gl_expense': '6372',
+                'snapshot': snapshot
+            })
+
+    # Aggregate journal entries
+    annual_journal = _aggregate_journal_by_location_department(annual_leave_accruals, location_lookup, department_lookup)
+    lsl_journal = _aggregate_journal_by_location_department(lsl_accruals, location_lookup, department_lookup)
+    toil_journal = _aggregate_journal_by_location_department(toil_accruals, location_lookup, department_lookup)
+
+    # Calculate totals using the same logic as main view
+    def calc_totals(leave_type, gl_liability, accruals, journal):
+        opening_agg = IQBLeaveBalance.objects.filter(
+            upload=opening_upload, leave_type=leave_type
+        ).aggregate(total_balance=Sum('balance_value'), total_loading=Sum('leave_loading'))
+        total_opening = (opening_agg['total_balance'] or Decimal('0')) + (opening_agg['total_loading'] or Decimal('0'))
+
+        closing_agg = IQBLeaveBalance.objects.filter(
+            upload=closing_upload, leave_type=leave_type
+        ).aggregate(total_balance=Sum('balance_value'), total_loading=Sum('leave_loading'))
+        total_closing = (closing_agg['total_balance'] or Decimal('0')) + (closing_agg['total_loading'] or Decimal('0'))
+
+        leave_taken_agg = IQBDetail.objects.filter(
+            upload=iqb_upload, transaction_type=leave_type
+        ).aggregate(total=Sum('amount'))
+        total_leave_taken = leave_taken_agg['total'] or Decimal('0')
+
+        return {
+            'employee_count': len(accruals),
+            'total_opening': total_opening,
+            'total_closing': total_closing,
+            'total_leave_taken': total_leave_taken,
+            'total_base': sum(a['accrual_amount'] for a in accruals),
+            'total_super': sum(a['super_amount'] for a in accruals),
+            'total_prt': sum(a['prt_amount'] for a in accruals),
+            'total_workcover': sum(a['workcover_amount'] for a in accruals),
+            'total_with_oncosts': sum(a['total_with_oncosts'] for a in accruals),
+            'total_debit': sum(j['debit'] for j in journal),
+            'total_credit': sum(j['credit'] for j in journal),
+        }
+
+    annual_totals = calc_totals('Annual Leave', '2310', annual_leave_accruals, annual_journal)
+    lsl_totals = calc_totals('Long Service Leave', '2317', lsl_accruals, lsl_journal)
+    toil_totals = calc_totals('User Defined Leave', '2318', toil_accruals, toil_journal)
+
+    annual_balanced = abs(annual_totals['total_debit'] - annual_totals['total_credit']) < Decimal('0.01')
+    lsl_balanced = abs(lsl_totals['total_debit'] - lsl_totals['total_credit']) < Decimal('0.01')
+    toil_balanced = abs(toil_totals['total_debit'] - toil_totals['total_credit']) < Decimal('0.01')
+
+    context = {
+        'pay_period': tp_pay_period,
+        'lp_pay_period': lp_pay_period,
+        'tp_pay_period': tp_pay_period,
+        'opening_date': lp_pay_period.period_end,
+        'closing_date': tp_pay_period.period_end,
+        'annual_accruals': annual_leave_accruals,
+        'annual_journal': annual_journal,
+        'annual_totals': annual_totals,
+        'annual_balanced': annual_balanced,
+        'lsl_accruals': lsl_accruals,
+        'lsl_journal': lsl_journal,
+        'lsl_totals': lsl_totals,
+        'lsl_balanced': lsl_balanced,
+        'toil_accruals': toil_accruals,
+        'toil_journal': toil_journal,
+        'toil_totals': toil_totals,
+        'toil_balanced': toil_balanced,
+        'cached_data': True,  # Flag to show user this was retrieved from cache
+    }
+
+    return render(request, 'reconciliation/leave_accrual_journal.html', context)
+
+
+def leave_accrual_auto_period(request, this_period_id):
+    """
+    Wrapper view that auto-determines the previous pay period for leave accrual
+    Routes to generate_leave_accrual_journal with both period IDs
+    """
+    tp_pay_period = get_object_or_404(PayPeriod, period_id=this_period_id)
+
+    # Find the most recent previous pay period
+    previous_period = PayPeriod.objects.filter(
+        period_end__lt=tp_pay_period.period_end
+    ).order_by('-period_end').first()
+
+    if not previous_period:
+        return render(request, 'reconciliation/leave_accrual_error.html', {
+            'error': f'No previous pay period found before {this_period_id}',
+            'pay_period': tp_pay_period
+        })
+
+    # Route to the main view with both periods
+    return generate_leave_accrual_journal(request, previous_period.period_id, this_period_id)
+
+
 def generate_leave_accrual_journal(request, last_period_id, this_period_id):
     """
     Generate Leave accrual journal entries with oncosts for Annual Leave, LSL, and TOIL
@@ -1333,6 +1568,32 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
             'error': f'No IQB Detail file (RET002) found for pay period {this_period_id}',
             'pay_period': tp_pay_period
         })
+
+    # Check if user wants to force recalculation
+    force_recalc = request.GET.get('recalc', '').lower() == 'true'
+
+    # Check if cached accrual data exists for this period range
+    accrual_start_date = lp_pay_period.period_end
+    accrual_end_date = tp_pay_period.period_end
+
+    if not force_recalc:
+        # Check if we have cached accrual data
+        cached_snapshots = EmployeePayPeriodSnapshot.objects.filter(
+            pay_period=tp_pay_period,
+            accrual_period_start=accrual_start_date,
+            accrual_period_end=accrual_end_date
+        ).exclude(
+            accrual_annual_leave=0,
+            accrual_long_service_leave=0,
+            accrual_toil=0
+        )
+
+        if cached_snapshots.exists():
+            # Data exists - retrieve from database instead of recalculating
+            return _render_leave_accrual_from_cache(
+                request, lp_pay_period, tp_pay_period,
+                opening_upload, closing_upload, iqb_upload
+            )
 
     # Location and department lookups
     location_lookup = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}

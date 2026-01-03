@@ -250,6 +250,9 @@
                 <a href="{% url 'reconciliation:generate_journal' pay_period.period_id %}" class="btn btn-primary">
                     📊 Generate Journal
                 </a>
+                <a href="{% url 'reconciliation:leave_accrual_auto' pay_period.period_id %}" class="btn btn-primary">
+                    📅 Leave Accrual Journal
+                </a>
                 <button class="btn btn-secondary" onclick="alert('Export to Sage Intacct - Coming soon!')">
                     Export to Sage Intacct
                 </button>

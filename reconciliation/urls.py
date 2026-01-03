@@ -36,6 +36,7 @@ urlpatterns = [
     path('journal/<str:pay_period_id>/download-sage/', journal_views.download_journal_sage, name='download_journal_sage'),
     path('journal/<str:pay_period_id>/download-xero/', journal_views.download_journal_xero, name='download_journal_xero'),
     path('journal/<str:pay_period_id>/download-snapshot/', journal_views.download_employee_snapshot, name='download_employee_snapshot'),
+    path('leave-accrual/<str:this_period_id>/', journal_views.leave_accrual_auto_period, name='leave_accrual_auto'),
     path('leave-accrual/<str:last_period_id>/<str:this_period_id>/', journal_views.generate_leave_accrual_journal, name='generate_leave_accrual'),
     path('leave-accrual/<str:last_period_id>/<str:this_period_id>/download-<str:leave_type>-sage/', journal_views.download_leave_journal_sage, name='download_leave_journal_sage'),
     path('leave-accrual/<str:last_period_id>/<str:this_period_id>/download-<str:leave_type>-employees/', journal_views.download_leave_employee_breakdown, name='download_leave_employee_breakdown'),
