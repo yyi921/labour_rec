@@ -339,6 +339,9 @@ class IQBLeaveBalanceParser:
             first_name = str(row.get('First Name', '')).strip()
             full_name = f"{first_name} {surname}".strip() if first_name or surname else ''
 
+            # Parse years of service
+            years_of_service = IQBLeaveBalanceParser._parse_decimal(row.get('Years of Service', 0), 0)
+
             record = IQBLeaveBalance(
                 upload=upload,
                 employee_code=str(row.get('Employee Code', '')).strip(),
@@ -347,6 +350,7 @@ class IQBLeaveBalanceParser:
                 full_name=full_name,
                 employment_type=str(row.get('Employment Type', '')).strip(),
                 location=str(row.get('Location', '')).strip(),
+                years_of_service=years_of_service,
                 leave_type=str(row.get('Leave Type', '')).strip(),
                 leave_description=str(row.get('Leave Class Description', '')).strip(),
                 balance_hours=balance_hours,

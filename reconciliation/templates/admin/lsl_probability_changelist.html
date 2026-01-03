@@ -1,0 +1,25 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools %}
+<div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
+    <h3 style="margin-top: 0;">Upload LSL Probability Table (CSV)</h3>
+    <p>CSV Format: <code>Years From,Years To,Probability</code></p>
+    <p><strong>Example:</strong></p>
+    <pre>Years From,Years To,Probability
+0.00,6.99,0.0000
+7.00,9.99,0.5000
+10.00,99.99,1.0000</pre>
+
+    <form method="post" enctype="multipart/form-data" style="margin-top: 15px;">
+        {% csrf_token %}
+        <input type="file" name="csv_file" accept=".csv" required>
+        <button type="submit" style="margin-left: 10px; padding: 5px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Upload CSV
+        </button>
+    </form>
+    <p style="margin-top: 10px; font-size: 12px; color: #6c757d;">
+        <strong>Warning:</strong> Uploading a new CSV will replace all existing probability records.
+    </p>
+</div>
+{{ block.super }}
+{% endblock %}

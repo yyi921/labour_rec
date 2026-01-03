@@ -280,6 +280,7 @@ class IQBLeaveBalance(models.Model):
     full_name = models.CharField(max_length=200)
     employment_type = models.CharField(max_length=50)
     location = models.CharField(max_length=100)
+    years_of_service = models.DecimalField(max_digits=5, decimal_places=2, default=0, null=True, blank=True)  # For LSL probability calculation
 
     leave_type = models.CharField(max_length=100, db_index=True)  # 'Annual Leave', 'Long Service Leave', 'User Defined Leave'
     leave_description = models.CharField(max_length=200, blank=True)  # For User Defined Leave, e.g., 'time-in-lieu'
@@ -297,6 +298,39 @@ class IQBLeaveBalance(models.Model):
 
     def __str__(self):
         return f"{self.employee_code} - {self.leave_type}: {self.balance_hours}hrs / ${self.balance_value}"
+
+
+class LSLProbability(models.Model):
+    """Long Service Leave probability table based on years of service"""
+    years_from = models.DecimalField(max_digits=5, decimal_places=2, help_text="Years of service from (inclusive)")
+    years_to = models.DecimalField(max_digits=5, decimal_places=2, help_text="Years of service to (inclusive)")
+    probability = models.DecimalField(max_digits=5, decimal_places=4, help_text="Probability (0.0000 to 1.0000)")
+
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['years_from']
+        verbose_name = 'LSL Probability'
+        verbose_name_plural = 'LSL Probabilities'
+
+    def __str__(self):
+        return f"{self.years_from}-{self.years_to} years: {self.probability:.4f}"
+
+    @classmethod
+    def get_probability(cls, years_of_service):
+        """Get probability for given years of service"""
+        if years_of_service is None:
+            return Decimal('0')
+
+        prob_record = cls.objects.filter(
+            is_active=True,
+            years_from__lte=years_of_service,
+            years_to__gte=years_of_service
+        ).first()
+
+        return prob_record.probability if prob_record else Decimal('0')
 
 
 class CostCenterSplit(models.Model):

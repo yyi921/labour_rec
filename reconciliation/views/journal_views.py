@@ -1108,7 +1108,7 @@ def download_employee_snapshot(request, pay_period_id):
 
 def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expense_account,
                                         opening_upload, closing_upload, iqb_upload,
-                                        tp_pay_period):
+                                        tp_pay_period, transaction_type=None):
     """
     Calculate accruals for a specific leave type using direct transaction type matching
 
@@ -1120,11 +1120,18 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
         closing_upload: Closing balance upload (TP)
         iqb_upload: IQB detail upload (RET002) for TP period
         tp_pay_period: This Period pay period object
+        transaction_type: Optional - IQB transaction type for leave taken (defaults to leave_type)
 
     Returns: List of employee-level accrual dictionaries
     """
     from django.db.models import Sum
+    from reconciliation.models import LSLProbability
+
     accruals = []
+
+    # Default transaction type to leave_type if not specified
+    if transaction_type is None:
+        transaction_type = leave_type
 
     # Get unique employees with closing balances for this leave type
     closing_employees = IQBLeaveBalance.objects.filter(
@@ -1169,7 +1176,7 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
         leave_taken_aggregation = IQBDetail.objects.filter(
             upload=iqb_upload,
             employee_code=emp_code,
-            transaction_type=leave_type
+            transaction_type=transaction_type
         ).aggregate(
             total_amount=Sum('amount')
         )
@@ -1178,6 +1185,12 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
 
         # Calculate accrual: Closing - Opening + Leave Taken
         accrual_amount = closing_value - opening_value + leave_taken
+
+        # Apply LSL probability if this is Long Service Leave
+        if leave_type == 'Long Service Leave':
+            years_of_service = emp_record.years_of_service if emp_record else None
+            probability = LSLProbability.get_probability(years_of_service)
+            accrual_amount = accrual_amount * probability
 
         # Calculate oncosts
         super_amount = accrual_amount * Decimal('0.12')
@@ -1602,17 +1615,20 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
     # Calculate accruals for all three leave types
     annual_leave_accruals = _calculate_leave_accruals_for_type(
         'Annual Leave', '2310', '6300',
-        opening_upload, closing_upload, iqb_upload, tp_pay_period
+        opening_upload, closing_upload, iqb_upload, tp_pay_period,
+        transaction_type='Annual Leave'
     )
 
     lsl_accruals = _calculate_leave_accruals_for_type(
         'Long Service Leave', '2317', '6345',
-        opening_upload, closing_upload, iqb_upload, tp_pay_period
+        opening_upload, closing_upload, iqb_upload, tp_pay_period,
+        transaction_type='Long Service Leave'
     )
 
     toil_accruals = _calculate_leave_accruals_for_type(
         'User Defined Leave', '2318', '6372',
-        opening_upload, closing_upload, iqb_upload, tp_pay_period
+        opening_upload, closing_upload, iqb_upload, tp_pay_period,
+        transaction_type='Time In Lieu'  # FIX: Use correct transaction type for TOIL
     )
 
     # Store accruals in EmployeePayPeriodSnapshot for TP period
@@ -1736,11 +1752,11 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
 
 def download_leave_journal_sage(request, last_period_id, this_period_id, leave_type):
     """Download leave accrual journal in Sage Intacct format"""
-    # Map leave type to GL accounts
+    # Map leave type to GL accounts and transaction types
     leave_configs = {
-        'annual': {'name': 'Annual Leave', 'liability': '2310', 'expense': '6300'},
-        'lsl': {'name': 'Long Service Leave', 'liability': '2317', 'expense': '6345'},
-        'toil': {'name': 'User Defined Leave', 'liability': '2318', 'expense': '6372'},
+        'annual': {'name': 'Annual Leave', 'liability': '2310', 'expense': '6300', 'transaction_type': 'Annual Leave'},
+        'lsl': {'name': 'Long Service Leave', 'liability': '2317', 'expense': '6345', 'transaction_type': 'Long Service Leave'},
+        'toil': {'name': 'User Defined Leave', 'liability': '2318', 'expense': '6372', 'transaction_type': 'Time In Lieu'},
     }
 
     if leave_type not in leave_configs:
@@ -1770,7 +1786,8 @@ def download_leave_journal_sage(request, last_period_id, this_period_id, leave_t
     # Calculate accruals
     accruals = _calculate_leave_accruals_for_type(
         config['name'], config['liability'], config['expense'],
-        opening_upload, closing_upload, iqb_upload, tp_pay_period
+        opening_upload, closing_upload, iqb_upload, tp_pay_period,
+        transaction_type=config['transaction_type']
     )
     
     journal = _aggregate_journal_by_location_department(accruals, location_lookup, department_lookup)

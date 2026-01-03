@@ -5,7 +5,7 @@ from .models import (
     ExceptionResolution, LabourCostSummary, SageIntacctExport,
     EmployeeReconciliation, JournalReconciliation, LocationMapping,
     ValidationResult, EmployeePayPeriodSnapshot, IQBLeaveBalance,
-    IQBTransactionType
+    LSLProbability, IQBTransactionType
 )
 
 
@@ -137,10 +137,55 @@ class JournalEntryAdmin(admin.ModelAdmin):
 
 @admin.register(IQBLeaveBalance)
 class IQBLeaveBalanceAdmin(admin.ModelAdmin):
-    list_display = ['employee_code', 'full_name', 'leave_type', 'balance_hours', 'balance_value', 'leave_loading', 'as_of_date']
+    list_display = ['employee_code', 'full_name', 'leave_type', 'balance_hours', 'balance_value', 'leave_loading', 'years_of_service', 'as_of_date']
     list_filter = ['leave_type', 'employment_type', 'as_of_date', 'location']
     search_fields = ['employee_code', 'surname', 'first_name', 'full_name']
     readonly_fields = ['upload', 'as_of_date']
+
+@admin.register(LSLProbability)
+class LSLProbabilityAdmin(admin.ModelAdmin):
+    list_display = ['years_from', 'years_to', 'probability', 'is_active', 'updated_at']
+    list_filter = ['is_active']
+    search_fields = []
+
+    change_list_template = 'admin/lsl_probability_changelist.html'
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+
+        if request.method == 'POST' and 'csv_file' in request.FILES:
+            csv_file = request.FILES['csv_file']
+
+            try:
+                import csv as csv_module
+                from io import StringIO
+                from decimal import Decimal
+
+                # Read CSV file
+                decoded_file = csv_file.read().decode('utf-8')
+                io_string = StringIO(decoded_file)
+                reader = csv_module.DictReader(io_string)
+
+                # Clear existing probabilities
+                LSLProbability.objects.all().delete()
+
+                # Import new probabilities
+                count = 0
+                for row in reader:
+                    LSLProbability.objects.create(
+                        years_from=Decimal(row['Years From']),
+                        years_to=Decimal(row['Years To']),
+                        probability=Decimal(row['Probability']),
+                        is_active=True
+                    )
+                    count += 1
+
+                self.message_user(request, f'Successfully imported {count} LSL probability records')
+
+            except Exception as e:
+                self.message_user(request, f'Error importing CSV: {str(e)}', level='ERROR')
+
+        return super().changelist_view(request, extra_context=extra_context)
 
 @admin.register(CostCenterSplit)
 class CostCenterSplitAdmin(admin.ModelAdmin):
