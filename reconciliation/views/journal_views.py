@@ -1431,7 +1431,7 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
     toil_journal = _aggregate_journal_by_location_department(toil_accruals, location_lookup, department_lookup)
 
     # Calculate totals using the same logic as main view
-    def calc_totals(leave_type, gl_liability, accruals, journal):
+    def calc_totals(leave_type, gl_liability, accruals, journal, transaction_type):
         opening_agg = IQBLeaveBalance.objects.filter(
             upload=opening_upload, leave_type=leave_type
         ).aggregate(total_balance=Sum('balance_value'), total_loading=Sum('leave_loading'))
@@ -1443,7 +1443,7 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
         total_closing = (closing_agg['total_balance'] or Decimal('0')) + (closing_agg['total_loading'] or Decimal('0'))
 
         leave_taken_agg = IQBDetail.objects.filter(
-            upload=iqb_upload, transaction_type=leave_type
+            upload=iqb_upload, transaction_type=transaction_type
         ).aggregate(total=Sum('amount'))
         total_leave_taken = leave_taken_agg['total'] or Decimal('0')
 
@@ -1461,9 +1461,9 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
             'total_credit': sum(j['credit'] for j in journal),
         }
 
-    annual_totals = calc_totals('Annual Leave', '2310', annual_leave_accruals, annual_journal)
-    lsl_totals = calc_totals('Long Service Leave', '2317', lsl_accruals, lsl_journal)
-    toil_totals = calc_totals('User Defined Leave', '2318', toil_accruals, toil_journal)
+    annual_totals = calc_totals('Annual Leave', '2310', annual_leave_accruals, annual_journal, 'Annual Leave')
+    lsl_totals = calc_totals('Long Service Leave', '2317', lsl_accruals, lsl_journal, 'Long Service Leave')
+    toil_totals = calc_totals('User Defined Leave', '2318', toil_accruals, toil_journal, 'Time In Lieu')
 
     annual_balanced = abs(annual_totals['total_debit'] - annual_totals['total_credit']) < Decimal('0.01')
     lsl_balanced = abs(lsl_totals['total_debit'] - lsl_totals['total_credit']) < Decimal('0.01')
@@ -1666,7 +1666,7 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
     toil_journal = _aggregate_journal_by_location_department(toil_accruals, location_lookup, department_lookup)
 
     # Calculate totals for each leave type
-    def calc_totals(leave_type, gl_liability, accruals, journal):
+    def calc_totals(leave_type, gl_liability, accruals, journal, transaction_type):
         # Calculate opening/closing/leave taken for ALL employees (not just those with accruals)
         from django.db.models import Sum
 
@@ -1690,10 +1690,10 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
         )
         total_closing = (closing_agg['total_balance'] or Decimal('0')) + (closing_agg['total_loading'] or Decimal('0'))
 
-        # Leave taken total (ALL employees) - use transaction_type directly
+        # Leave taken total (ALL employees) - use correct transaction_type
         leave_taken_agg = IQBDetail.objects.filter(
             upload=iqb_upload,
-            transaction_type=leave_type
+            transaction_type=transaction_type
         ).aggregate(total=Sum('amount'))
         total_leave_taken = leave_taken_agg['total'] or Decimal('0')
 
@@ -1711,9 +1711,9 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
             'total_credit': sum(j['credit'] for j in journal),
         }
 
-    annual_totals = calc_totals('Annual Leave', '2310', annual_leave_accruals, annual_journal)
-    lsl_totals = calc_totals('Long Service Leave', '2317', lsl_accruals, lsl_journal)
-    toil_totals = calc_totals('User Defined Leave', '2318', toil_accruals, toil_journal)
+    annual_totals = calc_totals('Annual Leave', '2310', annual_leave_accruals, annual_journal, 'Annual Leave')
+    lsl_totals = calc_totals('Long Service Leave', '2317', lsl_accruals, lsl_journal, 'Long Service Leave')
+    toil_totals = calc_totals('User Defined Leave', '2318', toil_accruals, toil_journal, 'Time In Lieu')
 
     # Check if balanced
     annual_balanced = abs(annual_totals['total_debit'] - annual_totals['total_credit']) < Decimal('0.01')
@@ -1945,9 +1945,9 @@ def download_leave_employee_breakdown(request, last_period_id, this_period_id, l
 
     # Header row with all leave types
     writer.writerow([
-        'Employee Code', 'Employee Name',
+        'Employee Code', 'Employee Name', 'Years of Service',
         'Annual Leave - Opening', 'Annual Leave - Closing', 'Annual Leave - Taken', 'Annual Leave - Accrual', 'Annual Leave - Total with Oncosts',
-        'LSL - Opening', 'LSL - Closing', 'LSL - Taken', 'LSL - Accrual', 'LSL - Total with Oncosts',
+        'LSL - Opening', 'LSL - Closing', 'LSL - Taken', 'LSL - Base Accrual (before probability)', 'LSL - Probability', 'LSL - Accrual', 'LSL - Total with Oncosts',
         'TOIL - Opening', 'TOIL - Closing', 'TOIL - Taken', 'TOIL - Accrual', 'TOIL - Total with Oncosts',
         'Total Accrual (All Leave)', 'Total with Oncosts (All Leave)'
     ])
@@ -1955,8 +1955,9 @@ def download_leave_employee_breakdown(request, last_period_id, this_period_id, l
     for emp_code in all_employee_codes:
         row_data = [emp_code]
 
-        # Get employee name (try to find from any leave type)
+        # Get employee name and years of service (try to find from any leave type)
         emp_name = emp_code
+        years_of_service = Decimal('0')
         for config in leave_configs.values():
             emp_record = IQBLeaveBalance.objects.filter(
                 upload=closing_upload,
@@ -1965,8 +1966,10 @@ def download_leave_employee_breakdown(request, last_period_id, this_period_id, l
             ).first()
             if emp_record:
                 emp_name = emp_record.full_name
+                years_of_service = emp_record.years_of_service or Decimal('0')
                 break
         row_data.append(emp_name)
+        row_data.append(f"{years_of_service:.2f}")
 
         total_accrual = Decimal('0')
         total_with_oncosts_all = Decimal('0')
@@ -2009,8 +2012,17 @@ def download_leave_employee_breakdown(request, last_period_id, this_period_id, l
             ).aggregate(total_amount=Sum('amount'))
             leave_taken = leave_taken_aggregation['total_amount'] or Decimal('0')
 
-            # Calculate accrual
-            accrual_amount = closing_value - opening_value + leave_taken
+            # Calculate base accrual
+            base_accrual = closing_value - opening_value + leave_taken
+
+            # Apply LSL probability if this is LSL
+            from reconciliation.models import LSLProbability
+            if leave_key == 'lsl':
+                probability = LSLProbability.get_probability(years_of_service)
+                accrual_amount = base_accrual * probability
+            else:
+                probability = Decimal('1.0')  # 100% for non-LSL
+                accrual_amount = base_accrual
 
             # Calculate oncosts
             super_amount = accrual_amount * Decimal('0.12')
@@ -2018,14 +2030,25 @@ def download_leave_employee_breakdown(request, last_period_id, this_period_id, l
             workcover_amount = accrual_amount * Decimal('0.01384')
             total_with_oncosts = accrual_amount + super_amount + prt_amount + workcover_amount
 
-            # Add to row
-            row_data.extend([
-                f"{opening_value:.2f}",
-                f"{closing_value:.2f}",
-                f"{leave_taken:.2f}",
-                f"{accrual_amount:.2f}",
-                f"{total_with_oncosts:.2f}",
-            ])
+            # Add to row - special handling for LSL with extra columns
+            if leave_key == 'lsl':
+                row_data.extend([
+                    f"{opening_value:.2f}",
+                    f"{closing_value:.2f}",
+                    f"{leave_taken:.2f}",
+                    f"{base_accrual:.2f}",  # Base accrual before probability
+                    f"{probability:.4f}",    # Probability
+                    f"{accrual_amount:.2f}", # Final accrual after probability
+                    f"{total_with_oncosts:.2f}",
+                ])
+            else:
+                row_data.extend([
+                    f"{opening_value:.2f}",
+                    f"{closing_value:.2f}",
+                    f"{leave_taken:.2f}",
+                    f"{accrual_amount:.2f}",
+                    f"{total_with_oncosts:.2f}",
+                ])
 
             total_accrual += accrual_amount
             total_with_oncosts_all += total_with_oncosts
