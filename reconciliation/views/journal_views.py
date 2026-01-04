@@ -1459,17 +1459,23 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
         # Calculate base accrual from aggregate totals (formula: Closing - Opening + Leave Taken)
         total_base_calculated = total_closing - total_opening + total_leave_taken
 
+        # Calculate oncosts from base accrual total (not summing individuals)
+        total_super_calculated = total_base_calculated * Decimal('0.12')
+        total_prt_calculated = total_base_calculated * Decimal('0.0495')
+        total_workcover_calculated = total_base_calculated * Decimal('0.01384')
+        total_with_oncosts_calculated = total_base_calculated + total_super_calculated + total_prt_calculated + total_workcover_calculated
+
         return {
             'employee_count': len(accruals),
             'total_opening': total_opening,
             'total_closing': total_closing,
             'total_leave_taken': total_leave_taken,
-            'total_base': total_base_calculated,  # Derived from aggregate totals, not sum of individuals
-            'total_accrual': sum(a['accrual_amount'] for a in accruals),  # Final accrual after probability
-            'total_super': sum(a['super_amount'] for a in accruals),
-            'total_prt': sum(a['prt_amount'] for a in accruals),
-            'total_workcover': sum(a['workcover_amount'] for a in accruals),
-            'total_with_oncosts': sum(a['total_with_oncosts'] for a in accruals),
+            'total_base': total_base_calculated,  # Derived from aggregate totals
+            'total_accrual': sum(a['accrual_amount'] for a in accruals),  # Final accrual after probability (for LSL)
+            'total_super': total_super_calculated,  # Derived: base * 12%
+            'total_prt': total_prt_calculated,  # Derived: base * 4.95%
+            'total_workcover': total_workcover_calculated,  # Derived: base * 1.384%
+            'total_with_oncosts': total_with_oncosts_calculated,  # Derived: base + super + prt + workcover
             'total_debit': sum(j['debit'] for j in journal),
             'total_credit': sum(j['credit'] for j in journal),
         }
@@ -1713,17 +1719,23 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
         # Calculate base accrual from aggregate totals (formula: Closing - Opening + Leave Taken)
         total_base_calculated = total_closing - total_opening + total_leave_taken
 
+        # Calculate oncosts from base accrual total (not summing individuals)
+        total_super_calculated = total_base_calculated * Decimal('0.12')
+        total_prt_calculated = total_base_calculated * Decimal('0.0495')
+        total_workcover_calculated = total_base_calculated * Decimal('0.01384')
+        total_with_oncosts_calculated = total_base_calculated + total_super_calculated + total_prt_calculated + total_workcover_calculated
+
         return {
             'employee_count': len(accruals),
             'total_opening': total_opening,
             'total_closing': total_closing,
             'total_leave_taken': total_leave_taken,
-            'total_base': total_base_calculated,  # Derived from aggregate totals, not sum of individuals
-            'total_accrual': sum(a['accrual_amount'] for a in accruals),  # Final accrual after probability
-            'total_super': sum(a['super_amount'] for a in accruals),
-            'total_prt': sum(a['prt_amount'] for a in accruals),
-            'total_workcover': sum(a['workcover_amount'] for a in accruals),
-            'total_with_oncosts': sum(a['total_with_oncosts'] for a in accruals),
+            'total_base': total_base_calculated,  # Derived from aggregate totals
+            'total_accrual': sum(a['accrual_amount'] for a in accruals),  # Final accrual after probability (for LSL)
+            'total_super': total_super_calculated,  # Derived: base * 12%
+            'total_prt': total_prt_calculated,  # Derived: base * 4.95%
+            'total_workcover': total_workcover_calculated,  # Derived: base * 1.384%
+            'total_with_oncosts': total_with_oncosts_calculated,  # Derived: base + super + prt + workcover
             'total_debit': sum(j['debit'] for j in journal),
             'total_credit': sum(j['credit'] for j in journal),
         }
