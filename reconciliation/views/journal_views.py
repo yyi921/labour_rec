@@ -1183,14 +1183,16 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
 
         leave_taken = leave_taken_aggregation['total_amount'] or Decimal('0')
 
-        # Calculate accrual: Closing - Opening + Leave Taken
-        accrual_amount = closing_value - opening_value + leave_taken
+        # Calculate base accrual: Closing - Opening + Leave Taken
+        base_accrual = closing_value - opening_value + leave_taken
 
         # Apply LSL probability if this is Long Service Leave
         if leave_type == 'Long Service Leave':
             years_of_service = emp_record.years_of_service if emp_record else None
             probability = LSLProbability.get_probability(years_of_service)
-            accrual_amount = accrual_amount * probability
+            accrual_amount = base_accrual * probability
+        else:
+            accrual_amount = base_accrual
 
         # Calculate oncosts
         super_amount = accrual_amount * Decimal('0.12')
@@ -1215,7 +1217,8 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
             'opening_value': opening_value,
             'closing_value': closing_value,
             'leave_taken': leave_taken,
-            'accrual_amount': accrual_amount,
+            'base_accrual': base_accrual,  # Base accrual before probability
+            'accrual_amount': accrual_amount,  # Final accrual after probability (if LSL)
             'super_amount': super_amount,
             'prt_amount': prt_amount,
             'workcover_amount': workcover_amount,
@@ -1325,6 +1328,7 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
             ).aggregate(total=Sum('amount'))
             leave_taken = leave_taken_agg['total'] or Decimal('0')
 
+            base_accrual = closing_value - opening_value + leave_taken
             accrual_amount = snapshot.accrual_annual_leave
             super_amount = accrual_amount * Decimal('0.12')
             prt_amount = accrual_amount * Decimal('0.0495')
@@ -1336,6 +1340,7 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
                 'opening_value': opening_value,
                 'closing_value': closing_value,
                 'leave_taken': leave_taken,
+                'base_accrual': base_accrual,
                 'accrual_amount': accrual_amount,
                 'super_amount': super_amount,
                 'prt_amount': prt_amount,
@@ -1364,6 +1369,7 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
             ).aggregate(total=Sum('amount'))
             leave_taken = leave_taken_agg['total'] or Decimal('0')
 
+            base_accrual = closing_value - opening_value + leave_taken
             accrual_amount = snapshot.accrual_long_service_leave
             super_amount = accrual_amount * Decimal('0.12')
             prt_amount = accrual_amount * Decimal('0.0495')
@@ -1375,6 +1381,7 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
                 'opening_value': opening_value,
                 'closing_value': closing_value,
                 'leave_taken': leave_taken,
+                'base_accrual': base_accrual,
                 'accrual_amount': accrual_amount,
                 'super_amount': super_amount,
                 'prt_amount': prt_amount,
@@ -1403,6 +1410,7 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
             ).aggregate(total=Sum('amount'))
             leave_taken = leave_taken_agg['total'] or Decimal('0')
 
+            base_accrual = closing_value - opening_value + leave_taken
             accrual_amount = snapshot.accrual_toil
             super_amount = accrual_amount * Decimal('0.12')
             prt_amount = accrual_amount * Decimal('0.0495')
@@ -1414,6 +1422,7 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
                 'opening_value': opening_value,
                 'closing_value': closing_value,
                 'leave_taken': leave_taken,
+                'base_accrual': base_accrual,
                 'accrual_amount': accrual_amount,
                 'super_amount': super_amount,
                 'prt_amount': prt_amount,
@@ -1452,7 +1461,8 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
             'total_opening': total_opening,
             'total_closing': total_closing,
             'total_leave_taken': total_leave_taken,
-            'total_base': sum(a['accrual_amount'] for a in accruals),
+            'total_base': sum(a['base_accrual'] for a in accruals),  # Base accrual before probability
+            'total_accrual': sum(a['accrual_amount'] for a in accruals),  # Final accrual after probability
             'total_super': sum(a['super_amount'] for a in accruals),
             'total_prt': sum(a['prt_amount'] for a in accruals),
             'total_workcover': sum(a['workcover_amount'] for a in accruals),
@@ -1702,7 +1712,8 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
             'total_opening': total_opening,
             'total_closing': total_closing,
             'total_leave_taken': total_leave_taken,
-            'total_base': sum(a['accrual_amount'] for a in accruals),
+            'total_base': sum(a['base_accrual'] for a in accruals),  # Base accrual before probability
+            'total_accrual': sum(a['accrual_amount'] for a in accruals),  # Final accrual after probability
             'total_super': sum(a['super_amount'] for a in accruals),
             'total_prt': sum(a['prt_amount'] for a in accruals),
             'total_workcover': sum(a['workcover_amount'] for a in accruals),
