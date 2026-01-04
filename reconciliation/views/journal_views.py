@@ -1456,12 +1456,15 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
         ).aggregate(total=Sum('amount'))
         total_leave_taken = leave_taken_agg['total'] or Decimal('0')
 
+        # Calculate base accrual from aggregate totals (formula: Closing - Opening + Leave Taken)
+        total_base_calculated = total_closing - total_opening + total_leave_taken
+
         return {
             'employee_count': len(accruals),
             'total_opening': total_opening,
             'total_closing': total_closing,
             'total_leave_taken': total_leave_taken,
-            'total_base': sum(a['base_accrual'] for a in accruals),  # Base accrual before probability
+            'total_base': total_base_calculated,  # Derived from aggregate totals, not sum of individuals
             'total_accrual': sum(a['accrual_amount'] for a in accruals),  # Final accrual after probability
             'total_super': sum(a['super_amount'] for a in accruals),
             'total_prt': sum(a['prt_amount'] for a in accruals),
@@ -1707,12 +1710,15 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
         ).aggregate(total=Sum('amount'))
         total_leave_taken = leave_taken_agg['total'] or Decimal('0')
 
+        # Calculate base accrual from aggregate totals (formula: Closing - Opening + Leave Taken)
+        total_base_calculated = total_closing - total_opening + total_leave_taken
+
         return {
             'employee_count': len(accruals),
             'total_opening': total_opening,
             'total_closing': total_closing,
             'total_leave_taken': total_leave_taken,
-            'total_base': sum(a['base_accrual'] for a in accruals),  # Base accrual before probability
+            'total_base': total_base_calculated,  # Derived from aggregate totals, not sum of individuals
             'total_accrual': sum(a['accrual_amount'] for a in accruals),  # Final accrual after probability
             'total_super': sum(a['super_amount'] for a in accruals),
             'total_prt': sum(a['prt_amount'] for a in accruals),
