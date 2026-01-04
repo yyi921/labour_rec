@@ -1463,7 +1463,7 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
 
     annual_totals = calc_totals('Annual Leave', '2310', annual_leave_accruals, annual_journal, 'Annual Leave')
     lsl_totals = calc_totals('Long Service Leave', '2317', lsl_accruals, lsl_journal, 'Long Service Leave')
-    toil_totals = calc_totals('User Defined Leave', '2318', toil_accruals, toil_journal, 'Time In Lieu')
+    toil_totals = calc_totals('User Defined Leave', '2318', toil_accruals, toil_journal, 'User Defined Leave')
 
     annual_balanced = abs(annual_totals['total_debit'] - annual_totals['total_credit']) < Decimal('0.01')
     lsl_balanced = abs(lsl_totals['total_debit'] - lsl_totals['total_credit']) < Decimal('0.01')
@@ -1628,7 +1628,7 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
     toil_accruals = _calculate_leave_accruals_for_type(
         'User Defined Leave', '2318', '6372',
         opening_upload, closing_upload, iqb_upload, tp_pay_period,
-        transaction_type='Time In Lieu'  # FIX: Use correct transaction type for TOIL
+        transaction_type='User Defined Leave'  # TOIL leave taken uses "User Defined Leave" transaction type
     )
 
     # Store accruals in EmployeePayPeriodSnapshot for TP period
@@ -1713,7 +1713,7 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
 
     annual_totals = calc_totals('Annual Leave', '2310', annual_leave_accruals, annual_journal, 'Annual Leave')
     lsl_totals = calc_totals('Long Service Leave', '2317', lsl_accruals, lsl_journal, 'Long Service Leave')
-    toil_totals = calc_totals('User Defined Leave', '2318', toil_accruals, toil_journal, 'Time In Lieu')
+    toil_totals = calc_totals('User Defined Leave', '2318', toil_accruals, toil_journal, 'User Defined Leave')
 
     # Check if balanced
     annual_balanced = abs(annual_totals['total_debit'] - annual_totals['total_credit']) < Decimal('0.01')
@@ -1756,7 +1756,7 @@ def download_leave_journal_sage(request, last_period_id, this_period_id, leave_t
     leave_configs = {
         'annual': {'name': 'Annual Leave', 'liability': '2310', 'expense': '6300', 'transaction_type': 'Annual Leave'},
         'lsl': {'name': 'Long Service Leave', 'liability': '2317', 'expense': '6345', 'transaction_type': 'Long Service Leave'},
-        'toil': {'name': 'User Defined Leave', 'liability': '2318', 'expense': '6372', 'transaction_type': 'Time In Lieu'},
+        'toil': {'name': 'User Defined Leave', 'liability': '2318', 'expense': '6372', 'transaction_type': 'User Defined Leave'},
     }
 
     if leave_type not in leave_configs:
@@ -1919,7 +1919,7 @@ def download_leave_employee_breakdown(request, last_period_id, this_period_id, l
     leave_configs = {
         'annual': {'name': 'Annual Leave', 'transaction_type': 'Annual Leave'},
         'lsl': {'name': 'Long Service Leave', 'transaction_type': 'Long Service Leave'},
-        'toil': {'name': 'User Defined Leave', 'transaction_type': 'Time In Lieu'},
+        'toil': {'name': 'User Defined Leave', 'transaction_type': 'User Defined Leave'},
     }
 
     # Get ALL unique employee codes from all leave types
