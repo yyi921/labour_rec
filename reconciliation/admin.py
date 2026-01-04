@@ -142,6 +142,24 @@ class IQBLeaveBalanceAdmin(admin.ModelAdmin):
     search_fields = ['employee_code', 'surname', 'first_name', 'full_name']
     readonly_fields = ['upload', 'as_of_date']
 
+    change_list_template = 'admin/iqb_leave_balance_changelist.html'
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+
+        if request.method == 'POST' and 'delete_all' in request.POST:
+            # Confirm deletion
+            if request.POST.get('confirm_delete') == 'yes':
+                count = IQBLeaveBalance.objects.count()
+                IQBLeaveBalance.objects.all().delete()
+                self.message_user(request, f'Successfully deleted {count} IQB Leave Balance records')
+            else:
+                # Show confirmation
+                extra_context['show_delete_confirmation'] = True
+                extra_context['record_count'] = IQBLeaveBalance.objects.count()
+
+        return super().changelist_view(request, extra_context=extra_context)
+
 @admin.register(LSLProbability)
 class LSLProbabilityAdmin(admin.ModelAdmin):
     list_display = ['years_from', 'years_to', 'probability', 'is_active', 'updated_at']

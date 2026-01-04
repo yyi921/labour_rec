@@ -1,0 +1,49 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools %}
+<div style="margin-bottom: 20px; padding: 15px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">
+    <h3 style="margin-top: 0; color: #856404;">⚠️ Delete All IQB Leave Balances</h3>
+
+    {% if show_delete_confirmation %}
+        <div style="background-color: #f8d7da; border: 2px solid #dc3545; padding: 15px; border-radius: 4px; margin: 10px 0;">
+            <p style="color: #721c24; font-weight: bold; font-size: 16px; margin: 0 0 10px 0;">
+                ⚠️ CONFIRM DELETION
+            </p>
+            <p style="color: #721c24; margin: 10px 0;">
+                Are you sure you want to delete <strong>{{ record_count }} IQB Leave Balance records</strong>?
+            </p>
+            <p style="color: #721c24; font-weight: bold; margin: 10px 0;">
+                This action cannot be undone!
+            </p>
+            <form method="post" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="delete_all" value="true">
+                <input type="hidden" name="confirm_delete" value="yes">
+                <button type="submit" style="padding: 8px 20px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">
+                    ✓ Yes, Delete All {{ record_count }} Records
+                </button>
+            </form>
+            <form method="get" style="display: inline;">
+                <button type="submit" style="padding: 8px 20px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Cancel
+                </button>
+            </form>
+        </div>
+    {% else %}
+        <p style="color: #856404; margin: 10px 0;">
+            Use this button to delete <strong>ALL</strong> IQB Leave Balance records from the database.
+        </p>
+        <p style="color: #856404; font-size: 12px; margin: 10px 0;">
+            <strong>Warning:</strong> This will delete all leave balance records regardless of filters or selections.
+        </p>
+        <form method="post" style="margin-top: 15px;">
+            {% csrf_token %}
+            <input type="hidden" name="delete_all" value="true">
+            <button type="submit" style="padding: 8px 20px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                🗑️ Delete All Leave Balances
+            </button>
+        </form>
+    {% endif %}
+</div>
+{{ block.super }}
+{% endblock %}
