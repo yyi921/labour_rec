@@ -5,7 +5,7 @@ from .models import (
     ExceptionResolution, LabourCostSummary, SageIntacctExport,
     EmployeeReconciliation, JournalReconciliation, LocationMapping,
     ValidationResult, EmployeePayPeriodSnapshot, IQBLeaveBalance,
-    LSLProbability, IQBTransactionType
+    LSLProbability, IQBTransactionType, PayCompCodeMapping
 )
 
 
@@ -40,7 +40,7 @@ class EmployeeAdmin(admin.ModelAdmin):
             'fields': ('default_cost_account', 'default_cost_account_description')
         }),
         ('Additional Information', {
-            'fields': ('notes',),
+            'fields': ('state', 'notes'),
             'classes': ('collapse',)
         }),
         ('Timestamps', {
@@ -68,7 +68,7 @@ class EmployeeAdmin(admin.ModelAdmin):
             'Yearly Salary', 'Auto Pay Amount', 'Award Rate', 'Date of Birth',
             'Pay Class Description', 'Normal Rate', 'Termination Date',
             'Job Classification', 'Default Cost Account',
-            'Default Cost Account Description', 'Notes'
+            'Default Cost Account Description', 'State', 'Notes'
         ])
 
         for employee in queryset:
@@ -92,6 +92,7 @@ class EmployeeAdmin(admin.ModelAdmin):
                 employee.job_classification,
                 employee.default_cost_account,
                 employee.default_cost_account_description,
+                employee.state,
                 employee.notes,
             ])
 
@@ -309,6 +310,8 @@ class IQBTransactionTypeAdmin(admin.ModelAdmin):
     search_fields = ['transaction_type', 'notes']
     list_editable = ['include_in_hours', 'include_in_costs', 'is_active']
 
+    change_list_template = 'admin/iqbtransactiontype_changelist.html'
+
     fieldsets = (
         ('Transaction Type', {
             'fields': ('transaction_type', 'notes')
@@ -323,7 +326,7 @@ class IQBTransactionTypeAdmin(admin.ModelAdmin):
     )
     readonly_fields = ['created_at', 'updated_at']
 
-    actions = ['export_as_csv', 'import_from_csv']
+    actions = ['export_as_csv']
 
     def export_as_csv(self, request, queryset):
         """Export selected transaction types to CSV"""
@@ -350,8 +353,118 @@ class IQBTransactionTypeAdmin(admin.ModelAdmin):
     def changelist_view(self, request, extra_context=None):
         """Add import functionality to changelist"""
         extra_context = extra_context or {}
+
+        if request.method == 'POST' and 'csv_file' in request.FILES:
+            csv_file = request.FILES['csv_file']
+
+            try:
+                import csv as csv_module
+                from io import StringIO
+
+                # Read CSV file
+                decoded_file = csv_file.read().decode('utf-8-sig')  # utf-8-sig to handle BOM
+                io_string = StringIO(decoded_file)
+                reader = csv_module.DictReader(io_string)
+
+                # Clear existing transaction types
+                IQBTransactionType.objects.all().delete()
+
+                # Import new transaction types
+                count = 0
+                for row in reader:
+                    # Skip empty rows
+                    if not row.get('Transaction Type', '').strip():
+                        continue
+
+                    IQBTransactionType.objects.create(
+                        transaction_type=row['Transaction Type'].strip(),
+                        include_in_hours=row.get('Include in Hours', '').strip().lower() in ['yes', 'true', '1'],
+                        include_in_costs=row.get('Include in Costs', '').strip().lower() in ['yes', 'true', '1'],
+                        notes=row.get('Notes', '').strip(),
+                        is_active=True
+                    )
+                    count += 1
+
+                self.message_user(request, f'Successfully imported {count} IQB transaction type records')
+
+            except Exception as e:
+                self.message_user(request, f'Error importing CSV: {str(e)}', level='ERROR')
+
         extra_context['show_import'] = True
         return super().changelist_view(request, extra_context=extra_context)
+
+
+@admin.register(PayCompCodeMapping)
+class PayCompCodeMappingAdmin(admin.ModelAdmin):
+    list_display = ['pay_comp_code', 'gl_account', 'gl_name']
+    search_fields = ['pay_comp_code', 'gl_account', 'gl_name']
+    list_editable = ['gl_account', 'gl_name']
+
+    change_list_template = 'admin/paycompcode_mapping_changelist.html'
+
+    def changelist_view(self, request, extra_context=None):
+        """Add import functionality to changelist"""
+        extra_context = extra_context or {}
+
+        if request.method == 'POST' and 'csv_file' in request.FILES:
+            csv_file = request.FILES['csv_file']
+
+            try:
+                import csv as csv_module
+                from io import StringIO
+
+                # Read CSV file
+                decoded_file = csv_file.read().decode('utf-8-sig')  # utf-8-sig to handle BOM
+                io_string = StringIO(decoded_file)
+                reader = csv_module.DictReader(io_string)
+
+                # Clear existing mappings
+                PayCompCodeMapping.objects.all().delete()
+
+                # Import new mappings
+                count = 0
+                for row in reader:
+                    # Skip empty rows
+                    if not row.get('Pay Comp/Add Ded Code', '').strip():
+                        continue
+
+                    PayCompCodeMapping.objects.create(
+                        pay_comp_code=row['Pay Comp/Add Ded Code'].strip(),
+                        gl_account=row['GL Account'].strip(),
+                        gl_name=row['GL Name'].strip()
+                    )
+                    count += 1
+
+                self.message_user(request, f'Successfully imported {count} Pay Comp Code mappings')
+
+            except Exception as e:
+                self.message_user(request, f'Error importing CSV: {str(e)}', level='ERROR')
+
+        extra_context['show_import'] = True
+        return super().changelist_view(request, extra_context=extra_context)
+
+    actions = ['export_as_csv']
+
+    def export_as_csv(self, request, queryset):
+        """Export selected mappings to CSV"""
+        import csv
+        from django.http import HttpResponse
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="paycompcode_mapping.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(['Pay Comp/Add Ded Code', 'GL Account', 'GL Name'])
+
+        for item in queryset:
+            writer.writerow([
+                item.pay_comp_code,
+                item.gl_account,
+                item.gl_name
+            ])
+
+        return response
+    export_as_csv.short_description = 'Export selected mappings to CSV'
 
 
 @admin.register(ValidationResult)

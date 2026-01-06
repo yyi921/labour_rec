@@ -40,6 +40,12 @@ class Employee(models.Model):
     default_cost_account_description = models.CharField(max_length=200, blank=True, verbose_name='Default Cost Account Description')
 
     # Additional information
+    STATE_CHOICES = [
+        ('QLD', 'Queensland'),
+        ('VIC', 'Victoria'),
+        ('NSW', 'New South Wales'),
+    ]
+    state = models.CharField(max_length=3, choices=STATE_CHOICES, default='QLD', verbose_name='State')
     notes = models.TextField(blank=True, help_text='Additional notes about this employee')
 
     # Metadata
