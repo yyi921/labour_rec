@@ -134,7 +134,7 @@ class ReconciliationEngine:
 
     def _load_journal_mapping(self):
         """
-        Load journal mapping configuration from CSV
+        Load journal mapping from database (JournalDescriptionMapping model)
 
         Returns:
             dict: {description: {
@@ -142,30 +142,45 @@ class ReconciliationEngine:
                 'include_in_total_cost': bool
             }}
         """
-        config_path = os.path.join('data', 'Micropay_journal_mapping.csv')
+        from reconciliation.models import JournalDescriptionMapping
 
         try:
-            df = pd.read_csv(config_path)
+            # Load from database
+            mappings = JournalDescriptionMapping.objects.filter(is_active=True)
 
             mapping = {}
-            for _, row in df.iterrows():
-                description = str(row.get('Description', '')).strip()
-                if not description:
-                    continue
-
-                gl_account = str(row.get('GL Account', '')).strip()
-                total_cost = str(row.get('Total Cost', '')).strip().upper()
-
-                mapping[description] = {
-                    'gl_account': gl_account,
-                    'include_in_total_cost': total_cost == 'Y'
+            for m in mappings:
+                mapping[m.description] = {
+                    'gl_account': m.gl_account,
+                    'include_in_total_cost': m.include_in_total_cost
                 }
 
-            print(f"Loaded {len(mapping)} journal mappings")
+            print(f"Loaded {len(mapping)} journal mappings from database")
+
+            # If database is empty, try CSV as fallback
+            if not mapping:
+                config_path = os.path.join('data', 'Micropay_journal_mapping.csv')
+                df = pd.read_csv(config_path)
+
+                for _, row in df.iterrows():
+                    description = str(row.get('Description', '')).strip()
+                    if not description:
+                        continue
+
+                    gl_account = str(row.get('GL Account', '')).strip()
+                    total_cost = str(row.get('Total Cost', '')).strip().upper()
+
+                    mapping[description] = {
+                        'gl_account': gl_account,
+                        'include_in_total_cost': total_cost == 'Y'
+                    }
+
+                print(f"Loaded {len(mapping)} journal mappings from CSV fallback")
+
             return mapping
 
         except Exception as e:
-            print(f"Warning: Could not load journal mapping from {config_path}: {e}")
+            print(f"Warning: Could not load journal mapping: {e}")
             return {}
 
     def run_reconciliation(self):

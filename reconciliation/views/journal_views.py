@@ -13,26 +13,36 @@ from django.db.models import Sum
 from reconciliation.models import (
     PayPeriod, EmployeePayPeriodSnapshot, JournalEntry, Upload,
     SageLocation, SageDepartment, JournalReconciliation, IQBLeaveBalance,
-    IQBDetail, PayCompCodeMapping
+    IQBDetail, PayCompCodeMapping, JournalDescriptionMapping
 )
 
 
 def load_journal_mapping():
-    """Load the Micropay_journal_mapping.csv file"""
-    mapping_file = os.path.join(settings.BASE_DIR, 'data', 'Micropay_journal_mapping.csv')
-    mapping = {}
+    """Load journal description mappings from database"""
+    # Load from database
+    mappings = JournalDescriptionMapping.objects.filter(is_active=True)
 
-    if os.path.exists(mapping_file):
-        import csv
-        with open(mapping_file, 'r', encoding='utf-8-sig') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                gl_account = row.get('GL Account', '').strip()
-                if gl_account:
-                    mapping[gl_account] = {
-                        'description': row.get('Description', '').strip(),
-                        'needs_proration': row.get('Total Cost', '').strip().upper() == 'Y'
-                    }
+    mapping = {}
+    for m in mappings:
+        mapping[m.gl_account] = {
+            'description': m.description,
+            'needs_proration': m.include_in_total_cost
+        }
+
+    # If database is empty, try CSV as fallback
+    if not mapping:
+        mapping_file = os.path.join(settings.BASE_DIR, 'data', 'Micropay_journal_mapping.csv')
+        if os.path.exists(mapping_file):
+            import csv
+            with open(mapping_file, 'r', encoding='utf-8-sig') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    gl_account = row.get('GL Account', '').strip()
+                    if gl_account:
+                        mapping[gl_account] = {
+                            'description': row.get('Description', '').strip(),
+                            'needs_proration': row.get('Total Cost', '').strip().upper() == 'Y'
+                        }
 
     return mapping
 

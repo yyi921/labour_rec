@@ -837,6 +837,30 @@ class PayCompCodeMapping(models.Model):
         return f"{self.pay_comp_code} -> {self.gl_account} ({self.gl_name})"
 
 
+class JournalDescriptionMapping(models.Model):
+    """
+    Mapping of Journal Entry Descriptions to GL Accounts
+    Example: 'Labour - Bonuses' -> 6305
+    Used for journal reconciliation and generation
+    """
+    description = models.CharField(max_length=200, unique=True, verbose_name='Description')
+    gl_account = models.CharField(max_length=20, verbose_name='GL Account')
+    include_in_total_cost = models.BooleanField(default=False, verbose_name='Include in Total Cost',
+                                                 help_text='Y = Include in total labour cost calculations')
+
+    is_active = models.BooleanField(default=True, verbose_name='Active')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['description']
+        verbose_name = 'Journal Description Mapping'
+        verbose_name_plural = 'Journal Description Mappings'
+
+    def __str__(self):
+        return f"{self.description} -> {self.gl_account}"
+
+
 class FinalizedAllocation(models.Model):
     """
     Finalized cost allocation by Location, Department, and GL Account

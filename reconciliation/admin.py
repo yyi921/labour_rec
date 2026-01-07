@@ -5,7 +5,7 @@ from .models import (
     ExceptionResolution, LabourCostSummary, SageIntacctExport,
     EmployeeReconciliation, JournalReconciliation, LocationMapping,
     ValidationResult, EmployeePayPeriodSnapshot, IQBLeaveBalance,
-    LSLProbability, IQBTransactionType, PayCompCodeMapping
+    LSLProbability, IQBTransactionType, PayCompCodeMapping, JournalDescriptionMapping
 )
 
 
@@ -461,6 +461,95 @@ class PayCompCodeMappingAdmin(admin.ModelAdmin):
                 item.pay_comp_code,
                 item.gl_account,
                 item.gl_name
+            ])
+
+        return response
+    export_as_csv.short_description = 'Export selected mappings to CSV'
+
+
+@admin.register(JournalDescriptionMapping)
+class JournalDescriptionMappingAdmin(admin.ModelAdmin):
+    list_display = ['description', 'gl_account', 'include_in_total_cost', 'is_active']
+    search_fields = ['description', 'gl_account']
+    list_filter = ['include_in_total_cost', 'is_active']
+    list_editable = ['gl_account', 'include_in_total_cost', 'is_active']
+
+    change_list_template = 'admin/journaldescription_mapping_changelist.html'
+
+    fieldsets = (
+        ('Mapping Details', {
+            'fields': ('description', 'gl_account', 'include_in_total_cost')
+        }),
+        ('Status', {
+            'fields': ('is_active',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    readonly_fields = ['created_at', 'updated_at']
+
+    def changelist_view(self, request, extra_context=None):
+        """Add import functionality to changelist"""
+        extra_context = extra_context or {}
+
+        if request.method == 'POST' and 'csv_file' in request.FILES:
+            csv_file = request.FILES['csv_file']
+
+            try:
+                import csv as csv_module
+                from io import StringIO
+
+                # Read CSV file
+                decoded_file = csv_file.read().decode('utf-8-sig')  # utf-8-sig to handle BOM
+                io_string = StringIO(decoded_file)
+                reader = csv_module.DictReader(io_string)
+
+                # Clear existing mappings
+                JournalDescriptionMapping.objects.all().delete()
+
+                # Import new mappings
+                count = 0
+                for row in reader:
+                    # Skip empty rows
+                    if not row.get('Description', '').strip():
+                        continue
+
+                    JournalDescriptionMapping.objects.create(
+                        description=row['Description'].strip(),
+                        gl_account=row['GL Account'].strip(),
+                        include_in_total_cost=row.get('Total Cost', '').strip().upper() == 'Y',
+                        is_active=True
+                    )
+                    count += 1
+
+                self.message_user(request, f'Successfully imported {count} journal description mappings')
+
+            except Exception as e:
+                self.message_user(request, f'Error importing CSV: {str(e)}', level='ERROR')
+
+        extra_context['show_import'] = True
+        return super().changelist_view(request, extra_context=extra_context)
+
+    actions = ['export_as_csv']
+
+    def export_as_csv(self, request, queryset):
+        """Export selected mappings to CSV"""
+        import csv
+        from django.http import HttpResponse
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="journal_description_mapping.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(['Description', 'Total Cost', 'GL Account'])
+
+        for item in queryset:
+            writer.writerow([
+                item.description,
+                'Y' if item.include_in_total_cost else '',
+                item.gl_account
             ])
 
         return response
