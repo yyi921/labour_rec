@@ -7,7 +7,7 @@ import os
 from django.conf import settings
 from reconciliation.models import (
     Upload, IQBDetail, SageLocation, SageDepartment,
-    PayCompCodeMapping, LocationMapping
+    PayCompCodeMapping, LocationMapping, Employee
 )
 
 
@@ -16,21 +16,22 @@ class DataValidator:
 
     @staticmethod
     def load_master_employees():
-        """Load master employee file and return set of valid employee codes"""
-        csv_path = os.path.join(settings.BASE_DIR, 'data', 'master_employee_file.csv')
+        """Load employee codes from database and return set of valid employee codes"""
+        # Load from database Employee model
+        employee_codes = set(Employee.objects.values_list('code', flat=True))
 
-        if not os.path.exists(csv_path):
-            return None
+        # If database is empty, try to load from CSV as fallback
+        if not employee_codes:
+            csv_path = os.path.join(settings.BASE_DIR, 'data', 'master_employee_file.csv')
+            if os.path.exists(csv_path):
+                with open(csv_path, 'r', encoding='utf-8-sig') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        code = row.get('Code', '').strip()
+                        if code:
+                            employee_codes.add(code)
 
-        employee_codes = set()
-        with open(csv_path, 'r', encoding='utf-8-sig') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                code = row.get('Code', '').strip()
-                if code:
-                    employee_codes.add(code)
-
-        return employee_codes
+        return employee_codes if employee_codes else None
 
     @staticmethod
     def validate_upload(upload):
