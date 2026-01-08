@@ -11,5 +11,11 @@ fi
 # Collect static files
 python manage.py collectstatic --noinput
 
-# Start gunicorn
-gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+# Start gunicorn with increased timeout and workers for handling large CSV uploads
+gunicorn config.wsgi:application \
+    --bind 0.0.0.0:$PORT \
+    --workers 2 \
+    --timeout 600 \
+    --max-requests 1000 \
+    --max-requests-jitter 50 \
+    --log-level info
