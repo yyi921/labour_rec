@@ -17,6 +17,10 @@ urlpatterns = [
     path('analytics/', analytics_views.analytics_dashboard, name='analytics_dashboard'),
     path('analytics/query/', analytics_views.analytics_query, name='analytics_query'),
 
+    # Monthly dashboard
+    path('monthly-dashboard/', dashboard_views.monthly_dashboard, name='monthly_dashboard'),
+    path('monthly-dashboard/download/', dashboard_views.download_comparison_data, name='download_comparison_data'),
+
     # Mapping verification and cost allocation endpoints
     path('verify-mapping/<str:pay_period_id>/', mapping_views.verify_tanda_mapping, name='verify_mapping'),
     path('api/save-mappings/<str:pay_period_id>/', mapping_views.save_location_mapping, name='save_location_mapping'),

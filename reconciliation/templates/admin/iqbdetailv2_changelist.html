@@ -1,0 +1,138 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools %}
+<div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
+    <h3 style="margin-top: 0;">Upload IQB Detail V2 (CSV)</h3>
+    <p style="color: #495057;">Upload IQB report CSV files with all transaction details.</p>
+
+    <div style="background-color: #e7f3ff; padding: 12px; border-left: 4px solid #007bff; margin: 15px 0;">
+        <p style="margin: 0; font-weight: bold; color: #004085;">Auto-Detection & Mapping</p>
+        <ul style="margin: 5px 0 0 0; font-size: 14px; color: #004085; padding-left: 20px;">
+            <li><strong>Period End Date:</strong> Read automatically from CSV file</li>
+            <li><strong>Period Start Date:</strong> Calculated as Period End Date - 13 days</li>
+            <li><strong>Location & Department:</strong> Mapped from Cost Account Code</li>
+            <li><strong>Include in Costs:</strong> Mapped from IQB Transaction Types</li>
+        </ul>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" style="margin-top: 15px;">
+        {% csrf_token %}
+        <div style="margin-bottom: 15px;">
+            <label for="csv_file" style="display: block; font-weight: bold; margin-bottom: 5px;">
+                CSV File: <span style="color: #dc3545;">*</span>
+            </label>
+            <input type="file" id="csv_file" name="csv_file" accept=".csv" required style="padding: 5px;">
+        </div>
+
+        <button type="submit" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+            📤 Upload CSV
+        </button>
+    </form>
+
+    <div style="margin-top: 20px; padding: 10px; background-color: #d4edda; border-left: 4px solid #28a745;">
+        <p style="margin: 0; font-size: 13px; color: #155724;">
+            <strong>Performance Optimized:</strong> Large files (30,000+ rows) are processed using bulk insertion for fast uploads.
+        </p>
+    </div>
+</div>
+
+{% if uploaded_files %}
+<div style="margin-bottom: 20px; padding: 15px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">
+    <h3 style="margin-top: 0; color: #856404;">🗑️ Delete Records by File</h3>
+
+    {% if show_file_delete_confirmation %}
+        <div style="background-color: #f8d7da; border: 2px solid #dc3545; padding: 15px; border-radius: 4px; margin: 10px 0;">
+            <p style="color: #721c24; font-weight: bold; font-size: 16px; margin: 0 0 10px 0;">
+                ⚠️ CONFIRM DELETION
+            </p>
+            <p style="color: #721c24; margin: 10px 0;">
+                Are you sure you want to delete <strong>{{ file_record_count }} records</strong> from file: <strong>{{ file_to_delete }}</strong>?
+            </p>
+            <p style="color: #721c24; font-weight: bold; margin: 10px 0;">
+                This action cannot be undone!
+            </p>
+            <form method="post" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="delete_file" value="true">
+                <input type="hidden" name="file_name_to_delete" value="{{ file_to_delete }}">
+                <input type="hidden" name="confirm_delete_file" value="yes">
+                <button type="submit" style="padding: 8px 20px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">
+                    ✓ Yes, Delete {{ file_record_count }} Records
+                </button>
+            </form>
+            <form method="get" style="display: inline;">
+                <button type="submit" style="padding: 8px 20px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Cancel
+                </button>
+            </form>
+        </div>
+    {% else %}
+        <p style="color: #856404; margin: 10px 0;">
+            Select a file to delete all records imported from that file.
+        </p>
+        <form method="post" style="margin-top: 15px;">
+            {% csrf_token %}
+            <input type="hidden" name="delete_file" value="true">
+            <select name="file_name_to_delete" required style="padding: 8px; border: 1px solid #ced4da; border-radius: 4px; min-width: 300px; margin-right: 10px;">
+                <option value="">-- Select a file --</option>
+                {% for file in uploaded_files %}
+                    <option value="{{ file }}">{{ file }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" style="padding: 8px 20px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                🗑️ Delete Selected File's Records
+            </button>
+        </form>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if show_delete_all %}
+<div style="margin-bottom: 20px; padding: 15px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">
+    <h3 style="margin-top: 0; color: #856404;">⚠️ Delete All IQB Detail V2 Records</h3>
+
+    {% if show_delete_confirmation %}
+        <div style="background-color: #f8d7da; border: 2px solid #dc3545; padding: 15px; border-radius: 4px; margin: 10px 0;">
+            <p style="color: #721c24; font-weight: bold; font-size: 16px; margin: 0 0 10px 0;">
+                ⚠️ CONFIRM DELETION
+            </p>
+            <p style="color: #721c24; margin: 10px 0;">
+                Are you sure you want to delete <strong>{{ record_count }} IQB Detail V2 records</strong>?
+            </p>
+            <p style="color: #721c24; font-weight: bold; margin: 10px 0;">
+                This action cannot be undone!
+            </p>
+            <form method="post" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="delete_all" value="true">
+                <input type="hidden" name="confirm_delete" value="yes">
+                <button type="submit" style="padding: 8px 20px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">
+                    ✓ Yes, Delete All {{ record_count }} Records
+                </button>
+            </form>
+            <form method="get" style="display: inline;">
+                <button type="submit" style="padding: 8px 20px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Cancel
+                </button>
+            </form>
+        </div>
+    {% else %}
+        <p style="color: #856404; margin: 10px 0;">
+            Use this button to delete <strong>ALL</strong> IQB Detail V2 records from the database.
+        </p>
+        <p style="color: #856404; font-size: 12px; margin: 10px 0;">
+            <strong>Warning:</strong> This will delete all IQB Detail V2 records regardless of filters or selections.
+        </p>
+        <form method="post" style="margin-top: 15px;">
+            {% csrf_token %}
+            <input type="hidden" name="delete_all" value="true">
+            <button type="submit" style="padding: 8px 20px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                🗑️ Delete All IQB Detail V2 Records
+            </button>
+        </form>
+    {% endif %}
+</div>
+{% endif %}
+
+{{ block.super }}
+{% endblock %}

@@ -548,3 +548,344 @@ def download_accrual_sage_journal(request, pay_period_id):
     ])
 
     return response
+
+
+def monthly_dashboard(request):
+    """
+    Monthly Dashboard with three sections:
+    1. Top: Single month filter with transaction type breakdown
+    2. Middle: Range A vs Range B comparison with employee details
+    3. Bottom: Bridge/waterfall chart showing movement from Range A to Range B
+    """
+    from reconciliation.models import IQBDetailV2, SageLocation, SageDepartment
+    from datetime import datetime
+    from django.db.models import Sum, Count, Q, F
+    from collections import defaultdict
+
+    # Get filter parameters
+    selected_month = request.GET.get('month')
+    range_a_months = request.GET.getlist('range_a_months[]')
+    range_b_months = request.GET.getlist('range_b_months[]')
+    selected_department = request.GET.get('department')
+    selected_location = request.GET.get('location')
+
+    # Generate month options (July 2022 to June 2030)
+    month_options = []
+    start_year = 2022
+    end_year = 2030
+    for year in range(start_year, end_year + 1):
+        for month in range(1, 13):
+            if year == 2022 and month < 7:  # Start from July 2022
+                continue
+            if year == 2030 and month > 6:  # End at June 2030
+                break
+            date = datetime(year, month, 1)
+            month_options.append({
+                'value': date.strftime('%Y-%m'),
+                'label': date.strftime('%B %Y')
+            })
+
+    # Get all available locations and departments for filters
+    locations = SageLocation.objects.all().order_by('location_name')
+    departments = SageDepartment.objects.all().order_by('department_name')
+
+    context = {
+        'month_options': month_options,
+        'locations': locations,
+        'departments': departments,
+        'selected_month': selected_month,
+        'range_a_months': range_a_months,
+        'range_b_months': range_b_months,
+        'selected_department': selected_department,
+        'selected_location': selected_location,
+    }
+
+    # SECTION 1: Single Month Breakdown
+    if selected_month:
+        year, month = map(int, selected_month.split('-'))
+
+        # Filter records for selected month
+        month_records = IQBDetailV2.objects.filter(
+            period_end_date__year=year,
+            period_end_date__month=month,
+            include_in_costs=True
+        )
+
+        # Total costs
+        total_costs = month_records.aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0')
+
+        # Breakdown by transaction type
+        transaction_breakdown = month_records.values('transaction_type').annotate(
+            total_amount=Sum('amount'),
+            record_count=Count('id')
+        ).order_by('-total_amount')
+
+        context['section1'] = {
+            'total_costs': total_costs,
+            'transaction_breakdown': transaction_breakdown,
+            'selected_month_label': datetime(year, month, 1).strftime('%B %Y')
+        }
+
+    # SECTION 2: Range A vs Range B Comparison
+    if range_a_months and range_b_months:
+        # Build filters
+        range_a_filter = Q()
+        for month_str in range_a_months:
+            year, month = map(int, month_str.split('-'))
+            range_a_filter |= Q(period_end_date__year=year, period_end_date__month=month)
+
+        range_b_filter = Q()
+        for month_str in range_b_months:
+            year, month = map(int, month_str.split('-'))
+            range_b_filter |= Q(period_end_date__year=year, period_end_date__month=month)
+
+        # Additional filters
+        extra_filters = Q(include_in_costs=True)
+        if selected_department:
+            extra_filters &= Q(department_code=selected_department)
+        if selected_location:
+            extra_filters &= Q(location_id=selected_location)
+
+        # Get Range A data
+        range_a_data = IQBDetailV2.objects.filter(
+            range_a_filter & extra_filters
+        ).values('employee_code', 'full_name').annotate(
+            total_cost=Sum('amount')
+        ).order_by('employee_code')
+
+        # Get Range B data
+        range_b_data = IQBDetailV2.objects.filter(
+            range_b_filter & extra_filters
+        ).values('employee_code', 'full_name').annotate(
+            total_cost=Sum('amount')
+        ).order_by('employee_code')
+
+        # Combine into comparison table
+        employee_comparison = {}
+
+        for record in range_a_data:
+            emp_code = record['employee_code']
+            employee_comparison[emp_code] = {
+                'employee_code': emp_code,
+                'full_name': record['full_name'],
+                'range_a_cost': record['total_cost'] or Decimal('0'),
+                'range_b_cost': Decimal('0'),
+                'variance': Decimal('0')
+            }
+
+        for record in range_b_data:
+            emp_code = record['employee_code']
+            if emp_code in employee_comparison:
+                employee_comparison[emp_code]['range_b_cost'] = record['total_cost'] or Decimal('0')
+            else:
+                employee_comparison[emp_code] = {
+                    'employee_code': emp_code,
+                    'full_name': record['full_name'],
+                    'range_a_cost': Decimal('0'),
+                    'range_b_cost': record['total_cost'] or Decimal('0'),
+                    'variance': Decimal('0')
+                }
+
+        # Calculate variances
+        for emp_code in employee_comparison:
+            emp_data = employee_comparison[emp_code]
+            emp_data['variance'] = emp_data['range_b_cost'] - emp_data['range_a_cost']
+
+        # Convert to list and sort by variance (descending)
+        comparison_list = sorted(
+            employee_comparison.values(),
+            key=lambda x: abs(x['variance']),
+            reverse=True
+        )
+
+        # Calculate totals
+        range_a_total = sum(emp['range_a_cost'] for emp in comparison_list)
+        range_b_total = sum(emp['range_b_cost'] for emp in comparison_list)
+        total_variance = range_b_total - range_a_total
+
+        context['section2'] = {
+            'comparison_list': comparison_list,
+            'range_a_total': range_a_total,
+            'range_b_total': range_b_total,
+            'total_variance': total_variance,
+            'range_a_labels': [datetime(int(m.split('-')[0]), int(m.split('-')[1]), 1).strftime('%b %Y') for m in range_a_months],
+            'range_b_labels': [datetime(int(m.split('-')[0]), int(m.split('-')[1]), 1).strftime('%b %Y') for m in range_b_months],
+        }
+
+    # SECTION 3: Bridge/Waterfall Chart Data
+    if range_a_months and range_b_months:
+        # Build filters (same as section 2)
+        range_a_filter = Q()
+        for month_str in range_a_months:
+            year, month = map(int, month_str.split('-'))
+            range_a_filter |= Q(period_end_date__year=year, period_end_date__month=month)
+
+        range_b_filter = Q()
+        for month_str in range_b_months:
+            year, month = map(int, month_str.split('-'))
+            range_b_filter |= Q(period_end_date__year=year, period_end_date__month=month)
+
+        extra_filters = Q(include_in_costs=True)
+        if selected_department:
+            extra_filters &= Q(department_code=selected_department)
+        if selected_location:
+            extra_filters &= Q(location_id=selected_location)
+
+        # Get employees in Range A
+        range_a_employees = set(
+            IQBDetailV2.objects.filter(range_a_filter & extra_filters)
+            .values_list('employee_code', flat=True)
+            .distinct()
+        )
+
+        # Get employees in Range B
+        range_b_employees = set(
+            IQBDetailV2.objects.filter(range_b_filter & extra_filters)
+            .values_list('employee_code', flat=True)
+            .distinct()
+        )
+
+        # Categorize employees
+        continuing_employees = range_a_employees & range_b_employees  # In both ranges
+        new_employees = range_b_employees - range_a_employees  # Only in Range B
+        departed_employees = range_a_employees - range_b_employees  # Only in Range A
+
+        # Calculate costs for each category
+
+        # 1. Opening Balance (Range A total)
+        opening_balance = context['section2']['range_a_total']
+
+        # 2. Existing headcount increment/decrement by location
+        location_deltas = {}
+        for emp_code in continuing_employees:
+            # Get Range A cost
+            range_a_cost = IQBDetailV2.objects.filter(
+                range_a_filter & extra_filters & Q(employee_code=emp_code)
+            ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+
+            # Get Range B cost and location
+            range_b_records = IQBDetailV2.objects.filter(
+                range_b_filter & extra_filters & Q(employee_code=emp_code)
+            ).aggregate(
+                total=Sum('amount'),
+            )
+            range_b_cost = range_b_records['total'] or Decimal('0')
+
+            # Get primary location for this employee in Range B
+            primary_location = IQBDetailV2.objects.filter(
+                range_b_filter & extra_filters & Q(employee_code=emp_code)
+            ).values('location_id', 'location_name').annotate(
+                total=Sum('amount')
+            ).order_by('-total').first()
+
+            if primary_location:
+                location_key = f"{primary_location['location_id']} - {primary_location['location_name']}"
+                if location_key not in location_deltas:
+                    location_deltas[location_key] = Decimal('0')
+                location_deltas[location_key] += (range_b_cost - range_a_cost)
+
+        # 3. Additional headcount (new employees)
+        new_headcount_cost = IQBDetailV2.objects.filter(
+            range_b_filter & extra_filters & Q(employee_code__in=new_employees)
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+
+        # 4. Decreased headcount (departed employees) - negative value
+        departed_headcount_cost = -(IQBDetailV2.objects.filter(
+            range_a_filter & extra_filters & Q(employee_code__in=departed_employees)
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0'))
+
+        # 5. Closing Balance (Range B total)
+        closing_balance = context['section2']['range_b_total']
+
+        # Prepare waterfall chart data
+        waterfall_data = {
+            'opening_balance': float(opening_balance),
+            'location_deltas': {k: float(v) for k, v in location_deltas.items() if v != 0},
+            'new_headcount': float(new_headcount_cost),
+            'departed_headcount': float(departed_headcount_cost),
+            'closing_balance': float(closing_balance),
+            'continuing_count': len(continuing_employees),
+            'new_count': len(new_employees),
+            'departed_count': len(departed_employees),
+        }
+
+        context['section3'] = waterfall_data
+
+    return render(request, 'reconciliation/monthly_dashboard.html', context)
+
+
+@require_http_methods(["GET"])
+def download_comparison_data(request):
+    """
+    Download comparison data as CSV
+    """
+    from reconciliation.models import IQBDetailV2
+    from datetime import datetime
+    from django.db.models import Q
+    import csv
+
+    range_a_months = request.GET.getlist('range_a_months[]')
+    range_b_months = request.GET.getlist('range_b_months[]')
+    selected_department = request.GET.get('department')
+    selected_location = request.GET.get('location')
+
+    if not range_a_months or not range_b_months:
+        return JsonResponse({'error': 'Missing range parameters'}, status=400)
+
+    # Build filters
+    range_a_filter = Q()
+    for month_str in range_a_months:
+        year, month = map(int, month_str.split('-'))
+        range_a_filter |= Q(period_end_date__year=year, period_end_date__month=month)
+
+    range_b_filter = Q()
+    for month_str in range_b_months:
+        year, month = map(int, month_str.split('-'))
+        range_b_filter |= Q(period_end_date__year=year, period_end_date__month=month)
+
+    extra_filters = Q(include_in_costs=True)
+    if selected_department:
+        extra_filters &= Q(department_code=selected_department)
+    if selected_location:
+        extra_filters &= Q(location_id=selected_location)
+
+    # Get all records for both ranges
+    records = IQBDetailV2.objects.filter(
+        (range_a_filter | range_b_filter) & extra_filters
+    ).select_related().order_by('employee_code', 'period_end_date', 'transaction_type')
+
+    # Create CSV response
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="comparison_data.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'Employee ID', 'Employee Name', 'Period Start Date', 'Period End Date',
+        'Transaction Type', 'Amount', 'Location', 'Department', 'Range'
+    ])
+
+    for record in records:
+        # Determine which range this record belongs to
+        record_month = f"{record.period_end_date.year}-{record.period_end_date.month:02d}"
+        if record_month in range_a_months:
+            range_label = 'Range A'
+        elif record_month in range_b_months:
+            range_label = 'Range B'
+        else:
+            continue
+
+        writer.writerow([
+            record.employee_code,
+            record.full_name,
+            record.period_start_date.strftime('%Y-%m-%d') if record.period_start_date else '',
+            record.period_end_date.strftime('%Y-%m-%d') if record.period_end_date else '',
+            record.transaction_type,
+            float(record.amount),
+            f"{record.location_id} - {record.location_name}",
+            f"{record.department_code} - {record.department_name}",
+            range_label
+        ])
+
+    return response

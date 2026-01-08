@@ -918,6 +918,175 @@ class ValidationResult(models.Model):
         status = "PASSED" if self.passed else "FAILED"
         return f"{self.upload.file_name} - {status}"
     
+class IQBDetailV2(models.Model):
+    """
+    IQB Details V2 - Complete IQB Report with all columns
+    Replaces the existing IQBDetail model with full field coverage
+    """
+    # Upload tracking
+    upload = models.ForeignKey(Upload, on_delete=models.CASCADE, related_name='iqb_v2_records', null=True, blank=True)
+    file_name = models.CharField(max_length=255, blank=True, help_text="Original CSV file name for tracking")
+
+    # Period Information
+    period_end_date = models.DateField(db_index=True, help_text="Period end date from CSV - determines which month this falls under")
+    period_start_date = models.DateField(null=True, blank=True, help_text="Period start date (Period End Date - 13 days, editable)")
+
+    # Employee Information
+    employee_code = models.CharField(max_length=20, db_index=True)
+    surname = models.CharField(max_length=100, blank=True)
+    first_name = models.CharField(max_length=100, blank=True)
+    given_names = models.CharField(max_length=200, blank=True)
+    other_names = models.CharField(max_length=200, blank=True)
+    full_name = models.CharField(max_length=200, blank=True)
+    surname_with_initials = models.CharField(max_length=100, blank=True)
+    initials = models.CharField(max_length=20, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    age = models.IntegerField(null=True, blank=True)
+    hired_date = models.DateField(null=True, blank=True)
+    years_of_service = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    # Employment Details
+    employment_type = models.CharField(max_length=100, blank=True)
+    location = models.CharField(max_length=200, blank=True, db_index=True)
+    pay_point = models.CharField(max_length=100, blank=True)
+    default_cost_account_code = models.CharField(max_length=50, blank=True)
+    default_cost_account_description = models.CharField(max_length=200, blank=True)
+
+    # Pay Period Information
+    pay_period_id = models.CharField(max_length=20, blank=True)
+    period_end_processed = models.CharField(max_length=10, blank=True)
+
+    # Leave Codes
+    sl_code = models.CharField(max_length=50, blank=True)  # Sick Leave
+    sl_description = models.CharField(max_length=200, blank=True)
+    al_code = models.CharField(max_length=50, blank=True)  # Annual Leave
+    al_description = models.CharField(max_length=200, blank=True)
+    lsl_code = models.CharField(max_length=50, blank=True)  # Long Service Leave
+    lsl_description = models.CharField(max_length=200, blank=True)
+
+    # Pay Components
+    pay_comp_add_ded_code = models.CharField(max_length=50, blank=True, db_index=True)
+    pay_comp_add_ded_desc = models.CharField(max_length=200, blank=True)
+    shortcut_key = models.CharField(max_length=20, blank=True)
+    other_leave_id = models.CharField(max_length=50, blank=True)
+
+    # Transaction Details
+    post_type = models.CharField(max_length=50, blank=True)
+    cost_account_code = models.CharField(max_length=50, blank=True, db_index=True)
+    cost_account_description = models.CharField(max_length=200, blank=True)
+
+    # Mapped fields (auto-populated from cost_account_code)
+    location_id = models.CharField(max_length=10, blank=True, editable=True, help_text="Mapped from cost account code (e.g., '421' from '421-5000')")
+    location_name = models.CharField(max_length=200, blank=True, editable=True, help_text="Mapped location name or 'Invalid' if not found")
+    department_code = models.CharField(max_length=10, blank=True, editable=True, help_text="Mapped from cost account code (e.g., '50' from '421-5000')")
+    department_name = models.CharField(max_length=200, blank=True, editable=True, help_text="Mapped department name or 'Invalid' if not found")
+
+    # Leave Dates
+    leave_start_date = models.DateField(null=True, blank=True)
+    leave_end_date = models.DateField(null=True, blank=True)
+    recommence_date = models.DateField(null=True, blank=True)
+
+    # Pay Frequency
+    pay_period_pay_frequency = models.CharField(max_length=50, blank=True)
+    number_of_periods = models.IntegerField(null=True, blank=True)
+    pay_advice_number = models.IntegerField(null=True, blank=True)
+    generate_payment = models.CharField(max_length=10, blank=True)
+
+    # Hours and Contract
+    contract_hours_per_day = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    contract_hours_per_week = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    hours = models.DecimalField(max_digits=10, decimal_places=4, default=0)
+    days = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    unit = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+
+    # Financial Details
+    rate = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    percent = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    loading_rate = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    loading_percent = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    loading_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+
+    # Transaction Type
+    transaction_type = models.CharField(max_length=100, blank=True, db_index=True)
+    hours_worked_type = models.CharField(max_length=100, blank=True)
+    include_in_costs = models.BooleanField(default=False, help_text="Mapped from IQB Transaction Type - whether to include in cost calculations")
+
+    # Leave Reason
+    leave_reason_code = models.CharField(max_length=50, blank=True)
+    leave_reason_description = models.CharField(max_length=200, blank=True)
+
+    # Rate Factor
+    rate_factor_code = models.CharField(max_length=50, blank=True)
+    rate_factor_description = models.CharField(max_length=200, blank=True)
+    rate_factor = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+
+    # Pay Class
+    pay_class_code = models.CharField(max_length=50, blank=True)
+    pay_class_description = models.CharField(max_length=200, blank=True)
+    addition_deduction_type = models.CharField(max_length=50, blank=True)
+
+    # Superannuation
+    super_contribution_code = models.CharField(max_length=50, blank=True)
+    super_contribution_description = models.CharField(max_length=200, blank=True)
+    super_fund_code = models.CharField(max_length=50, blank=True)
+    super_fund_description = models.CharField(max_length=200, blank=True)
+    super_calculated_on = models.CharField(max_length=100, blank=True)
+    employee_pay_frequency = models.CharField(max_length=50, blank=True)
+
+    # Tax and Dates
+    termination_tax = models.CharField(max_length=10, blank=True)
+    pay_end_date_for_previous_earnings = models.DateField(null=True, blank=True)
+    adjustment_pay_period_date = models.DateField(null=True, blank=True)
+    pay_advice_print_date = models.DateField(null=True, blank=True)
+
+    # SGL (Superannuation Guarantee Levy)
+    qualification_value = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    sgl_actually_paid = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    sgl_hours_worked = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    date_super_process_completed = models.DateField(null=True, blank=True)
+    sgl_age = models.IntegerField(null=True, blank=True)
+
+    # Location Details
+    transaction_location = models.CharField(max_length=200, blank=True)
+    payroll_company = models.CharField(max_length=200, blank=True)
+    year_ending = models.IntegerField(null=True, blank=True)
+
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['period_end_date', 'employee_code']),
+            models.Index(fields=['location', 'period_end_date']),
+            models.Index(fields=['cost_account_code', 'period_end_date']),
+            models.Index(fields=['transaction_type']),
+            models.Index(fields=['file_name']),
+            models.Index(fields=['location_id', 'department_code']),
+        ]
+        ordering = ['-period_end_date', 'employee_code']
+        verbose_name = 'IQB Detail V2'
+        verbose_name_plural = 'IQB Details V2'
+
+    def __str__(self):
+        return f"{self.employee_code} - {self.full_name} ({self.period_end_date})"
+
+    @property
+    def month_year(self):
+        """Return the month and year this record falls under based on period end date"""
+        if self.period_end_date:
+            return self.period_end_date.strftime('%B %Y')
+        return ''
+
+    def save(self, *args, **kwargs):
+        """Auto-calculate period_start_date if not set"""
+        from datetime import timedelta
+        if self.period_end_date and not self.period_start_date:
+            self.period_start_date = self.period_end_date - timedelta(days=13)
+        super().save(*args, **kwargs)
+
+
 class EmployeePayPeriodSnapshot(models.Model):
     """
     Snapshot of employee's payroll data for each pay period
