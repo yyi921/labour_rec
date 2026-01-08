@@ -8,6 +8,9 @@ if [ -n "$ADMIN_USERNAME" ] && [ -n "$ADMIN_PASSWORD" ]; then
     python manage.py create_admin --username "$ADMIN_USERNAME" --password "$ADMIN_PASSWORD"
 fi
 
+# Populate location and department mappings
+python manage.py populate_mappings
+
 # Collect static files
 python manage.py collectstatic --noinput
 
