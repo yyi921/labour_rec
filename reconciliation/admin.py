@@ -524,7 +524,6 @@ class IQBDetailV2Admin(admin.ModelAdmin):
                     count = 0
                     errors = []
                     batch_size = 1000  # Insert 1000 records at a time
-                    period_date = None  # Will get from first row
 
                     for row_num, row in enumerate(reader, start=2):
                         try:
@@ -532,14 +531,11 @@ class IQBDetailV2Admin(admin.ModelAdmin):
                             if not row.get('Employee Code', '').strip():
                                 continue
 
-                            # Get period end date from CSV (first row sets it for all)
-                            if period_date is None:
-                                csv_period_end = parse_date(row.get('Period End Date', ''))
-                                if csv_period_end:
-                                    period_date = csv_period_end
-                                else:
-                                    errors.append(f"Row {row_num}: Missing or invalid 'Period End Date' in CSV")
-                                    continue
+                            # Get period end date from CSV for THIS row
+                            period_date = parse_date(row.get('Period End Date', ''))
+                            if not period_date:
+                                errors.append(f"Row {row_num}: Missing or invalid 'Period End Date'")
+                                continue
 
                             # Calculate period start date
                             period_start = period_date - timedelta(days=13)
@@ -668,11 +664,7 @@ class IQBDetailV2Admin(admin.ModelAdmin):
                         error_msg = f'Imported {count} records with errors:\n' + '\n'.join(errors[:10])
                         self.message_user(request, error_msg, level='WARNING')
                     else:
-                        if period_date:
-                            month_year = period_date.strftime('%B %Y')
-                            self.message_user(request, f'Successfully imported {count} IQB Detail V2 records for {month_year} from {file_name}')
-                        else:
-                            self.message_user(request, f'Successfully imported {count} IQB Detail V2 records from {file_name}')
+                        self.message_user(request, f'Successfully imported {count} IQB Detail V2 records from {file_name}')
 
                 except Exception as e:
                     self.message_user(request, f'Error importing CSV: {str(e)}', level='ERROR')

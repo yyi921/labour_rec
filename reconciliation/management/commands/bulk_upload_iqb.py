@@ -123,7 +123,6 @@ class Command(BaseCommand):
         count = 0
         errors = []
         records_to_create = []
-        period_date = None
 
         with open(csv_file_path, 'r', encoding='utf-8-sig') as f:
             reader = csv.DictReader(f)
@@ -134,14 +133,11 @@ class Command(BaseCommand):
                     if not row.get('Employee Code', '').strip():
                         continue
 
-                    # Get period end date from CSV (first row sets it for all)
-                    if period_date is None:
-                        csv_period_end = self.parse_date(row.get('Period End Date', ''))
-                        if csv_period_end:
-                            period_date = csv_period_end
-                        else:
-                            errors.append(f"Row {row_num}: Missing or invalid 'Period End Date' in CSV")
-                            continue
+                    # Get period end date from CSV for THIS row
+                    period_date = self.parse_date(row.get('Period End Date', ''))
+                    if not period_date:
+                        errors.append(f"Row {row_num}: Missing or invalid 'Period End Date'")
+                        continue
 
                     # Calculate period start date
                     period_start = period_date - timedelta(days=13)
