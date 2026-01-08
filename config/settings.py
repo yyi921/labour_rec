@@ -82,28 +82,30 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Database - Start with SQLite for local dev, switch to PostgreSQL later
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-        'OPTIONS': {
-            'timeout': 20,  # Wait up to 20 seconds for locks to clear
+# Database - Use PostgreSQL on Railway (when PGHOST is set), SQLite locally
+if os.environ.get('PGHOST'):
+    # PostgreSQL for Railway production
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('PGDATABASE'),
+            'USER': os.environ.get('PGUSER'),
+            'PASSWORD': os.environ.get('PGPASSWORD'),
+            'HOST': os.environ.get('PGHOST'),
+            'PORT': os.environ.get('PGPORT', '5432'),
         }
     }
-}
-
-# We'll switch to PostgreSQL once Railway is set up:
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.environ.get('PGDATABASE', 'labour_recon'),
-#         'USER': os.environ.get('PGUSER', 'postgres'),
-#         'PASSWORD': os.environ.get('PGPASSWORD', 'postgres'),
-#         'HOST': os.environ.get('PGHOST', 'localhost'),
-#         'PORT': os.environ.get('PGPORT', '5432'),
-#     }
-# }
+else:
+    # SQLite for local development
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+            'OPTIONS': {
+                'timeout': 20,  # Wait up to 20 seconds for locks to clear
+            }
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
