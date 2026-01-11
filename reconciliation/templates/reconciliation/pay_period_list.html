@@ -59,7 +59,9 @@
                 {% endif %}
             </td>
             <td>
-                {% if pp.latest_recon or pp.period_type == 'accrual' or pp.period_type == 'accrual_reversal' or pp.status == 'accrual_processed' or pp.status == 'accrual_reversed' %}
+                {% if pp.process_type == 'payroll_tax_wc' %}
+                <a href="{% url 'reconciliation:prt_wc_dashboard' pp.period_id %}" class="btn">View PRT/WC Dashboard</a>
+                {% elif pp.latest_recon or pp.period_type == 'accrual' or pp.period_type == 'accrual_reversal' or pp.status == 'accrual_processed' or pp.status == 'accrual_reversed' %}
                 <a href="{% url 'reconciliation:dashboard' pp.period_id %}" class="btn">View Dashboard</a>
                 {% else %}
                 <span style="color: #95a5a6;">No data</span>

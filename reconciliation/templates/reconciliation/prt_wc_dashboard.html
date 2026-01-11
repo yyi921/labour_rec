@@ -257,6 +257,45 @@
             </div>
         </div>
 
+        <!-- Unmapped Employees Warning -->
+        {% if unmapped_count > 0 %}
+        <div class="validation-section" style="background: #fff3cd; border-left: 4px solid #ffc107;">
+            <h2 style="font-size: 16px; margin-bottom: 15px; color: #856404;">
+                ⚠️ Unmapped Employees ({{ unmapped_count }})
+            </h2>
+            <p style="color: #856404; margin-bottom: 15px;">
+                The following employees from the IQB data were <strong>not found</strong> in the Master Employee list
+                (<a href="{% url 'admin:reconciliation_employee_changelist' %}" target="_blank" style="color: #856404; text-decoration: underline;">admin/Employee</a>).
+                <br><strong>Default assumptions applied:</strong> State = QLD, Is Apprentice = No
+            </p>
+            <table class="prt-table" style="background: white;">
+                <thead>
+                    <tr>
+                        <th>Employee Code</th>
+                        <th>Employee Name</th>
+                        <th>Total Amount</th>
+                        <th>Assumed State</th>
+                        <th>Assumed Apprentice Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in unmapped_employees %}
+                    <tr>
+                        <td>{{ emp.code }}</td>
+                        <td>{{ emp.name }}</td>
+                        <td>${{ emp.total_amount|floatformat:2|intcomma }}</td>
+                        <td>QLD</td>
+                        <td>No</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <p style="margin-top: 15px; font-size: 13px; color: #856404;">
+                <strong>Action Required:</strong> Please add these employees to the Master Employee list with correct State and Job Classification to ensure accurate PRT/WC calculations.
+            </p>
+        </div>
+        {% endif %}
+
         <!-- Table 1: Non-Apprentice (excluding parental leave) -->
         <div class="section-card">
             <h2 class="section-title">Non-Apprentice Costs (Excluding Parental Leave)</h2>

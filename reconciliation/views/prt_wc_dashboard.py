@@ -47,16 +47,22 @@ def prt_wc_dashboard(request, period_id):
     # Create pay comp code mapping lookup (pay_comp_code -> mapping object)
     pay_comp_mappings = {m.pay_comp_code: m for m in PayCompCodeMapping.objects.all()}
 
+    # Track unmapped employees
+    unmapped_employees = set()
+    unmapped_employee_details = []
+
     # Helper function to categorize employee
     def is_apprentice(employee_code):
         emp = employees.get(employee_code)
         if not emp:
+            unmapped_employees.add(employee_code)
             return False
         return 'apprentice' in (emp.job_classification or '').lower()
 
     def get_employee_state(employee_code):
         emp = employees.get(employee_code)
         if not emp:
+            unmapped_employees.add(employee_code)
             return 'QLD'  # Default to QLD
         return emp.state or 'QLD'
 
@@ -144,6 +150,22 @@ def prt_wc_dashboard(request, period_id):
     variance = abs(calculated_total - expected_total)
     totals_match = variance < Decimal('0.01')
 
+    # Collect details for unmapped employees
+    if unmapped_employees:
+        # Get unique employee records and their total amounts
+        employee_amounts = {}
+        for record in iqb_records:
+            if record.employee_code in unmapped_employees:
+                if record.employee_code not in employee_amounts:
+                    employee_amounts[record.employee_code] = {
+                        'code': record.employee_code,
+                        'name': record.full_name or 'Unknown',
+                        'total_amount': Decimal('0')
+                    }
+                employee_amounts[record.employee_code]['total_amount'] += (record.amount or Decimal('0'))
+
+        unmapped_employee_details = sorted(employee_amounts.values(), key=lambda x: x['code'])
+
     context = {
         'pay_period': pay_period,
         'month_name': pay_period.period_end.strftime('%B %Y'),
@@ -168,6 +190,10 @@ def prt_wc_dashboard(request, period_id):
 
         # Workcover info
         'workcover_percentage': pay_period.workcover_percentage,
+
+        # Unmapped employees
+        'unmapped_employees': unmapped_employee_details,
+        'unmapped_count': len(unmapped_employee_details),
     }
 
     return render(request, 'reconciliation/prt_wc_dashboard.html', context)
