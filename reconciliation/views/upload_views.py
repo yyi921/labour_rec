@@ -912,7 +912,7 @@ def payroll_tax_workcover_process(request):
             'workcover_percentage': str(workcover_percentage),
             'iqb_records_count': record_count,
             'created': created,
-            'dashboard_url': f'/dashboard/{period_id}/'
+            'dashboard_url': f'/prt-wc-dashboard/{period_id}/'
         }, status=status.HTTP_200_OK)
         
     except ValueError as e:

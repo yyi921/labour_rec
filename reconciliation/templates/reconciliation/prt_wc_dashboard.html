@@ -1,0 +1,375 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payroll Tax & Workcover - {{ month_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .badge-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .validation-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .validation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .validation-item {
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .validation-item.success {
+            border-color: #27ae60;
+            background: #f0f9f4;
+        }
+
+        .validation-item.warning {
+            border-color: #f39c12;
+            background: #fef5e7;
+        }
+
+        .validation-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .validation-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .section-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .prt-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .prt-table th,
+        .prt-table td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .prt-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+            position: sticky;
+            top: 0;
+        }
+
+        .prt-table th:first-child,
+        .prt-table td:first-child {
+            text-align: left;
+        }
+
+        .prt-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .prt-table .total-row {
+            font-weight: bold;
+            background: #e8eaf6;
+            border-top: 2px solid #667eea;
+        }
+
+        .prt-table .total-row td {
+            color: #667eea;
+        }
+
+        .download-btn {
+            background: #27ae60;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 15px;
+            transition: background 0.3s;
+        }
+
+        .download-btn:hover {
+            background: #229954;
+        }
+
+        .back-btn {
+            background: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        .back-btn:hover {
+            background: #2980b9;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-style: italic;
+        }
+
+        .section-subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1>Payroll Tax & Workcover Dashboard</h1>
+                    <p class="subtitle">{{ month_name }}</p>
+                    <span class="badge badge-primary">PRT & WC</span>
+                </div>
+                <div>
+                    <a href="{% url 'reconciliation:pay_period_list' %}" class="back-btn">← Back to Pay Periods</a>
+                    <a href="{% url 'reconciliation:download_prt_wc_breakdown' pay_period.period_id %}" class="download-btn">
+                        📥 Download Employee Breakdown
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Validation Section -->
+        <div class="validation-section">
+            <h2 style="font-size: 16px; margin-bottom: 15px;">Total Validation Check</h2>
+            <div class="validation-grid">
+                <div class="validation-item">
+                    <div class="validation-label">Non-Apprentice (excl. Parental)</div>
+                    <div class="validation-value">${{ non_apprentice_total|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="validation-item">
+                    <div class="validation-label">Apprentice (all)</div>
+                    <div class="validation-value">${{ apprentice_total|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="validation-item">
+                    <div class="validation-label">Parental Leave (Non-Apprentice)</div>
+                    <div class="validation-value">${{ parental_leave_total|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="validation-item">
+                    <div class="validation-label">Calculated Total</div>
+                    <div class="validation-value">${{ calculated_total|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="validation-item">
+                    <div class="validation-label">Expected Total (Input)</div>
+                    <div class="validation-value">${{ expected_total|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="validation-item {% if totals_match %}success{% else %}warning{% endif %}">
+                    <div class="validation-label">Variance</div>
+                    <div class="validation-value">${{ variance|floatformat:2|intcomma }}</div>
+                    {% if totals_match %}
+                        <div style="color: #27ae60; font-size: 12px; margin-top: 5px;">✓ Totals Match</div>
+                    {% else %}
+                        <div style="color: #f39c12; font-size: 12px; margin-top: 5px;">⚠ Variance Detected</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Table 1: Non-Apprentice (excluding parental leave) -->
+        <div class="section-card">
+            <h2 class="section-title">Non-Apprentice Costs (Excluding Parental Leave)</h2>
+            <p class="section-subtitle">Excludes employees with "Apprentice" in job classification and excludes parental leave transactions</p>
+
+            {% if non_apprentice_data %}
+            <table class="prt-table">
+                <thead>
+                    <tr>
+                        <th>PRT Category</th>
+                        <th>NSW</th>
+                        <th>QLD</th>
+                        <th>VIC</th>
+                        <th>Grand Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category, states in non_apprentice_data.items %}
+                    <tr>
+                        <td>{{ category }}</td>
+                        <td>${{ states.NSW|floatformat:2|intcomma }}</td>
+                        <td>${{ states.QLD|floatformat:2|intcomma }}</td>
+                        <td>${{ states.VIC|floatformat:2|intcomma }}</td>
+                        <td>${{ states.Grand Total|floatformat:2|intcomma }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="total-row">
+                        <td>TOTAL</td>
+                        <td colspan="3"></td>
+                        <td>${{ non_apprentice_total|floatformat:2|intcomma }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">No non-apprentice costs found for this period</div>
+            {% endif %}
+        </div>
+
+        <!-- Table 2: Apprentice (all costs) -->
+        <div class="section-card">
+            <h2 class="section-title">Apprentice Costs (All)</h2>
+            <p class="section-subtitle">Includes all costs for employees with "Apprentice" in job classification (including parental leave)</p>
+
+            {% if apprentice_data %}
+            <table class="prt-table">
+                <thead>
+                    <tr>
+                        <th>PRT Category</th>
+                        <th>NSW</th>
+                        <th>QLD</th>
+                        <th>VIC</th>
+                        <th>Grand Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category, states in apprentice_data.items %}
+                    <tr>
+                        <td>{{ category }}</td>
+                        <td>${{ states.NSW|floatformat:2|intcomma }}</td>
+                        <td>${{ states.QLD|floatformat:2|intcomma }}</td>
+                        <td>${{ states.VIC|floatformat:2|intcomma }}</td>
+                        <td>${{ states.Grand Total|floatformat:2|intcomma }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="total-row">
+                        <td>TOTAL</td>
+                        <td colspan="3"></td>
+                        <td>${{ apprentice_total|floatformat:2|intcomma }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">No apprentice costs found for this period</div>
+            {% endif %}
+        </div>
+
+        <!-- Table 3: Parental Leave (Non-Apprentice only) -->
+        <div class="section-card">
+            <h2 class="section-title">Parental Leave Costs (Non-Apprentice Only)</h2>
+            <p class="section-subtitle">Parental leave costs for non-apprentice employees (pay comp desc contains "Parental" OR leave reason = "MG - Paid Parental Lve")</p>
+
+            {% if parental_leave_data %}
+            <table class="prt-table">
+                <thead>
+                    <tr>
+                        <th>PRT Category</th>
+                        <th>NSW</th>
+                        <th>QLD</th>
+                        <th>VIC</th>
+                        <th>Grand Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category, states in parental_leave_data.items %}
+                    <tr>
+                        <td>{{ category }}</td>
+                        <td>${{ states.NSW|floatformat:2|intcomma }}</td>
+                        <td>${{ states.QLD|floatformat:2|intcomma }}</td>
+                        <td>${{ states.VIC|floatformat:2|intcomma }}</td>
+                        <td>${{ states.Grand Total|floatformat:2|intcomma }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="total-row">
+                        <td>TOTAL</td>
+                        <td colspan="3"></td>
+                        <td>${{ parental_leave_total|floatformat:2|intcomma }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">No parental leave costs found for this period</div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

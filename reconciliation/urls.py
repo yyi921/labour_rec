@@ -2,7 +2,7 @@
 URL configuration for reconciliation app
 """
 from django.urls import path
-from reconciliation.views import upload_views, dashboard_views, mapping_views, data_validation_views, journal_views, admin_views, analytics_views
+from reconciliation.views import upload_views, dashboard_views, mapping_views, data_validation_views, journal_views, admin_views, analytics_views, prt_wc_dashboard
 
 app_name = 'reconciliation'
 
@@ -20,6 +20,10 @@ urlpatterns = [
     # Monthly dashboard
     path('monthly-dashboard/', dashboard_views.monthly_dashboard, name='monthly_dashboard'),
     path('monthly-dashboard/download/', dashboard_views.download_comparison_data, name='download_comparison_data'),
+
+    # Payroll Tax & Workcover dashboard
+    path('prt-wc-dashboard/<str:period_id>/', prt_wc_dashboard.prt_wc_dashboard, name='prt_wc_dashboard'),
+    path('prt-wc-dashboard/<str:period_id>/download-employee-breakdown/', prt_wc_dashboard.download_prt_wc_employee_breakdown, name='download_prt_wc_breakdown'),
 
     # Mapping verification and cost allocation endpoints
     path('verify-mapping/<str:pay_period_id>/', mapping_views.verify_tanda_mapping, name='verify_mapping'),

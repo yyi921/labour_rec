@@ -1,75 +1,75 @@
-﻿Pay Comp/Add Ded Code,GL Account,GL Name,Pay Comp/Add Ded Desc,Transaction Type,PRT - Categories
-Normal,6345,Labour - Salaries,Normal Pay,Hours By Rate,Gross salary and wages
-22T,6345,Labour - Salaries,TSV Mon-Frid 7pm - Mid,Non Standard Add Before,Gross salary and wages
-E1020025,6345,Labour - Salaries,Saturday Loading - 25%,Non Standard Add Before,Gross salary and wages
-E1020050b,6345,Labour - Salaries,Sunday Loading - 50%,Non Standard Add Before,Gross salary and wages
-TCAS,6345,Labour - Salaries,TSV Casual Loading 25%,Non Standard Add Before,Gross salary and wages
-26T,6345,Labour - Salaries,TSV Mon-Friday Mid - 7 am,Non Standard Add Before,Gross salary and wages
-OLPen,6345,Labour - Salaries,,Non Standard Add Before,Gross salary and wages
-E1020050,6345,Labour - Salaries,Saturday Loading - 50%,Non Standard Add Before,Gross salary and wages
-E1020075,6345,Labour - Salaries,Sunday Loading - 75%,Non Standard Add Before,Gross salary and wages
-Double,6345,Labour - Salaries,Double Time Pay,Hours By Rate,Gross salary and wages
-call1.5,6345,Labour - Salaries,Call out  150%,Non Standard Add Before,Gross salary and wages
-call2.0,6345,Labour - Salaries,Call out  200%,Non Standard Add Before,Gross salary and wages
-TPoJun83,6345,Labour - Salaries,Term ETP - Taxable (Post June 83),Term ETP - Taxable (Code: O),Gross salary and wages
-Time/Half,6345,Labour - Salaries,Time and a Half Pay,Hours By Rate,Gross salary and wages
-E1020050c,6345,Labour - Salaries,Missed Meal Break - 50%,Non Standard Add Before,Gross salary and wages
-ALC,6345,Labour - Salaries,Annual Leave Cash out,Non Standard Add Before,Gross salary and wages
-Penalty,6345,Labour - Salaries,Penalty Pay,Hours By Rate,Gross salary and wages
-E3000100,6345,Labour - Salaries,Overtime 100%,Non Standard Add Before,Gross salary and wages
-E3000050a,6345,Labour - Salaries,Overtime 50%,Non Standard Add Before,Gross salary and wages
-BP,6345,Labour - Salaries,Backpay Amount,Non Standard Add Before,Gross salary and wages
-Annual,2310,Payroll Liab - Annual Leave,Annual Leave,Annual Leave,Gross salary and wages
-LLV,2310,Payroll Liab - Annual Leave,Leave Loading,Non Standard Add Before,Gross salary and wages
-TPo93ALG,2310,Payroll Liab - Annual Leave,Term AL Gross,Term Post 93 AL Gross,Gross salary and wages
-TPo93LLG,2310,Payroll Liab - Annual Leave,Term LL Gross,Term Post 93 LL Gross,Gross salary and wages
-E3500,6312,Labour - Allowances,Nauseous allowance,Non Standard Add Before,Allowances
-Tool A,6312,Labour - Allowances,Tool Allowance (1 - 4 Shift) HIGA,Non Standard Add Before,Allowances
-E2080b,6312,Labour - Allowances,First Aid Allowance FT SM,Non Standard Add Before,Allowances
-E2080c,6312,Labour - Allowances,First Aid Allowance PT/Cas SO,Non Standard Add Before,Allowances
-E2080d,6312,Labour - Allowances,First Aid Allowance PT/Cas SM,Non Standard Add Before,Allowances
-E2031,6312,Labour - Allowances,HD Surv Shift Mgr - Salary,Non Standard Add Before,Gross salary and wages
-E2255a,6312,Labour - Allowances,Broken Shift allowance - 3+hrs,Non Standard Add Before,Gross salary and wages
-Sick,6355,Labour - Sick Leave,Sick Leave,Sick Leave,Gross salary and wages
-Other,6355,Labour - Sick Leave,Other Leave,Other Leave,Gross salary and wages
-Super,6370,Labour - Superannuation,Superannuation,Super,Employer superannuation contributions
-LSL,2330,Payroll Liab - Long Service Leave,Long Service Leave,Long Service Leave,Gross salary and wages
-NetPay,2350,Payroll Liab - Net Wages,Net Pay,Net Pay,
-Tax,2360,Payroll Liab - PAYG Withholding,Tax,Tax,
-DA12,2391,Payroll Liab - Super Sal Sacrifice,Sal Sac SunSuper,Standard Ded Before,
-HSS,2391,Payroll Liab - Super Sal Sacrifice,Host Plus Salary Sacrifice,Standard Ded Before,
-SSMyNorth,2391,Payroll Liab - Super Sal Sacrifice,Sal Sac MyNorth Super,Standard Ded Before,
-AUSS,2391,Payroll Liab - Super Sal Sacrifice,Australian Superannuation Fund Salary Sacrifice,Standard Ded Before,
-ColSS,2391,Payroll Liab - Super Sal Sacrifice,Colonial First State WPS Salary Sacrifice,Standard Ded Before,
-SSMLC,2391,Payroll Liab - Super Sal Sacrifice,Sal Sac MLC,Standard Ded Before,
-SSPrime,2391,Payroll Liab - Super Sal Sacrifice,Sal Sac Prime Super,Standard Ded Before,
-SSUni,2391,Payroll Liab - Super Sal Sacrifice,Sal Sac Uni Super,Standard Ded Before,
-DA20,2391,Payroll Liab - Super Sal Sacrifice,SunSuper Post Tax,Standard Ded After,
-REMMVAT,2325,Payroll Liabilities - Leasing,Remunerator MV After Tax Deduction,Standard Ded After,
-RemMVPT,2325,Payroll Liabilities - Leasing,Remunerator MV Pre-Tax Deductions,Standard Ded Before,
-Rent,4880,Revenue - Rental,Private Rental Agreement,Standard Ded After,
-Child,2351,Payroll Liab - Other Deductions,Child Support Deductions,Standard Ded After,
-SPER,2351,Payroll Liab - Other Deductions,SPER Deduction Order,Standard Ded After,
-PP,2321,Payroll Liab - Paid Parental,Gov Paid Parental Leave,Non Standard Add Before,Gross salary and wages
-TRN,6375,Labour - Training & Education,Training Hrs,Non Standard Add Before,Gross salary and wages
-TSVUnion,2351,Payroll Liab - Other Deductions,TSV Union deductions  PT,Standard Ded After,
-TSVUnionFT,2351,Payroll Liab - Other Deductions,TSV Union deductions  FT,Standard Ded After,
-TSVUnionJr,2351,Payroll Liab - Other Deductions,TSV Union deductions  Junior,Standard Ded After,
-TSVSC,2351,Payroll Liab - Other Deductions,TSV Social Club,Standard Ded After,
-WCNS,2320,Payroll Liab - WorkCover,Workcover Hours - No Super,Non Standard Add Before,Workcover
-WCS,2320,Payroll Liab - WorkCover,Workcover Hours - Super,Non Standard Add Before,Workcover
-VAR,1067,Debtors - POS,Visa Assistance Repayment,Standard Ded After,
-UDLeave,6372,Labour - Time in Lieu,User Defined Leave,User Defined Leave,Gross salary and wages
-HECS,,,HELP/HECS Value,STSL,
-6,2360,Payroll Liab - PAYG Withholding,Extra Tax,Standard Tax Adj,
-66,2360,Payroll Liab - PAYG Withholding,New Tax %,Standard Tax Adj,
-TPo93LSLG,2330,Payroll Liab - Long Service Leave,,,
-E2255,6312,Labour - Allowances,Broken Shift allowance - 2-3hrs,Non Standard Add Before,Gross salary and wages
-WCE,,,Workcover Excess - Super,Non Standard Add Before,Workcover
+﻿pay_comp_code,pay_comp_desc,transaction_type,prt_category,gl_account,gl_name
+Normal,Normal Pay,Hours By Rate,Gross salary and wages,6345,Labour - Salaries
+22T,TSV Mon-Frid 7pm - Mid,Non Standard Add Before,Gross salary and wages,6345,Labour - Salaries
+E1020025,Saturday Loading - 25%,Non Standard Add Before,Gross salary and wages,6345,Labour - Salaries
+E1020050b,Sunday Loading - 50%,Non Standard Add Before,Gross salary and wages,6345,Labour - Salaries
+TCAS,TSV Casual Loading 25%,Non Standard Add Before,Gross salary and wages,6345,Labour - Salaries
+26T,TSV Mon-Friday Mid - 7 am,Non Standard Add Before,Gross salary and wages,6345,Labour - Salaries
+OLPen,,Non Standard Add Before,Gross salary and wages,6345,Labour - Salaries
+E1020050,Saturday Loading - 50%,Non Standard Add Before,Gross salary and wages,6345,Labour - Salaries
+E1020075,Sunday Loading - 75%,Non Standard Add Before,Gross salary and wages,6345,Labour - Salaries
+Double,Double Time Pay,Hours By Rate,Gross salary and wages,6345,Labour - Salaries
+call1.5,Call out  150%,Non Standard Add Before,Gross salary and wages,6345,Labour - Salaries
+call2.0,Call out  200%,Non Standard Add Before,Gross salary and wages,6345,Labour - Salaries
+TPoJun83,Term ETP - Taxable (Post June 83),Term ETP - Taxable (Code: O),Gross salary and wages,6345,Labour - Salaries
+Time/Half,Time and a Half Pay,Hours By Rate,Gross salary and wages,6345,Labour - Salaries
+E1020050c,Missed Meal Break - 50%,Non Standard Add Before,Gross salary and wages,6345,Labour - Salaries
+ALC,Annual Leave Cash out,Non Standard Add Before,Gross salary and wages,6345,Labour - Salaries
+Penalty,Penalty Pay,Hours By Rate,Gross salary and wages,6345,Labour - Salaries
+E3000100,Overtime 100%,Non Standard Add Before,Gross salary and wages,6345,Labour - Salaries
+E3000050a,Overtime 50%,Non Standard Add Before,Gross salary and wages,6345,Labour - Salaries
+BP,Backpay Amount,Non Standard Add Before,Gross salary and wages,6345,Labour - Salaries
+Annual,Annual Leave,Annual Leave,Gross salary and wages,2310,Payroll Liab - Annual Leave
+LLV,Leave Loading,Non Standard Add Before,Gross salary and wages,2310,Payroll Liab - Annual Leave
+TPo93ALG,Term AL Gross,Term Post 93 AL Gross,Gross salary and wages,2310,Payroll Liab - Annual Leave
+TPo93LLG,Term LL Gross,Term Post 93 LL Gross,Gross salary and wages,2310,Payroll Liab - Annual Leave
+E3500,Nauseous allowance,Non Standard Add Before,Allowances,6312,Labour - Allowances
+Tool A,Tool Allowance (1 - 4 Shift) HIGA,Non Standard Add Before,Allowances,6312,Labour - Allowances
+E2080b,First Aid Allowance FT SM,Non Standard Add Before,Allowances,6312,Labour - Allowances
+E2080c,First Aid Allowance PT/Cas SO,Non Standard Add Before,Allowances,6312,Labour - Allowances
+E2080d,First Aid Allowance PT/Cas SM,Non Standard Add Before,Allowances,6312,Labour - Allowances
+E2031,HD Surv Shift Mgr - Salary,Non Standard Add Before,Gross salary and wages,6312,Labour - Allowances
+E2255a,Broken Shift allowance - 3+hrs,Non Standard Add Before,Gross salary and wages,6312,Labour - Allowances
+Sick,Sick Leave,Sick Leave,Gross salary and wages,6355,Labour - Sick Leave
+Other,Other Leave,Other Leave,Gross salary and wages,6355,Labour - Sick Leave
+Super,Superannuation,Super,Employer superannuation contributions,6370,Labour - Superannuation
+LSL,Long Service Leave,Long Service Leave,Gross salary and wages,2330,Payroll Liab - Long Service Leave
+NetPay,Net Pay,Net Pay,,2350,Payroll Liab - Net Wages
+Tax,Tax,Tax,,2360,Payroll Liab - PAYG Withholding
+DA12,Sal Sac SunSuper,Standard Ded Before,,2391,Payroll Liab - Super Sal Sacrifice
+HSS,Host Plus Salary Sacrifice,Standard Ded Before,,2391,Payroll Liab - Super Sal Sacrifice
+SSMyNorth,Sal Sac MyNorth Super,Standard Ded Before,,2391,Payroll Liab - Super Sal Sacrifice
+AUSS,Australian Superannuation Fund Salary Sacrifice,Standard Ded Before,,2391,Payroll Liab - Super Sal Sacrifice
+ColSS,Colonial First State WPS Salary Sacrifice,Standard Ded Before,,2391,Payroll Liab - Super Sal Sacrifice
+SSMLC,Sal Sac MLC,Standard Ded Before,,2391,Payroll Liab - Super Sal Sacrifice
+SSPrime,Sal Sac Prime Super,Standard Ded Before,,2391,Payroll Liab - Super Sal Sacrifice
+SSUni,Sal Sac Uni Super,Standard Ded Before,,2391,Payroll Liab - Super Sal Sacrifice
+DA20,SunSuper Post Tax,Standard Ded After,,2391,Payroll Liab - Super Sal Sacrifice
+REMMVAT,Remunerator MV After Tax Deduction,Standard Ded After,,2325,Payroll Liabilities - Leasing
+RemMVPT,Remunerator MV Pre-Tax Deductions,Standard Ded Before,,2325,Payroll Liabilities - Leasing
+Rent,Private Rental Agreement,Standard Ded After,,4880,Revenue - Rental
+Child,Child Support Deductions,Standard Ded After,,2351,Payroll Liab - Other Deductions
+SPER,SPER Deduction Order,Standard Ded After,,2351,Payroll Liab - Other Deductions
+PP,Gov Paid Parental Leave,Non Standard Add Before,Gross salary and wages,2321,Payroll Liab - Paid Parental
+TRN,Training Hrs,Non Standard Add Before,Gross salary and wages,6375,Labour - Training & Education
+TSVUnion,TSV Union deductions  PT,Standard Ded After,,2351,Payroll Liab - Other Deductions
+TSVUnionFT,TSV Union deductions  FT,Standard Ded After,,2351,Payroll Liab - Other Deductions
+TSVUnionJr,TSV Union deductions  Junior,Standard Ded After,,2351,Payroll Liab - Other Deductions
+TSVSC,TSV Social Club,Standard Ded After,,2351,Payroll Liab - Other Deductions
+WCNS,Workcover Hours - No Super,Non Standard Add Before,Workcover,2320,Payroll Liab - WorkCover
+WCS,Workcover Hours - Super,Non Standard Add Before,Workcover,2320,Payroll Liab - WorkCover
+VAR,Visa Assistance Repayment,Standard Ded After,,1067,Debtors - POS
+UDLeave,User Defined Leave,User Defined Leave,Gross salary and wages,6372,Labour - Time in Lieu
+HECS,HELP/HECS Value,STSL,,,
+6,Extra Tax,Standard Tax Adj,,2360,Payroll Liab - PAYG Withholding
+66,New Tax %,Standard Tax Adj,,2360,Payroll Liab - PAYG Withholding
+TPo93LSLG,,,,2330,Payroll Liab - Long Service Leave
+E2255,Broken Shift allowance - 2-3hrs,Non Standard Add Before,Gross salary and wages,6312,Labour - Allowances
+WCE,Workcover Excess - Super,Non Standard Add Before,Workcover,,
 Overpaymen,,,,,
-Bonus,6305,Labour - Bonuses,Bonus,Non Standard Add Before,Bonuses
-JuryRe,,,Jury Duty Repayment,Non Standard Ded After,
-E1203125,6305,Labour - Bonuses,Public Holiday 125%,Non Standard Add Before,Gross salary and wages
-PHTILBank,6305,Labour - Bonuses,Public Holday Time in Lieu Bank Hours,Non Standard Add Before,Gross salary and wages
-E1203150,6305,Labour - Bonuses,Public Holiday 150%,Non Standard Add Before,Gross salary and wages
-E1203250,6305,Labour - Bonuses,Public Holiday 250%,Non Standard Add Before,Gross salary and wages
+Bonus,Bonus,Non Standard Add Before,Bonuses,6305,Labour - Bonuses
+JuryRe,Jury Duty Repayment,Non Standard Ded After,,,
+E1203125,Public Holiday 125%,Non Standard Add Before,Gross salary and wages,6305,Labour - Bonuses
+PHTILBank,Public Holday Time in Lieu Bank Hours,Non Standard Add Before,Gross salary and wages,6305,Labour - Bonuses
+E1203150,Public Holiday 150%,Non Standard Add Before,Gross salary and wages,6305,Labour - Bonuses
+E1203250,Public Holiday 250%,Non Standard Add Before,Gross salary and wages,6305,Labour - Bonuses
