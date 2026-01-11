@@ -114,7 +114,7 @@ def prt_wc_dashboard(request, period_id):
     def add_grand_totals(data_dict):
         """Add grand total column to each PRT category row"""
         for category in data_dict:
-            data_dict[category]['Grand Total'] = (
+            data_dict[category]['grand_total'] = (
                 data_dict[category]['NSW'] +
                 data_dict[category]['QLD'] +
                 data_dict[category]['VIC']
@@ -130,7 +130,7 @@ def prt_wc_dashboard(request, period_id):
         """Calculate total of all amounts in table"""
         total = Decimal('0')
         for category in data_dict:
-            total += data_dict[category]['Grand Total']
+            total += data_dict[category]['grand_total']
         return total
 
     non_apprentice_total = calculate_table_total(non_apprentice_data)
