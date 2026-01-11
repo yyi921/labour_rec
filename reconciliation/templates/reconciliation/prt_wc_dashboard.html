@@ -409,6 +409,111 @@
             <div class="empty-state">No parental leave costs found for this period</div>
             {% endif %}
         </div>
+
+        <!-- Process PRT/WC Section -->
+        <div class="section-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h2 class="section-title" style="color: white; border-bottom-color: rgba(255,255,255,0.3);">
+                Process Payroll Tax & Workcover
+            </h2>
+            <p class="section-subtitle" style="color: rgba(255,255,255,0.9);">
+                Enter the final Payroll Tax amount and generate Sage journal entries for PRT and Workcover allocations
+            </p>
+
+            <form id="processPrtWcForm" style="margin-top: 20px;">
+                {% csrf_token %}
+                <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">
+                            Final Payroll Tax Amount ($):
+                        </label>
+                        <input
+                            type="number"
+                            id="finalPrtAmount"
+                            name="final_prt_amount"
+                            step="0.01"
+                            placeholder="Enter final PRT amount"
+                            required
+                            style="width: 300px; padding: 12px; border: 2px solid rgba(255,255,255,0.3); border-radius: 6px; font-size: 16px; background: white; color: #333;"
+                        >
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">
+                            Workcover Percentage:
+                        </label>
+                        <input
+                            type="text"
+                            value="{{ workcover_percentage|default:'1.384' }}%"
+                            readonly
+                            style="width: 300px; padding: 12px; border: 2px solid rgba(255,255,255,0.3); border-radius: 6px; font-size: 16px; background: rgba(255,255,255,0.5); color: #333;"
+                        >
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">
+                            Total Payroll Costs:
+                        </label>
+                        <input
+                            type="text"
+                            value="${{ expected_total|floatformat:2|intcomma }}"
+                            readonly
+                            style="width: 300px; padding: 12px; border: 2px solid rgba(255,255,255,0.3); border-radius: 6px; font-size: 16px; background: rgba(255,255,255,0.5); color: #333;"
+                        >
+                    </div>
+                </div>
+
+                <button
+                    type="submit"
+                    class="download-btn"
+                    style="background: #27ae60; font-size: 18px; padding: 15px 30px;"
+                >
+                    📥 Process & Download Sage Journals
+                </button>
+
+                <div id="processingMessage" style="display: none; margin-top: 15px; padding: 12px; background: rgba(255,255,255,0.2); border-radius: 6px;">
+                    Processing... Please wait.
+                </div>
+            </form>
+
+            <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px; font-size: 14px;">
+                <strong>How it works:</strong>
+                <ul style="margin-top: 10px; margin-left: 20px; line-height: 1.8;">
+                    <li><strong>Payroll Tax:</strong> Allocated pro-rata by employee cost allocation to location/department</li>
+                    <li><strong>Workcover:</strong> Calculated as {{ workcover_percentage|default:'1.384' }}% × Total Costs, allocated pro-rata</li>
+                    <li><strong>Journal Entries:</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>PRT: Debit 6335 (by location/dept), Credit 2370</li>
+                            <li>Workcover: Debit 6380 (by location/dept), Credit 1147</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
     </div>
+
+    <script>
+        document.getElementById('processPrtWcForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const finalPrtAmount = document.getElementById('finalPrtAmount').value;
+            if (!finalPrtAmount || parseFloat(finalPrtAmount) <= 0) {
+                alert('Please enter a valid Payroll Tax amount');
+                return;
+            }
+
+            // Show processing message
+            document.getElementById('processingMessage').style.display = 'block';
+
+            // Trigger download
+            const url = '{% url "reconciliation:download_prt_wc_sage_journal" pay_period.period_id %}' +
+                        '?final_prt_amount=' + encodeURIComponent(finalPrtAmount);
+
+            // Download file
+            window.location.href = url;
+
+            // Hide processing message after a delay
+            setTimeout(function() {
+                document.getElementById('processingMessage').style.display = 'none';
+            }, 2000);
+        });
+    </script>
 </body>
 </html>
