@@ -451,19 +451,6 @@
                     value=""
                 >
             </div>
-            <div style="margin-bottom: 15px;">
-                <label for="payrollTaxInput" style="display: block; font-weight: 500; margin-bottom: 10px; color: #333;">
-                    Payroll Tax for the Month ($):
-                </label>
-                <input
-                    type="number"
-                    id="payrollTaxInput"
-                    placeholder="0.00"
-                    step="0.01"
-                    style="width: 300px; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px;"
-                    value=""
-                >
-            </div>
             <div>
                 <label for="workcoverInput" style="display: block; font-weight: 500; margin-bottom: 10px; color: #333;">
                     Workcover %:
@@ -478,7 +465,7 @@
                 >
             </div>
             <p style="margin-top: 8px; font-size: 13px; color: #666;">
-                Select the month-end and enter total actual payroll cost, payroll tax amount, and workcover percentage
+                Select the month-end and enter total actual payroll cost and workcover percentage. Data will be pulled from IQB Details V2.
             </p>
         </div>
 
@@ -581,11 +568,9 @@
             'payroll_tax': {
                 title: 'Payroll Tax and Work Cover Calculation',
                 files: [
-                    'Micropay_TSV RET002'
+                    'No file upload required - uses IQB Details V2 data'
                 ],
-                patterns: [
-                    /^Micropay_TSV RET002/i
-                ]
+                patterns: []
             }
         };
 
@@ -659,6 +644,8 @@
             const periodRangeSection = document.getElementById('periodRangeSection');
             const payrollTaxSection = document.getElementById('payrollTaxSection');
             const leaveCalculationSection = document.getElementById('leaveCalculationSection');
+            const uploadZone = document.getElementById('uploadZone');
+            const fileList = document.getElementById('fileList');
 
             // Hide all sections first
             payPeriodIdSection.style.display = 'none';
@@ -669,12 +656,21 @@
             // Show appropriate section based on function
             if (selectedFunction === 'accrual_wages') {
                 periodRangeSection.style.display = 'block';
+                uploadZone.style.display = 'block';
             } else if (selectedFunction === 'payroll_tax') {
                 payrollTaxSection.style.display = 'block';
+                // Hide file upload zone for payroll tax
+                uploadZone.style.display = 'none';
+                fileList.style.display = 'none';
+                // Enable upload button immediately
+                uploadAllBtn.disabled = false;
+                uploadAllBtn.textContent = 'Process Payroll Tax & Workcover';
             } else if (selectedFunction === 'leave_calculation') {
                 leaveCalculationSection.style.display = 'block';
+                uploadZone.style.display = 'block';
             } else {
                 payPeriodIdSection.style.display = 'block';
+                uploadZone.style.display = 'block';
             }
 
             // Update radio button styling to highlight selected
@@ -688,6 +684,11 @@
                     label.style.backgroundColor = 'white';
                 }
             });
+
+            // Reset button text if not payroll tax
+            if (selectedFunction !== 'payroll_tax') {
+                uploadAllBtn.textContent = 'Upload & Validate All';
+            }
 
             // Update instructions
             updateInstructions();
@@ -905,10 +906,9 @@
                 // Use this period as the pay period
                 payPeriod = thisPeriod;
             } else if (selectedFunction === 'payroll_tax') {
-                // Validate payroll tax inputs
+                // Handle Payroll Tax & Workcover - no file upload required
                 const monthEnd = document.getElementById('monthEndSelect').value;
                 const totalPayrollCost = document.getElementById('totalPayrollCostInput').value.trim();
-                const payrollTax = document.getElementById('payrollTaxInput').value.trim();
                 const workcover = document.getElementById('workcoverInput').value.trim();
 
                 if (!monthEnd) {
@@ -916,31 +916,50 @@
                     return;
                 }
 
-                if (!totalPayrollCost || parseFloat(totalPayrollCost) < 0) {
+                if (!totalPayrollCost || parseFloat(totalPayrollCost) <= 0) {
                     alert('Please enter a valid total actual payroll cost');
                     return;
                 }
 
-                if (!payrollTax || parseFloat(payrollTax) < 0) {
-                    alert('Please enter a valid payroll tax amount');
-                    return;
-                }
-
-                if (!workcover || parseFloat(workcover) < 0) {
+                if (!workcover || parseFloat(workcover) <= 0) {
                     alert('Please enter a valid workcover percentage');
                     return;
                 }
 
-                // Use month-end as identifier (can be stored in metadata)
-                payPeriod = monthEnd.replace('-', '_'); // e.g., "Jan_2025"
+                // Call API directly without file upload
+                uploadAllBtn.disabled = true;
+                clearAllBtn.disabled = true;
 
-                // Store payroll tax data in sessionStorage for later use
-                sessionStorage.setItem('payrollTaxData', JSON.stringify({
-                    monthEnd: monthEnd,
-                    totalPayrollCost: totalPayrollCost,
-                    payrollTax: payrollTax,
-                    workcover: workcover
-                }));
+                const formData = new FormData();
+                formData.append('month_end', monthEnd);
+                formData.append('total_payroll_cost', totalPayrollCost);
+                formData.append('workcover_percentage', workcover);
+
+                fetch('/api/payroll-tax-workcover/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert(`${data.message}\n\nIQB Records: ${data.iqb_records_count}\nPeriod: ${data.period_start} to ${data.period_end}`);
+                        window.location.href = data.dashboard_url;
+                    } else {
+                        alert(`Error: ${data.message}`);
+                        uploadAllBtn.disabled = false;
+                        clearAllBtn.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    alert(`Error: ${error.message}`);
+                    uploadAllBtn.disabled = false;
+                    clearAllBtn.disabled = false;
+                });
+
+                return; // Exit early, don't proceed with file upload
             } else {
                 // Validate pay period input
                 payPeriod = payPeriodInput.value.trim();

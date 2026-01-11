@@ -812,3 +812,116 @@ def accrual_upload(request):
             'status': 'error',
             'message': f'Unexpected error: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+def payroll_tax_workcover_process(request):
+    """
+    Process Payroll Tax and Workcover calculation from IQB Details V2 data
+    
+    POST /api/payroll-tax-workcover/
+    
+    Form data:
+        month_end: Month-end identifier (e.g., "Jan-2025")
+        total_payroll_cost: Total actual payroll cost ($)
+        workcover_percentage: Workcover percentage (default: 1.384)
+    
+    Returns:
+        - 200: PayPeriod created successfully, redirect to dashboard
+        - 400: Invalid parameters
+        - 500: Processing error
+    """
+    from reconciliation.models import IQBDetailV2
+    from datetime import datetime
+    from django.db.models import Min, Max
+    
+    # Get parameters
+    month_end = request.data.get('month_end')  # e.g., "Jan-2025"
+    total_payroll_cost = request.data.get('total_payroll_cost')
+    workcover_percentage = request.data.get('workcover_percentage', 1.384)
+    
+    if not month_end or not total_payroll_cost:
+        return Response({
+            'status': 'error',
+            'message': 'Missing required parameters: month_end, total_payroll_cost'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        # Parse month-end (e.g., "Jan-2025" -> month=1, year=2025)
+        month_map = {
+            'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+            'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
+        }
+        
+        month_str, year_str = month_end.split('-')
+        month = month_map.get(month_str)
+        year = int(year_str)
+        
+        if not month:
+            return Response({
+                'status': 'error',
+                'message': f'Invalid month: {month_str}. Expected Jan, Feb, Mar, etc.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Query IQB Details V2 for the selected month
+        iqb_records = IQBDetailV2.objects.filter(
+            period_end_date__year=year,
+            period_end_date__month=month
+        )
+        
+        if not iqb_records.exists():
+            return Response({
+                'status': 'error',
+                'message': f'No IQB Details V2 records found for {month_end}. Please upload IQB data for this month first.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get period start and end dates from IQB data
+        date_range = iqb_records.aggregate(
+            earliest_start=Min('period_start_date'),
+            latest_end=Max('period_end_date')
+        )
+        
+        period_start = date_range['earliest_start']
+        period_end = date_range['latest_end']
+        
+        # Create period_id in format: {month_end} or use latest_end date
+        period_id = f"{month_end.replace('-', '_')}"  # e.g., "Jan_2025"
+        
+        # Create or update PayPeriod
+        pay_period, created = PayPeriod.objects.update_or_create(
+            period_id=period_id,
+            defaults={
+                'period_start': period_start,
+                'period_end': period_end,
+                'period_type': 'monthly',
+                'process_type': 'payroll_tax_wc',
+                'total_payroll_cost': total_payroll_cost,
+                'workcover_percentage': workcover_percentage,
+                'status': 'uploaded'
+            }
+        )
+        
+        record_count = iqb_records.count()
+        
+        return Response({
+            'status': 'success',
+            'message': f'Payroll Tax & Workcover period created for {month_end}',
+            'pay_period_id': period_id,
+            'period_start': str(period_start),
+            'period_end': str(period_end),
+            'total_payroll_cost': str(total_payroll_cost),
+            'workcover_percentage': str(workcover_percentage),
+            'iqb_records_count': record_count,
+            'created': created,
+            'dashboard_url': f'/dashboard/{period_id}/'
+        }, status=status.HTTP_200_OK)
+        
+    except ValueError as e:
+        return Response({
+            'status': 'error',
+            'message': f'Invalid month_end format. Expected format: "Jan-2025", "Feb-2025", etc. Error: {str(e)}'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({
+            'status': 'error',
+            'message': f'Unexpected error: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

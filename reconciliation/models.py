@@ -88,6 +88,38 @@ class PayPeriod(models.Model):
     period_end = models.DateField()
     period_type = models.CharField(max_length=20, default='fortnightly')
 
+    # Process type tracking
+    PROCESS_TYPE_CHOICES = [
+        ('actual_pay_period', 'Actual Pay Period Process'),
+        ('leave_calculation', 'Leave Calculation'),
+        ('monthly_accrual', 'Monthly Accrual'),
+        ('accrual_reversal', 'Monthly Accrual Reversal'),
+        ('payroll_tax_wc', 'Payroll Tax & Workcover'),
+    ]
+    process_type = models.CharField(
+        max_length=30,
+        choices=PROCESS_TYPE_CHOICES,
+        default='actual_pay_period',
+        help_text="Type of payroll process for this period"
+    )
+
+    # Payroll Tax & Workcover specific fields
+    total_payroll_cost = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Total actual payroll cost for the month"
+    )
+    workcover_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        default=1.384,
+        help_text="Workcover percentage"
+    )
+
     # Track upload status
     has_tanda = models.BooleanField(default=False)
     has_iqb = models.BooleanField(default=False)

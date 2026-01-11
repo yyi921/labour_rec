@@ -49,6 +49,7 @@ urlpatterns = [
     path('uploads/multi/', upload_views.multi_upload, name='multi_upload'),
     path('api/uploads/smart/', upload_views.smart_upload, name='smart_upload'),
     path('api/uploads/accrual/', upload_views.accrual_upload, name='accrual_upload'),
+    path('api/payroll-tax-workcover/', upload_views.payroll_tax_workcover_process, name='payroll_tax_workcover'),
     path('api/uploads/<uuid:upload_id>/override/', upload_views.override_upload, name='override_upload'),
     path('api/uploads/', upload_views.list_uploads, name='list_uploads'),
     path('api/uploads/<uuid:upload_id>/', upload_views.upload_detail, name='upload_detail'),

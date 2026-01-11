@@ -1,0 +1,170 @@
+[
+  {
+    "department_id": "1",
+    "department_name": "Software"
+  },
+  {
+    "department_id": "10",
+    "department_name": "Finance & Administration"
+  },
+  {
+    "department_id": "2",
+    "department_name": "Services"
+  },
+  {
+    "department_id": "20",
+    "department_name": "Venue Management"
+  },
+  {
+    "department_id": "21",
+    "department_name": "Venue Management"
+  },
+  {
+    "department_id": "22",
+    "department_name": "Venue Management"
+  },
+  {
+    "department_id": "25",
+    "department_name": "Brewery"
+  },
+  {
+    "department_id": "26",
+    "department_name": "Brewery Sales Reps"
+  },
+  {
+    "department_id": "27",
+    "department_name": "Venue Management"
+  },
+  {
+    "department_id": "3",
+    "department_name": "Development"
+  },
+  {
+    "department_id": "30",
+    "department_name": "Beverage"
+  },
+  {
+    "department_id": "4",
+    "department_name": "Product Solutions"
+  },
+  {
+    "department_id": "40",
+    "department_name": "Engineering"
+  },
+  {
+    "department_id": "41",
+    "department_name": "Property Services"
+  },
+  {
+    "department_id": "42",
+    "department_name": "Security"
+  },
+  {
+    "department_id": "43",
+    "department_name": "Surveillance"
+  },
+  {
+    "department_id": "44",
+    "department_name": "Staff Accommodation"
+  },
+  {
+    "department_id": "5",
+    "department_name": "CS Team"
+  },
+  {
+    "department_id": "50",
+    "department_name": "Food"
+  },
+  {
+    "department_id": "60",
+    "department_name": "Functions and Events"
+  },
+  {
+    "department_id": "62",
+    "department_name": "Retail"
+  },
+  {
+    "department_id": "63",
+    "department_name": "Retail - Merchandise"
+  },
+  {
+    "department_id": "65",
+    "department_name": "EGM"
+  },
+  {
+    "department_id": "66",
+    "department_name": "Table Games"
+  },
+  {
+    "department_id": "67",
+    "department_name": "VIP Services"
+  },
+  {
+    "department_id": "68",
+    "department_name": "Cage"
+  },
+  {
+    "department_id": "70",
+    "department_name": "Accommodation"
+  },
+  {
+    "department_id": "71",
+    "department_name": "Housekeeping"
+  },
+  {
+    "department_id": "72",
+    "department_name": "Cleaners"
+  },
+  {
+    "department_id": "73",
+    "department_name": "Laundry"
+  },
+  {
+    "department_id": "74",
+    "department_name": "Reservations"
+  },
+  {
+    "department_id": "75",
+    "department_name": "Spa"
+  },
+  {
+    "department_id": "80",
+    "department_name": "Maintenance"
+  },
+  {
+    "department_id": "85",
+    "department_name": "Tourism"
+  },
+  {
+    "department_id": "86",
+    "department_name": "Commercial"
+  },
+  {
+    "department_id": "87",
+    "department_name": "General Aviation"
+  },
+  {
+    "department_id": "90",
+    "department_name": "Finance & Administration"
+  },
+  {
+    "department_id": "91",
+    "department_name": "Compliance"
+  },
+  {
+    "department_id": "92",
+    "department_name": "People & Culture"
+  },
+  {
+    "department_id": "93",
+    "department_name": "Stores"
+  },
+  {
+    "department_id": "94",
+    "department_name": "IT"
+  },
+  {
+    "department_id": "95",
+    "department_name": "Marketing"
+  }
+]
