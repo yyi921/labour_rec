@@ -973,17 +973,26 @@ class PayCompCodeMappingAdmin(admin.ModelAdmin):
                 # Import new mappings
                 count = 0
                 for row in reader:
+                    # Handle both underscore format (pay_comp_code) and formatted (PAY COMP CODE)
+                    pay_comp_code = row.get('pay_comp_code', row.get('PAY COMP CODE', '')).strip()
+
                     # Skip empty rows
-                    if not row.get('PAY COMP CODE', '').strip():
+                    if not pay_comp_code:
                         continue
 
+                    pay_comp_desc = row.get('pay_comp_desc', row.get('Pay Comp/Add Ded Desc', '')).strip()
+                    transaction_type = row.get('transaction_type', row.get('Transaction Type', '')).strip()
+                    prt_category = row.get('prt_category', row.get('PRT - Categories', '')).strip()
+                    gl_account = row.get('gl_account', row.get('GL ACCOUNT', '')).strip()
+                    gl_name = row.get('gl_name', row.get('GL NAME', '')).strip()
+
                     PayCompCodeMapping.objects.create(
-                        pay_comp_code=row['PAY COMP CODE'].strip(),
-                        pay_comp_desc=row.get('Pay Comp/Add Ded Desc', '').strip(),
-                        transaction_type=row.get('Transaction Type', '').strip(),
-                        prt_category=row.get('PRT - Categories', '').strip(),
-                        gl_account=row['GL ACCOUNT'].strip(),
-                        gl_name=row['GL NAME'].strip()
+                        pay_comp_code=pay_comp_code,
+                        pay_comp_desc=pay_comp_desc,
+                        transaction_type=transaction_type,
+                        prt_category=prt_category,
+                        gl_account=gl_account,
+                        gl_name=gl_name
                     )
                     count += 1
 
