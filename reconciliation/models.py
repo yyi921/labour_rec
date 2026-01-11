@@ -858,12 +858,20 @@ class PayCompCodeMapping(models.Model):
     Mapping of Pay Comp/Add Ded Codes to GL Accounts
     Example: 'Normal' -> 6345 (Labour - Salaries)
     """
-    pay_comp_code = models.CharField(max_length=50, primary_key=True)
-    gl_account = models.CharField(max_length=20)
-    gl_name = models.CharField(max_length=200)
+    pay_comp_code = models.CharField(max_length=50, primary_key=True, verbose_name='PAY COMP CODE')
+    pay_comp_desc = models.CharField(max_length=200, blank=True, verbose_name='Pay Comp/Add Ded Desc',
+                                      help_text='Description of the pay component')
+    transaction_type = models.CharField(max_length=100, blank=True, verbose_name='Transaction Type',
+                                        help_text='Type of transaction (e.g., Hours By Rate, Super, etc.)')
+    prt_category = models.CharField(max_length=100, blank=True, verbose_name='PRT - Categories',
+                                    help_text='Payroll Tax category for this pay component')
+    gl_account = models.CharField(max_length=20, verbose_name='GL ACCOUNT')
+    gl_name = models.CharField(max_length=200, verbose_name='GL NAME')
 
     class Meta:
         ordering = ['pay_comp_code']
+        verbose_name = 'Pay Comp Code Mapping'
+        verbose_name_plural = 'Pay Comp Code Mappings'
 
     def __str__(self):
         return f"{self.pay_comp_code} -> {self.gl_account} ({self.gl_name})"

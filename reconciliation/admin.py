@@ -945,9 +945,9 @@ class IQBTransactionTypeAdmin(admin.ModelAdmin):
 
 @admin.register(PayCompCodeMapping)
 class PayCompCodeMappingAdmin(admin.ModelAdmin):
-    list_display = ['pay_comp_code', 'gl_account', 'gl_name']
-    search_fields = ['pay_comp_code', 'gl_account', 'gl_name']
-    list_editable = ['gl_account', 'gl_name']
+    list_display = ['pay_comp_code', 'pay_comp_desc', 'transaction_type', 'prt_category', 'gl_account', 'gl_name']
+    search_fields = ['pay_comp_code', 'pay_comp_desc', 'transaction_type', 'prt_category', 'gl_account', 'gl_name']
+    list_editable = ['pay_comp_desc', 'transaction_type', 'prt_category', 'gl_account', 'gl_name']
 
     change_list_template = 'admin/paycompcode_mapping_changelist.html'
 
@@ -974,13 +974,16 @@ class PayCompCodeMappingAdmin(admin.ModelAdmin):
                 count = 0
                 for row in reader:
                     # Skip empty rows
-                    if not row.get('Pay Comp/Add Ded Code', '').strip():
+                    if not row.get('PAY COMP CODE', '').strip():
                         continue
 
                     PayCompCodeMapping.objects.create(
-                        pay_comp_code=row['Pay Comp/Add Ded Code'].strip(),
-                        gl_account=row['GL Account'].strip(),
-                        gl_name=row['GL Name'].strip()
+                        pay_comp_code=row['PAY COMP CODE'].strip(),
+                        pay_comp_desc=row.get('Pay Comp/Add Ded Desc', '').strip(),
+                        transaction_type=row.get('Transaction Type', '').strip(),
+                        prt_category=row.get('PRT - Categories', '').strip(),
+                        gl_account=row['GL ACCOUNT'].strip(),
+                        gl_name=row['GL NAME'].strip()
                     )
                     count += 1
 
@@ -1003,11 +1006,14 @@ class PayCompCodeMappingAdmin(admin.ModelAdmin):
         response['Content-Disposition'] = 'attachment; filename="paycompcode_mapping.csv"'
 
         writer = csv.writer(response)
-        writer.writerow(['Pay Comp/Add Ded Code', 'GL Account', 'GL Name'])
+        writer.writerow(['PAY COMP CODE', 'Pay Comp/Add Ded Desc', 'Transaction Type', 'PRT - Categories', 'GL ACCOUNT', 'GL NAME'])
 
         for item in queryset:
             writer.writerow([
                 item.pay_comp_code,
+                item.pay_comp_desc,
+                item.transaction_type,
+                item.prt_category,
                 item.gl_account,
                 item.gl_name
             ])
