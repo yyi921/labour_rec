@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Run migrations
+# Run database migrations
 python manage.py migrate --noinput
 
 # Create/update admin user (only if env vars are set)
