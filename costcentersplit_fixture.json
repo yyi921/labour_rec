@@ -1,0 +1,1142 @@
+[
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 90,
+  "fields": {
+    "source_account": "SPL-CHEF",
+    "target_account": "458-50",
+    "percentage": "0.0750",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 91,
+  "fields": {
+    "source_account": "SPL-CHEF",
+    "target_account": "454-50",
+    "percentage": "0.1000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 92,
+  "fields": {
+    "source_account": "SPL-CHEF",
+    "target_account": "488-50",
+    "percentage": "0.0500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 93,
+  "fields": {
+    "source_account": "SPL-CHEF",
+    "target_account": "450-50",
+    "percentage": "0.2000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 94,
+  "fields": {
+    "source_account": "SPL-CHEF",
+    "target_account": "444-50",
+    "percentage": "0.0500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 95,
+  "fields": {
+    "source_account": "SPL-CHEF",
+    "target_account": "449-50",
+    "percentage": "0.0500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 96,
+  "fields": {
+    "source_account": "SPL-CHEF",
+    "target_account": "460-50",
+    "percentage": "0.0750",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 97,
+  "fields": {
+    "source_account": "SPL-CHEF",
+    "target_account": "446-50",
+    "percentage": "0.0500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 98,
+  "fields": {
+    "source_account": "SPL-CHEF",
+    "target_account": "421-50",
+    "percentage": "0.1250",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 99,
+  "fields": {
+    "source_account": "SPL-CHEF",
+    "target_account": "422-50",
+    "percentage": "0.1250",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 100,
+  "fields": {
+    "source_account": "SPL-CHEF",
+    "target_account": "423-50",
+    "percentage": "0.0500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 101,
+  "fields": {
+    "source_account": "SPL-CHEF",
+    "target_account": "427-50",
+    "percentage": "0.0500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 102,
+  "fields": {
+    "source_account": "SPL-CULI",
+    "target_account": "460-50",
+    "percentage": "0.1250",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 103,
+  "fields": {
+    "source_account": "SPL-CULI",
+    "target_account": "458-50",
+    "percentage": "0.1250",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 104,
+  "fields": {
+    "source_account": "SPL-CULI",
+    "target_account": "444-50",
+    "percentage": "0.1250",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 105,
+  "fields": {
+    "source_account": "SPL-CULI",
+    "target_account": "454-50",
+    "percentage": "0.1250",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 106,
+  "fields": {
+    "source_account": "SPL-CULI",
+    "target_account": "488-50",
+    "percentage": "0.1250",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 107,
+  "fields": {
+    "source_account": "SPL-CULI",
+    "target_account": "446-50",
+    "percentage": "0.1250",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 108,
+  "fields": {
+    "source_account": "SPL-CULI",
+    "target_account": "450-50",
+    "percentage": "0.1250",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 109,
+  "fields": {
+    "source_account": "SPL-CULI",
+    "target_account": "449-50",
+    "percentage": "0.1250",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 110,
+  "fields": {
+    "source_account": "SPL-HOST",
+    "target_account": "470-65",
+    "percentage": "0.8000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 111,
+  "fields": {
+    "source_account": "SPL-HOST",
+    "target_account": "470-66",
+    "percentage": "0.2000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 112,
+  "fields": {
+    "source_account": "SPL-PAST",
+    "target_account": "460-50",
+    "percentage": "0.1250",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 113,
+  "fields": {
+    "source_account": "SPL-PAST",
+    "target_account": "458-50",
+    "percentage": "0.3000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 114,
+  "fields": {
+    "source_account": "SPL-PAST",
+    "target_account": "444-50",
+    "percentage": "0.1500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 115,
+  "fields": {
+    "source_account": "SPL-PAST",
+    "target_account": "454-50",
+    "percentage": "0.0500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 116,
+  "fields": {
+    "source_account": "SPL-PAST",
+    "target_account": "488-50",
+    "percentage": "0.0750",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 117,
+  "fields": {
+    "source_account": "SPL-PAST",
+    "target_account": "446-50",
+    "percentage": "0.0500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 118,
+  "fields": {
+    "source_account": "SPL-PAST",
+    "target_account": "450-50",
+    "percentage": "0.2000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 119,
+  "fields": {
+    "source_account": "SPL-PAST",
+    "target_account": "449-50",
+    "percentage": "0.0500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 120,
+  "fields": {
+    "source_account": "SPL-PIZA",
+    "target_account": "458-50",
+    "percentage": "0.2000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 121,
+  "fields": {
+    "source_account": "SPL-PIZA",
+    "target_account": "444-50",
+    "percentage": "0.4000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 122,
+  "fields": {
+    "source_account": "SPL-PIZA",
+    "target_account": "488-50",
+    "percentage": "0.1000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 123,
+  "fields": {
+    "source_account": "SPL-PIZA",
+    "target_account": "446-50",
+    "percentage": "0.1000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 124,
+  "fields": {
+    "source_account": "SPL-PIZA",
+    "target_account": "450-50",
+    "percentage": "0.1000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 125,
+  "fields": {
+    "source_account": "SPL-PIZA",
+    "target_account": "449-50",
+    "percentage": "0.1000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 126,
+  "fields": {
+    "source_account": "SPL-PROD",
+    "target_account": "458-50",
+    "percentage": "0.5000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 127,
+  "fields": {
+    "source_account": "SPL-PROD",
+    "target_account": "444-50",
+    "percentage": "0.3500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 128,
+  "fields": {
+    "source_account": "SPL-PROD",
+    "target_account": "446-50",
+    "percentage": "0.1500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 129,
+  "fields": {
+    "source_account": "SPL-STEW",
+    "target_account": "460-50",
+    "percentage": "0.0500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 130,
+  "fields": {
+    "source_account": "SPL-STEW",
+    "target_account": "458-50",
+    "percentage": "0.2000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 131,
+  "fields": {
+    "source_account": "SPL-STEW",
+    "target_account": "444-50",
+    "percentage": "0.2000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 132,
+  "fields": {
+    "source_account": "SPL-STEW",
+    "target_account": "454-50",
+    "percentage": "0.2000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 133,
+  "fields": {
+    "source_account": "SPL-STEW",
+    "target_account": "488-50",
+    "percentage": "0.0750",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 134,
+  "fields": {
+    "source_account": "SPL-STEW",
+    "target_account": "446-50",
+    "percentage": "0.0750",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 135,
+  "fields": {
+    "source_account": "SPL-STEW",
+    "target_account": "450-50",
+    "percentage": "0.1000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 136,
+  "fields": {
+    "source_account": "SPL-STEW",
+    "target_account": "449-50",
+    "percentage": "0.1000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 137,
+  "fields": {
+    "source_account": "SPL-TABG",
+    "target_account": "442-30",
+    "percentage": "0.5000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 138,
+  "fields": {
+    "source_account": "SPL-TABG",
+    "target_account": "448-30",
+    "percentage": "0.5000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 139,
+  "fields": {
+    "source_account": "SPL-VMGR",
+    "target_account": "442-30",
+    "percentage": "0.5000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 140,
+  "fields": {
+    "source_account": "SPL-VMGR",
+    "target_account": "448-30",
+    "percentage": "0.5000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 141,
+  "fields": {
+    "source_account": "SPL-MARK",
+    "target_account": "470-65",
+    "percentage": "0.1500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 142,
+  "fields": {
+    "source_account": "SPL-MARK",
+    "target_account": "470-66",
+    "percentage": "0.0500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 143,
+  "fields": {
+    "source_account": "SPL-MARK",
+    "target_account": "460-60",
+    "percentage": "0.1000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 144,
+  "fields": {
+    "source_account": "SPL-MARK",
+    "target_account": "910-95",
+    "percentage": "0.7000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 145,
+  "fields": {
+    "source_account": "SPL-HOTE",
+    "target_account": "460-30",
+    "percentage": "0.0800",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 146,
+  "fields": {
+    "source_account": "SPL-HOTE",
+    "target_account": "458-30",
+    "percentage": "0.0800",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 147,
+  "fields": {
+    "source_account": "SPL-HOTE",
+    "target_account": "454-30",
+    "percentage": "0.2000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 148,
+  "fields": {
+    "source_account": "SPL-HOTE",
+    "target_account": "488-30",
+    "percentage": "0.0400",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 149,
+  "fields": {
+    "source_account": "SPL-HOTE",
+    "target_account": "450-30",
+    "percentage": "0.2800",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 150,
+  "fields": {
+    "source_account": "SPL-HOTE",
+    "target_account": "449-50",
+    "percentage": "0.0600",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 151,
+  "fields": {
+    "source_account": "SPL-HOTE",
+    "target_account": "444-30",
+    "percentage": "0.2200",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 152,
+  "fields": {
+    "source_account": "SPL-HOTE",
+    "target_account": "446-30",
+    "percentage": "0.0400",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 153,
+  "fields": {
+    "source_account": "SPL-ROOM",
+    "target_account": "488-50",
+    "percentage": "0.4300",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 154,
+  "fields": {
+    "source_account": "SPL-ROOM",
+    "target_account": "449-50",
+    "percentage": "0.5700",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 155,
+  "fields": {
+    "source_account": "SPL-QDEC",
+    "target_account": "444-30",
+    "percentage": "0.5000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 156,
+  "fields": {
+    "source_account": "SPL-QDEC",
+    "target_account": "446-30",
+    "percentage": "0.5000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 157,
+  "fields": {
+    "source_account": "SPL-PALM",
+    "target_account": "488-50",
+    "percentage": "0.2500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 158,
+  "fields": {
+    "source_account": "SPL-PALM",
+    "target_account": "450-50",
+    "percentage": "0.5000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 159,
+  "fields": {
+    "source_account": "SPL-PALM",
+    "target_account": "449-50",
+    "percentage": "0.2500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 160,
+  "fields": {
+    "source_account": "SPL-CODY",
+    "target_account": "460-30",
+    "percentage": "0.0800",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 161,
+  "fields": {
+    "source_account": "SPL-CODY",
+    "target_account": "458-30",
+    "percentage": "0.0800",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 162,
+  "fields": {
+    "source_account": "SPL-CODY",
+    "target_account": "454-30",
+    "percentage": "0.1200",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 163,
+  "fields": {
+    "source_account": "SPL-CODY",
+    "target_account": "488-30",
+    "percentage": "0.0400",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 164,
+  "fields": {
+    "source_account": "SPL-CODY",
+    "target_account": "450-30",
+    "percentage": "0.1600",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 165,
+  "fields": {
+    "source_account": "SPL-CODY",
+    "target_account": "449-50",
+    "percentage": "0.0600",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 166,
+  "fields": {
+    "source_account": "SPL-CODY",
+    "target_account": "444-30",
+    "percentage": "0.2200",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 167,
+  "fields": {
+    "source_account": "SPL-CODY",
+    "target_account": "446-30",
+    "percentage": "0.0400",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 168,
+  "fields": {
+    "source_account": "SPL-CODY",
+    "target_account": "600-20",
+    "percentage": "0.2000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 169,
+  "fields": {
+    "source_account": "SPL-KIMBI",
+    "target_account": "470-65",
+    "percentage": "0.3000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 170,
+  "fields": {
+    "source_account": "SPL-KIMBI",
+    "target_account": "470-66",
+    "percentage": "0.2000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 171,
+  "fields": {
+    "source_account": "SPL-KIMBI",
+    "target_account": "910-95",
+    "percentage": "0.5000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 172,
+  "fields": {
+    "source_account": "SPL-EMILY",
+    "target_account": "470-65",
+    "percentage": "0.3000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 173,
+  "fields": {
+    "source_account": "SPL-EMILY",
+    "target_account": "470-66",
+    "percentage": "0.2000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 174,
+  "fields": {
+    "source_account": "SPL-EMILY",
+    "target_account": "460-60",
+    "percentage": "0.1000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 175,
+  "fields": {
+    "source_account": "SPL-EMILY",
+    "target_account": "910-95",
+    "percentage": "0.4000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 176,
+  "fields": {
+    "source_account": "SPL-BRENT",
+    "target_account": "480-70",
+    "percentage": "1.0000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 177,
+  "fields": {
+    "source_account": "SPL-BEC",
+    "target_account": "910-90",
+    "percentage": "0.6000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 178,
+  "fields": {
+    "source_account": "SPL-BEC",
+    "target_account": "600-20",
+    "percentage": "0.4000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 179,
+  "fields": {
+    "source_account": "SPL-IRVM",
+    "target_account": "470-65",
+    "percentage": "0.5000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 180,
+  "fields": {
+    "source_account": "SPL-IRVM",
+    "target_account": "470-66",
+    "percentage": "0.5000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 181,
+  "fields": {
+    "source_account": "SPL-CBVM",
+    "target_account": "442-30",
+    "percentage": "0.5000",
+    "is_active": true,
+    "created_at": "2026-01-07T12:03:42.480Z",
+    "modified_at": "2026-01-07T12:03:42.480Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 182,
+  "fields": {
+    "source_account": "SPL-CBVM",
+    "target_account": "448-30",
+    "percentage": "0.1700",
+    "is_active": true,
+    "created_at": "2026-01-07T12:03:54.958Z",
+    "modified_at": "2026-01-07T12:03:54.958Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 183,
+  "fields": {
+    "source_account": "SPL-CBVM",
+    "target_account": "449-30",
+    "percentage": "0.1700",
+    "is_active": true,
+    "created_at": "2026-01-07T12:04:09.106Z",
+    "modified_at": "2026-01-07T12:04:09.106Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 184,
+  "fields": {
+    "source_account": "SPL-CBVM",
+    "target_account": "458-30",
+    "percentage": "0.1600",
+    "is_active": true,
+    "created_at": "2026-01-07T12:04:25.744Z",
+    "modified_at": "2026-01-07T12:04:25.744Z"
+  }
+}
+]
