@@ -11,6 +11,9 @@ fi
 # Populate location and department mappings
 python manage.py populate_mappings
 
+# Load cost center splits (only if not already loaded)
+python manage.py load_costcenter_splits || echo "Cost center splits already loaded or error occurred"
+
 # Collect static files
 python manage.py collectstatic --noinput
 
