@@ -901,6 +901,7 @@ def fne_dashboard(request):
     from django.db.models import Sum, Count, Q, F, DecimalField
     from django.db.models.functions import Coalesce
     from collections import defaultdict
+    import json
 
     # Get filter parameters
     period_a = request.GET.get('period_a')
@@ -928,6 +929,10 @@ def fne_dashboard(request):
     locations = SageLocation.objects.all().order_by('location_name')
     departments = SageDepartment.objects.all().order_by('department_name')
 
+    # Cache location names for lookup
+    location_cache = {loc.location_id: loc.location_name for loc in locations}
+    dept_cache = {dept.department_id: dept.department_name for dept in departments}
+
     context = {
         'period_options': period_options,
         'locations': locations,
@@ -939,13 +944,13 @@ def fne_dashboard(request):
     # If both periods selected, run comparison
     if period_a and period_b:
         # Get snapshots for both periods
-        period_a_snapshots = EmployeePayPeriodSnapshot.objects.filter(
+        period_a_snapshots = list(EmployeePayPeriodSnapshot.objects.filter(
             pay_period_id=period_a
-        ).select_related('pay_period')
+        ).select_related('pay_period'))
 
-        period_b_snapshots = EmployeePayPeriodSnapshot.objects.filter(
+        period_b_snapshots = list(EmployeePayPeriodSnapshot.objects.filter(
             pay_period_id=period_b
-        ).select_related('pay_period')
+        ).select_related('pay_period'))
 
         # Get period labels
         period_a_obj = PayPeriod.objects.filter(period_id=period_a).first()
@@ -954,50 +959,105 @@ def fne_dashboard(request):
         period_a_label = period_a_obj.period_end.strftime('%d %b %Y') if period_a_obj else period_a
         period_b_label = period_b_obj.period_end.strftime('%d %b %Y') if period_b_obj else period_b
 
-        # Build employee comparison dictionary
-        employee_comparison = {}
+        # Category breakdown - calculate GL totals for each category
+        category_breakdown = {
+            'salaries': {'name': 'Labour - Salaries', 'period_a': Decimal('0'), 'period_b': Decimal('0'), 'variance': Decimal('0')},
+            'superannuation': {'name': 'Labour - Superannuation', 'period_a': Decimal('0'), 'period_b': Decimal('0'), 'variance': Decimal('0')},
+            'al_provision': {'name': 'Payroll Liab - AL Provision', 'period_a': Decimal('0'), 'period_b': Decimal('0'), 'variance': Decimal('0')},
+            'bonuses': {'name': 'Labour - Bonuses', 'period_a': Decimal('0'), 'period_b': Decimal('0'), 'variance': Decimal('0')},
+            'other': {'name': 'Other', 'period_a': Decimal('0'), 'period_b': Decimal('0'), 'variance': Decimal('0')},
+        }
 
-        # Process Period A snapshots
+        # Calculate category totals for Period A
         for snapshot in period_a_snapshots:
-            emp_code = snapshot.employee_code
+            category_breakdown['salaries']['period_a'] += snapshot.gl_6345_salaries or Decimal('0')
+            category_breakdown['superannuation']['period_a'] += snapshot.gl_6370_superannuation or Decimal('0')
+            category_breakdown['al_provision']['period_a'] += snapshot.gl_2310_annual_leave or Decimal('0')
+            category_breakdown['bonuses']['period_a'] += snapshot.gl_6305 or Decimal('0')
+            # Other = total_cost - (salaries + super + al + bonuses)
+            known_cats = (snapshot.gl_6345_salaries or Decimal('0')) + \
+                        (snapshot.gl_6370_superannuation or Decimal('0')) + \
+                        (snapshot.gl_2310_annual_leave or Decimal('0')) + \
+                        (snapshot.gl_6305 or Decimal('0'))
+            category_breakdown['other']['period_a'] += (snapshot.total_cost or Decimal('0')) - known_cats
+
+        # Calculate category totals for Period B
+        for snapshot in period_b_snapshots:
+            category_breakdown['salaries']['period_b'] += snapshot.gl_6345_salaries or Decimal('0')
+            category_breakdown['superannuation']['period_b'] += snapshot.gl_6370_superannuation or Decimal('0')
+            category_breakdown['al_provision']['period_b'] += snapshot.gl_2310_annual_leave or Decimal('0')
+            category_breakdown['bonuses']['period_b'] += snapshot.gl_6305 or Decimal('0')
+            # Other = total_cost - (salaries + super + al + bonuses)
+            known_cats = (snapshot.gl_6345_salaries or Decimal('0')) + \
+                        (snapshot.gl_6370_superannuation or Decimal('0')) + \
+                        (snapshot.gl_2310_annual_leave or Decimal('0')) + \
+                        (snapshot.gl_6305 or Decimal('0'))
+            category_breakdown['other']['period_b'] += (snapshot.total_cost or Decimal('0')) - known_cats
+
+        # Calculate variances for categories
+        for cat_key in category_breakdown:
+            category_breakdown[cat_key]['variance'] = category_breakdown[cat_key]['period_b'] - category_breakdown[cat_key]['period_a']
+
+        # Convert to list for template
+        category_list = [
+            category_breakdown['salaries'],
+            category_breakdown['superannuation'],
+            category_breakdown['al_provision'],
+            category_breakdown['bonuses'],
+            category_breakdown['other'],
+        ]
+
+        # Build employee comparison dictionary with location info
+        employee_comparison = {}
+        period_a_by_code = {s.employee_code: s for s in period_a_snapshots}
+        period_b_by_code = {s.employee_code: s for s in period_b_snapshots}
+
+        # Helper function to get primary location from allocation
+        def get_primary_location(allocation):
+            if not allocation:
+                return None, None
+            max_loc = None
+            max_pct = Decimal('0')
+            for loc_id, depts in allocation.items():
+                loc_total = sum(Decimal(str(pct)) for pct in depts.values())
+                if loc_total > max_pct:
+                    max_pct = loc_total
+                    max_loc = loc_id
+            if max_loc:
+                loc_name = location_cache.get(max_loc, max_loc)
+                return max_loc, f"{max_loc} - {loc_name}"
+            return None, None
+
+        # Process all employees
+        all_employee_codes = set(period_a_by_code.keys()) | set(period_b_by_code.keys())
+
+        for emp_code in all_employee_codes:
+            snap_a = period_a_by_code.get(emp_code)
+            snap_b = period_b_by_code.get(emp_code)
+
+            cost_a = (snap_a.total_cost or Decimal('0')) if snap_a else Decimal('0')
+            cost_b = (snap_b.total_cost or Decimal('0')) if snap_b else Decimal('0')
+
+            # Get location - prefer period B, fall back to period A
+            alloc = snap_b.cost_allocation if snap_b else (snap_a.cost_allocation if snap_a else {})
+            loc_id, loc_key = get_primary_location(alloc)
+
             employee_comparison[emp_code] = {
                 'employee_code': emp_code,
-                'employee_name': snapshot.employee_name,
-                'period_a_cost': snapshot.total_cost or Decimal('0'),
-                'period_b_cost': Decimal('0'),
-                'variance': Decimal('0'),
-                'period_a_allocation': snapshot.cost_allocation,
-                'period_b_allocation': {},
+                'employee_name': (snap_b.employee_name if snap_b else snap_a.employee_name) if (snap_b or snap_a) else '',
+                'period_a_cost': cost_a,
+                'period_b_cost': cost_b,
+                'variance': cost_b - cost_a,
+                'location_id': loc_id,
+                'location_key': loc_key or 'Unknown',
             }
 
-        # Process Period B snapshots
-        for snapshot in period_b_snapshots:
-            emp_code = snapshot.employee_code
-            if emp_code in employee_comparison:
-                employee_comparison[emp_code]['period_b_cost'] = snapshot.total_cost or Decimal('0')
-                employee_comparison[emp_code]['period_b_allocation'] = snapshot.cost_allocation
-            else:
-                employee_comparison[emp_code] = {
-                    'employee_code': emp_code,
-                    'employee_name': snapshot.employee_name,
-                    'period_a_cost': Decimal('0'),
-                    'period_b_cost': snapshot.total_cost or Decimal('0'),
-                    'variance': Decimal('0'),
-                    'period_a_allocation': {},
-                    'period_b_allocation': snapshot.cost_allocation,
-                }
-
-        # Calculate variances and categorize employees
-        period_a_employees = set()
-        period_b_employees = set()
-
-        for emp_code, emp_data in employee_comparison.items():
-            emp_data['variance'] = emp_data['period_b_cost'] - emp_data['period_a_cost']
-
-            if emp_data['period_a_cost'] > 0:
-                period_a_employees.add(emp_code)
-            if emp_data['period_b_cost'] > 0:
-                period_b_employees.add(emp_code)
+        # Categorize employees
+        period_a_employees = set(period_a_by_code.keys())
+        period_b_employees = set(period_b_by_code.keys())
+        continuing_employees = period_a_employees & period_b_employees
+        new_employees = period_b_employees - period_a_employees
+        departed_employees = period_a_employees - period_b_employees
 
         # Sort by absolute variance
         comparison_list = sorted(
@@ -1011,12 +1071,7 @@ def fne_dashboard(request):
         period_b_total = sum(emp['period_b_cost'] for emp in comparison_list)
         total_variance = period_b_total - period_a_total
 
-        # Categorize employees for headcount analysis
-        continuing_employees = period_a_employees & period_b_employees
-        new_employees = period_b_employees - period_a_employees
-        departed_employees = period_a_employees - period_b_employees
-
-        # Calculate cost breakdown by location
+        # Calculate cost breakdown by location (using cached names)
         location_breakdown = defaultdict(lambda: {'period_a': Decimal('0'), 'period_b': Decimal('0'), 'variance': Decimal('0')})
 
         for snapshot in period_a_snapshots:
@@ -1024,8 +1079,7 @@ def fne_dashboard(request):
                 for loc_id, depts in snapshot.cost_allocation.items():
                     total_pct = sum(Decimal(str(pct)) for pct in depts.values())
                     allocated_cost = (snapshot.total_cost or Decimal('0')) * total_pct / 100
-                    loc_obj = SageLocation.objects.filter(location_id=loc_id).first()
-                    loc_name = loc_obj.location_name if loc_obj else loc_id
+                    loc_name = location_cache.get(loc_id, loc_id)
                     location_breakdown[f"{loc_id} - {loc_name}"]['period_a'] += allocated_cost
 
         for snapshot in period_b_snapshots:
@@ -1033,8 +1087,7 @@ def fne_dashboard(request):
                 for loc_id, depts in snapshot.cost_allocation.items():
                     total_pct = sum(Decimal(str(pct)) for pct in depts.values())
                     allocated_cost = (snapshot.total_cost or Decimal('0')) * total_pct / 100
-                    loc_obj = SageLocation.objects.filter(location_id=loc_id).first()
-                    loc_name = loc_obj.location_name if loc_obj else loc_id
+                    loc_name = location_cache.get(loc_id, loc_id)
                     location_breakdown[f"{loc_id} - {loc_name}"]['period_b'] += allocated_cost
 
         # Calculate variances for locations
@@ -1058,8 +1111,7 @@ def fne_dashboard(request):
                 for loc_id, depts in snapshot.cost_allocation.items():
                     for dept_id, pct in depts.items():
                         allocated_cost = (snapshot.total_cost or Decimal('0')) * Decimal(str(pct)) / 100
-                        dept_obj = SageDepartment.objects.filter(department_id=dept_id).first()
-                        dept_name = dept_obj.department_name if dept_obj else dept_id
+                        dept_name = dept_cache.get(dept_id, dept_id)
                         dept_breakdown[f"{dept_id} - {dept_name}"]['period_a'] += allocated_cost
 
         for snapshot in period_b_snapshots:
@@ -1067,8 +1119,7 @@ def fne_dashboard(request):
                 for loc_id, depts in snapshot.cost_allocation.items():
                     for dept_id, pct in depts.items():
                         allocated_cost = (snapshot.total_cost or Decimal('0')) * Decimal(str(pct)) / 100
-                        dept_obj = SageDepartment.objects.filter(department_id=dept_id).first()
-                        dept_name = dept_obj.department_name if dept_obj else dept_id
+                        dept_name = dept_cache.get(dept_id, dept_id)
                         dept_breakdown[f"{dept_id} - {dept_name}"]['period_b'] += allocated_cost
 
         # Calculate variances for departments
@@ -1084,65 +1135,70 @@ def fne_dashboard(request):
             reverse=True
         )
 
-        # Calculate new employee costs
-        new_employee_cost = sum(
-            emp['period_b_cost'] for emp in comparison_list
-            if emp['employee_code'] in new_employees
+        # Build location movement table with new/departed employee details
+        location_movement = defaultdict(lambda: {
+            'new_count': 0, 'new_value': Decimal('0'),
+            'departed_count': 0, 'departed_value': Decimal('0'),
+            'variance': Decimal('0'),
+            'new_employees': [], 'departed_employees': []
+        })
+
+        # Process new employees
+        for emp_code in new_employees:
+            emp_data = employee_comparison[emp_code]
+            loc_key = emp_data['location_key']
+            location_movement[loc_key]['new_count'] += 1
+            location_movement[loc_key]['new_value'] += emp_data['period_b_cost']
+            location_movement[loc_key]['new_employees'].append({
+                'employee_code': emp_code,
+                'employee_name': emp_data['employee_name'],
+                'value': emp_data['period_b_cost']
+            })
+
+        # Process departed employees
+        for emp_code in departed_employees:
+            emp_data = employee_comparison[emp_code]
+            loc_key = emp_data['location_key']
+            location_movement[loc_key]['departed_count'] += 1
+            location_movement[loc_key]['departed_value'] += emp_data['period_a_cost']
+            location_movement[loc_key]['departed_employees'].append({
+                'employee_code': emp_code,
+                'employee_name': emp_data['employee_name'],
+                'value': emp_data['period_a_cost']
+            })
+
+        # Calculate variance for each location in movement table
+        for loc_key in location_movement:
+            loc_data = location_movement[loc_key]
+            loc_data['variance'] = loc_data['new_value'] - loc_data['departed_value']
+
+        # Sort location movement by absolute variance and convert to list
+        location_movement_list = sorted(
+            [{'location': k, **v} for k, v in location_movement.items()],
+            key=lambda x: abs(x['variance']),
+            reverse=True
         )
 
-        # Calculate departed employee costs (what they cost in period A)
-        departed_employee_cost = sum(
-            emp['period_a_cost'] for emp in comparison_list
-            if emp['employee_code'] in departed_employees
-        )
+        # Calculate totals for location movement
+        total_new_count = sum(loc['new_count'] for loc in location_movement_list)
+        total_new_value = sum(loc['new_value'] for loc in location_movement_list)
+        total_departed_count = sum(loc['departed_count'] for loc in location_movement_list)
+        total_departed_value = sum(loc['departed_value'] for loc in location_movement_list)
+        total_movement_variance = total_new_value - total_departed_value
 
-        # Get new employee details
-        new_employee_list = [
-            emp for emp in comparison_list
-            if emp['employee_code'] in new_employees
-        ]
-
-        # Get departed employee details
-        departed_employee_list = [
-            emp for emp in comparison_list
-            if emp['employee_code'] in departed_employees
-        ]
-
-        # Prepare waterfall chart data
-        # Calculate continuing employee cost changes by location
-        continuing_location_deltas = defaultdict(lambda: Decimal('0'))
-
-        for emp_code in continuing_employees:
-            emp_data = employee_comparison.get(emp_code, {})
-            delta = emp_data.get('variance', Decimal('0'))
-
-            # Get primary location from period B allocation
-            allocation = emp_data.get('period_b_allocation', {})
-            if allocation:
-                # Find the location with highest allocation
-                max_loc = None
-                max_pct = Decimal('0')
-                for loc_id, depts in allocation.items():
-                    loc_total = sum(Decimal(str(pct)) for pct in depts.values())
-                    if loc_total > max_pct:
-                        max_pct = loc_total
-                        max_loc = loc_id
-
-                if max_loc:
-                    loc_obj = SageLocation.objects.filter(location_id=max_loc).first()
-                    loc_name = loc_obj.location_name if loc_obj else max_loc
-                    continuing_location_deltas[f"{max_loc} - {loc_name}"] += delta
-
-        waterfall_data = {
-            'opening_balance': float(period_a_total),
-            'location_deltas': {k: float(v) for k, v in continuing_location_deltas.items() if v != 0},
-            'new_headcount': float(new_employee_cost),
-            'departed_headcount': float(-departed_employee_cost),
-            'closing_balance': float(period_b_total),
-            'continuing_count': len(continuing_employees),
-            'new_count': len(new_employees),
-            'departed_count': len(departed_employees),
-        }
+        # Prepare JSON data for JavaScript (expandable rows)
+        location_employees_json = {}
+        for loc in location_movement_list:
+            location_employees_json[loc['location']] = {
+                'new_employees': [
+                    {'code': e['employee_code'], 'name': e['employee_name'], 'value': float(e['value'])}
+                    for e in loc['new_employees']
+                ],
+                'departed_employees': [
+                    {'code': e['employee_code'], 'name': e['employee_name'], 'value': float(e['value'])}
+                    for e in loc['departed_employees']
+                ]
+            }
 
         context['comparison'] = {
             'comparison_list': comparison_list,
@@ -1153,10 +1209,7 @@ def fne_dashboard(request):
             'period_b_label': period_b_label,
             'location_breakdown': location_breakdown_list,
             'dept_breakdown': dept_breakdown_list,
-            'new_employee_list': new_employee_list,
-            'departed_employee_list': departed_employee_list,
-            'new_employee_cost': new_employee_cost,
-            'departed_employee_cost': departed_employee_cost,
+            'category_breakdown': category_list,
         }
 
         context['headcount'] = {
@@ -1167,7 +1220,15 @@ def fne_dashboard(request):
             'period_b_count': len(period_b_employees),
         }
 
-        context['waterfall'] = waterfall_data
+        context['location_movement'] = {
+            'locations': location_movement_list,
+            'total_new_count': total_new_count,
+            'total_new_value': total_new_value,
+            'total_departed_count': total_departed_count,
+            'total_departed_value': total_departed_value,
+            'total_variance': total_movement_variance,
+            'employees_json': json.dumps(location_employees_json),
+        }
 
     return render(request, 'reconciliation/fne_dashboard.html', context)
 
