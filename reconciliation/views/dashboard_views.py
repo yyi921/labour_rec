@@ -915,9 +915,13 @@ def fne_dashboard(request):
     # Build period options for dropdown
     period_options = []
     for period in available_periods:
+        if period.period_start:
+            label = f"{period.period_end.strftime('%Y-%m-%d')} ({period.period_start.strftime('%d %b')} - {period.period_end.strftime('%d %b %Y')})"
+        else:
+            label = f"{period.period_end.strftime('%Y-%m-%d')} (ending {period.period_end.strftime('%d %b %Y')})"
         period_options.append({
             'value': period.period_id,
-            'label': f"{period.period_end.strftime('%Y-%m-%d')} ({period.period_start.strftime('%d %b')} - {period.period_end.strftime('%d %b %Y')})"
+            'label': label
         })
 
     # Get locations and departments for filtering
