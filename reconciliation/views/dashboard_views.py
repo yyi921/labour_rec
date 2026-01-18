@@ -889,3 +889,364 @@ def download_comparison_data(request):
         ])
 
     return response
+
+
+def fne_dashboard(request):
+    """
+    FNE Payroll Comparison Dashboard
+    Compare employee payroll costs between two pay periods from EmployeePayPeriodSnapshot
+    Shows variance by department/location, headcount changes, and significant cost changes
+    """
+    from reconciliation.models import EmployeePayPeriodSnapshot, PayPeriod, SageLocation, SageDepartment
+    from django.db.models import Sum, Count, Q, F, DecimalField
+    from django.db.models.functions import Coalesce
+    from collections import defaultdict
+
+    # Get filter parameters
+    period_a = request.GET.get('period_a')
+    period_b = request.GET.get('period_b')
+
+    # Get all available pay periods that have snapshots (actual_pay_period type only)
+    available_periods = PayPeriod.objects.filter(
+        process_type='actual_pay_period',
+        employee_snapshots__isnull=False
+    ).distinct().order_by('-period_end')
+
+    # Build period options for dropdown
+    period_options = []
+    for period in available_periods:
+        period_options.append({
+            'value': period.period_id,
+            'label': f"{period.period_end.strftime('%Y-%m-%d')} ({period.period_start.strftime('%d %b')} - {period.period_end.strftime('%d %b %Y')})"
+        })
+
+    # Get locations and departments for filtering
+    locations = SageLocation.objects.all().order_by('location_name')
+    departments = SageDepartment.objects.all().order_by('department_name')
+
+    context = {
+        'period_options': period_options,
+        'locations': locations,
+        'departments': departments,
+        'period_a': period_a,
+        'period_b': period_b,
+    }
+
+    # If both periods selected, run comparison
+    if period_a and period_b:
+        # Get snapshots for both periods
+        period_a_snapshots = EmployeePayPeriodSnapshot.objects.filter(
+            pay_period_id=period_a
+        ).select_related('pay_period')
+
+        period_b_snapshots = EmployeePayPeriodSnapshot.objects.filter(
+            pay_period_id=period_b
+        ).select_related('pay_period')
+
+        # Get period labels
+        period_a_obj = PayPeriod.objects.filter(period_id=period_a).first()
+        period_b_obj = PayPeriod.objects.filter(period_id=period_b).first()
+
+        period_a_label = period_a_obj.period_end.strftime('%d %b %Y') if period_a_obj else period_a
+        period_b_label = period_b_obj.period_end.strftime('%d %b %Y') if period_b_obj else period_b
+
+        # Build employee comparison dictionary
+        employee_comparison = {}
+
+        # Process Period A snapshots
+        for snapshot in period_a_snapshots:
+            emp_code = snapshot.employee_code
+            employee_comparison[emp_code] = {
+                'employee_code': emp_code,
+                'employee_name': snapshot.employee_name,
+                'period_a_cost': snapshot.total_cost or Decimal('0'),
+                'period_b_cost': Decimal('0'),
+                'variance': Decimal('0'),
+                'period_a_allocation': snapshot.cost_allocation,
+                'period_b_allocation': {},
+            }
+
+        # Process Period B snapshots
+        for snapshot in period_b_snapshots:
+            emp_code = snapshot.employee_code
+            if emp_code in employee_comparison:
+                employee_comparison[emp_code]['period_b_cost'] = snapshot.total_cost or Decimal('0')
+                employee_comparison[emp_code]['period_b_allocation'] = snapshot.cost_allocation
+            else:
+                employee_comparison[emp_code] = {
+                    'employee_code': emp_code,
+                    'employee_name': snapshot.employee_name,
+                    'period_a_cost': Decimal('0'),
+                    'period_b_cost': snapshot.total_cost or Decimal('0'),
+                    'variance': Decimal('0'),
+                    'period_a_allocation': {},
+                    'period_b_allocation': snapshot.cost_allocation,
+                }
+
+        # Calculate variances and categorize employees
+        period_a_employees = set()
+        period_b_employees = set()
+
+        for emp_code, emp_data in employee_comparison.items():
+            emp_data['variance'] = emp_data['period_b_cost'] - emp_data['period_a_cost']
+
+            if emp_data['period_a_cost'] > 0:
+                period_a_employees.add(emp_code)
+            if emp_data['period_b_cost'] > 0:
+                period_b_employees.add(emp_code)
+
+        # Sort by absolute variance
+        comparison_list = sorted(
+            employee_comparison.values(),
+            key=lambda x: abs(x['variance']),
+            reverse=True
+        )
+
+        # Calculate totals
+        period_a_total = sum(emp['period_a_cost'] for emp in comparison_list)
+        period_b_total = sum(emp['period_b_cost'] for emp in comparison_list)
+        total_variance = period_b_total - period_a_total
+
+        # Categorize employees for headcount analysis
+        continuing_employees = period_a_employees & period_b_employees
+        new_employees = period_b_employees - period_a_employees
+        departed_employees = period_a_employees - period_b_employees
+
+        # Calculate cost breakdown by location
+        location_breakdown = defaultdict(lambda: {'period_a': Decimal('0'), 'period_b': Decimal('0'), 'variance': Decimal('0')})
+
+        for snapshot in period_a_snapshots:
+            if snapshot.cost_allocation:
+                for loc_id, depts in snapshot.cost_allocation.items():
+                    total_pct = sum(Decimal(str(pct)) for pct in depts.values())
+                    allocated_cost = (snapshot.total_cost or Decimal('0')) * total_pct / 100
+                    loc_obj = SageLocation.objects.filter(location_id=loc_id).first()
+                    loc_name = loc_obj.location_name if loc_obj else loc_id
+                    location_breakdown[f"{loc_id} - {loc_name}"]['period_a'] += allocated_cost
+
+        for snapshot in period_b_snapshots:
+            if snapshot.cost_allocation:
+                for loc_id, depts in snapshot.cost_allocation.items():
+                    total_pct = sum(Decimal(str(pct)) for pct in depts.values())
+                    allocated_cost = (snapshot.total_cost or Decimal('0')) * total_pct / 100
+                    loc_obj = SageLocation.objects.filter(location_id=loc_id).first()
+                    loc_name = loc_obj.location_name if loc_obj else loc_id
+                    location_breakdown[f"{loc_id} - {loc_name}"]['period_b'] += allocated_cost
+
+        # Calculate variances for locations
+        for loc_key in location_breakdown:
+            location_breakdown[loc_key]['variance'] = (
+                location_breakdown[loc_key]['period_b'] - location_breakdown[loc_key]['period_a']
+            )
+
+        # Sort location breakdown by absolute variance
+        location_breakdown_list = sorted(
+            [{'location': k, **v} for k, v in location_breakdown.items()],
+            key=lambda x: abs(x['variance']),
+            reverse=True
+        )
+
+        # Calculate cost breakdown by department
+        dept_breakdown = defaultdict(lambda: {'period_a': Decimal('0'), 'period_b': Decimal('0'), 'variance': Decimal('0')})
+
+        for snapshot in period_a_snapshots:
+            if snapshot.cost_allocation:
+                for loc_id, depts in snapshot.cost_allocation.items():
+                    for dept_id, pct in depts.items():
+                        allocated_cost = (snapshot.total_cost or Decimal('0')) * Decimal(str(pct)) / 100
+                        dept_obj = SageDepartment.objects.filter(department_id=dept_id).first()
+                        dept_name = dept_obj.department_name if dept_obj else dept_id
+                        dept_breakdown[f"{dept_id} - {dept_name}"]['period_a'] += allocated_cost
+
+        for snapshot in period_b_snapshots:
+            if snapshot.cost_allocation:
+                for loc_id, depts in snapshot.cost_allocation.items():
+                    for dept_id, pct in depts.items():
+                        allocated_cost = (snapshot.total_cost or Decimal('0')) * Decimal(str(pct)) / 100
+                        dept_obj = SageDepartment.objects.filter(department_id=dept_id).first()
+                        dept_name = dept_obj.department_name if dept_obj else dept_id
+                        dept_breakdown[f"{dept_id} - {dept_name}"]['period_b'] += allocated_cost
+
+        # Calculate variances for departments
+        for dept_key in dept_breakdown:
+            dept_breakdown[dept_key]['variance'] = (
+                dept_breakdown[dept_key]['period_b'] - dept_breakdown[dept_key]['period_a']
+            )
+
+        # Sort department breakdown by absolute variance
+        dept_breakdown_list = sorted(
+            [{'department': k, **v} for k, v in dept_breakdown.items()],
+            key=lambda x: abs(x['variance']),
+            reverse=True
+        )
+
+        # Calculate new employee costs
+        new_employee_cost = sum(
+            emp['period_b_cost'] for emp in comparison_list
+            if emp['employee_code'] in new_employees
+        )
+
+        # Calculate departed employee costs (what they cost in period A)
+        departed_employee_cost = sum(
+            emp['period_a_cost'] for emp in comparison_list
+            if emp['employee_code'] in departed_employees
+        )
+
+        # Get new employee details
+        new_employee_list = [
+            emp for emp in comparison_list
+            if emp['employee_code'] in new_employees
+        ]
+
+        # Get departed employee details
+        departed_employee_list = [
+            emp for emp in comparison_list
+            if emp['employee_code'] in departed_employees
+        ]
+
+        # Prepare waterfall chart data
+        # Calculate continuing employee cost changes by location
+        continuing_location_deltas = defaultdict(lambda: Decimal('0'))
+
+        for emp_code in continuing_employees:
+            emp_data = employee_comparison.get(emp_code, {})
+            delta = emp_data.get('variance', Decimal('0'))
+
+            # Get primary location from period B allocation
+            allocation = emp_data.get('period_b_allocation', {})
+            if allocation:
+                # Find the location with highest allocation
+                max_loc = None
+                max_pct = Decimal('0')
+                for loc_id, depts in allocation.items():
+                    loc_total = sum(Decimal(str(pct)) for pct in depts.values())
+                    if loc_total > max_pct:
+                        max_pct = loc_total
+                        max_loc = loc_id
+
+                if max_loc:
+                    loc_obj = SageLocation.objects.filter(location_id=max_loc).first()
+                    loc_name = loc_obj.location_name if loc_obj else max_loc
+                    continuing_location_deltas[f"{max_loc} - {loc_name}"] += delta
+
+        waterfall_data = {
+            'opening_balance': float(period_a_total),
+            'location_deltas': {k: float(v) for k, v in continuing_location_deltas.items() if v != 0},
+            'new_headcount': float(new_employee_cost),
+            'departed_headcount': float(-departed_employee_cost),
+            'closing_balance': float(period_b_total),
+            'continuing_count': len(continuing_employees),
+            'new_count': len(new_employees),
+            'departed_count': len(departed_employees),
+        }
+
+        context['comparison'] = {
+            'comparison_list': comparison_list,
+            'period_a_total': period_a_total,
+            'period_b_total': period_b_total,
+            'total_variance': total_variance,
+            'period_a_label': period_a_label,
+            'period_b_label': period_b_label,
+            'location_breakdown': location_breakdown_list,
+            'dept_breakdown': dept_breakdown_list,
+            'new_employee_list': new_employee_list,
+            'departed_employee_list': departed_employee_list,
+            'new_employee_cost': new_employee_cost,
+            'departed_employee_cost': departed_employee_cost,
+        }
+
+        context['headcount'] = {
+            'continuing_count': len(continuing_employees),
+            'new_count': len(new_employees),
+            'departed_count': len(departed_employees),
+            'period_a_count': len(period_a_employees),
+            'period_b_count': len(period_b_employees),
+        }
+
+        context['waterfall'] = waterfall_data
+
+    return render(request, 'reconciliation/fne_dashboard.html', context)
+
+
+@require_http_methods(["GET"])
+def download_fne_comparison(request):
+    """
+    Download FNE comparison data as CSV
+    """
+    from reconciliation.models import EmployeePayPeriodSnapshot, PayPeriod
+    import csv
+
+    period_a = request.GET.get('period_a')
+    period_b = request.GET.get('period_b')
+
+    if not period_a or not period_b:
+        return JsonResponse({'error': 'Missing period parameters'}, status=400)
+
+    # Get snapshots for both periods
+    period_a_snapshots = {
+        s.employee_code: s for s in
+        EmployeePayPeriodSnapshot.objects.filter(pay_period_id=period_a)
+    }
+    period_b_snapshots = {
+        s.employee_code: s for s in
+        EmployeePayPeriodSnapshot.objects.filter(pay_period_id=period_b)
+    }
+
+    # Get all employee codes
+    all_employees = set(period_a_snapshots.keys()) | set(period_b_snapshots.keys())
+
+    # Get period labels
+    period_a_obj = PayPeriod.objects.filter(period_id=period_a).first()
+    period_b_obj = PayPeriod.objects.filter(period_id=period_b).first()
+
+    period_a_label = period_a_obj.period_end.strftime('%Y-%m-%d') if period_a_obj else period_a
+    period_b_label = period_b_obj.period_end.strftime('%Y-%m-%d') if period_b_obj else period_b
+
+    # Create CSV response
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="fne_comparison_{period_a}_vs_{period_b}.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'Employee Code', 'Employee Name', 'Status',
+        f'Period A ({period_a_label}) Cost', f'Period B ({period_b_label}) Cost',
+        'Variance', 'Variance %',
+        'Period A Allocation', 'Period B Allocation'
+    ])
+
+    for emp_code in sorted(all_employees):
+        snap_a = period_a_snapshots.get(emp_code)
+        snap_b = period_b_snapshots.get(emp_code)
+
+        cost_a = float(snap_a.total_cost or 0) if snap_a else 0
+        cost_b = float(snap_b.total_cost or 0) if snap_b else 0
+        variance = cost_b - cost_a
+        variance_pct = (variance / cost_a * 100) if cost_a != 0 else (100 if cost_b > 0 else 0)
+
+        # Determine status
+        if snap_a and snap_b:
+            status = 'Continuing'
+        elif snap_b and not snap_a:
+            status = 'New'
+        else:
+            status = 'Departed'
+
+        emp_name = snap_b.employee_name if snap_b else (snap_a.employee_name if snap_a else '')
+
+        # Get allocation summaries
+        alloc_a = snap_a.get_allocation_summary() if snap_a else ''
+        alloc_b = snap_b.get_allocation_summary() if snap_b else ''
+
+        writer.writerow([
+            emp_code,
+            emp_name,
+            status,
+            f'{cost_a:.2f}',
+            f'{cost_b:.2f}',
+            f'{variance:.2f}',
+            f'{variance_pct:.1f}%',
+            alloc_a,
+            alloc_b
+        ])
+
+    return response

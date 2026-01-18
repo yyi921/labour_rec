@@ -1,0 +1,718 @@
+{% extends 'reconciliation/base.html' %}
+
+{% block title %}FNE Payroll Comparison - Labour Reconciliation{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+    .dashboard-section {
+        background: white;
+        padding: 25px;
+        margin-bottom: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .filter-row {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        align-items: end;
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 250px;
+    }
+
+    .filter-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #555;
+    }
+
+    .filter-group select,
+    .filter-group input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    button {
+        background: #3498db;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    button:hover {
+        background: #2980b9;
+    }
+
+    button.download-btn {
+        background: #27ae60;
+    }
+
+    button.download-btn:hover {
+        background: #229954;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
+    }
+
+    .stat-card {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 6px;
+        border-left: 4px solid #3498db;
+    }
+
+    .stat-card.positive {
+        border-left-color: #27ae60;
+    }
+
+    .stat-card.negative {
+        border-left-color: #e74c3c;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        color: #777;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+
+    .stat-value.positive {
+        color: #27ae60;
+    }
+
+    .stat-value.negative {
+        color: #e74c3c;
+    }
+
+    .comparison-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .comparison-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #555;
+        position: sticky;
+        top: 0;
+    }
+
+    .comparison-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .text-right {
+        text-align: right !important;
+    }
+
+    .positive {
+        color: #27ae60;
+    }
+
+    .negative {
+        color: #e74c3c;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 400px;
+        margin: 20px 0;
+    }
+
+    .section-title {
+        font-size: 20px;
+        color: #2c3e50;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #3498db;
+    }
+
+    .help-text {
+        font-size: 13px;
+        color: #777;
+        margin-top: 5px;
+    }
+
+    .waterfall-legend {
+        display: flex;
+        gap: 20px;
+        margin-top: 15px;
+        flex-wrap: wrap;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+    }
+
+    .legend-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 3px;
+    }
+
+    .summary-totals {
+        background: #e8f4f8;
+        padding: 15px;
+        border-radius: 6px;
+        margin-top: 10px;
+    }
+
+    .summary-totals .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+    }
+
+    .tabs {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #eee;
+    }
+
+    .tab {
+        padding: 10px 20px;
+        cursor: pointer;
+        background: #f8f9fa;
+        border: none;
+        border-radius: 4px 4px 0 0;
+        font-weight: 600;
+        color: #666;
+    }
+
+    .tab.active {
+        background: #3498db;
+        color: white;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .badge-new {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .badge-departed {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .badge-continuing {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+
+    .table-container {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    .breakdown-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 20px;
+    }
+
+    .breakdown-card {
+        background: #fff;
+        border: 1px solid #eee;
+        border-radius: 6px;
+        padding: 15px;
+    }
+
+    .breakdown-card h4 {
+        margin: 0 0 15px 0;
+        color: #2c3e50;
+        font-size: 16px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <header>
+        <h1>FNE Payroll Comparison</h1>
+        <p>Compare employee payroll costs between pay periods</p>
+    </header>
+
+    <!-- Period Selection -->
+    <div class="dashboard-section">
+        <h2 class="section-title">Select Pay Periods to Compare</h2>
+
+        <form method="get" action="" id="comparisonForm">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="period_a">Period A (Earlier):</label>
+                    <select id="period_a" name="period_a" required>
+                        <option value="">-- Select Period A --</option>
+                        {% for period in period_options %}
+                            <option value="{{ period.value }}" {% if period.value == period_a %}selected{% endif %}>
+                                {{ period.label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <p class="help-text">Base period for comparison</p>
+                </div>
+
+                <div class="filter-group">
+                    <label for="period_b">Period B (Later):</label>
+                    <select id="period_b" name="period_b" required>
+                        <option value="">-- Select Period B --</option>
+                        {% for period in period_options %}
+                            <option value="{{ period.value }}" {% if period.value == period_b %}selected{% endif %}>
+                                {{ period.label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <p class="help-text">Period to compare against</p>
+                </div>
+
+                <div class="filter-group" style="flex: 0;">
+                    <label>&nbsp;</label>
+                    <button type="submit">Compare Periods</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if comparison %}
+    <!-- Summary Stats -->
+    <div class="dashboard-section">
+        <h2 class="section-title">Comparison Summary</h2>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Period A Total ({{ comparison.period_a_label }})</div>
+                <div class="stat-value">${{ comparison.period_a_total|floatformat:2 }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Period B Total ({{ comparison.period_b_label }})</div>
+                <div class="stat-value">${{ comparison.period_b_total|floatformat:2 }}</div>
+            </div>
+            <div class="stat-card {% if comparison.total_variance >= 0 %}positive{% else %}negative{% endif %}">
+                <div class="stat-label">Total Variance</div>
+                <div class="stat-value {% if comparison.total_variance >= 0 %}positive{% else %}negative{% endif %}">
+                    {% if comparison.total_variance >= 0 %}+{% endif %}${{ comparison.total_variance|floatformat:2 }}
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Period A Headcount</div>
+                <div class="stat-value">{{ headcount.period_a_count }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Period B Headcount</div>
+                <div class="stat-value">{{ headcount.period_b_count }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Continuing</div>
+                <div class="stat-value">{{ headcount.continuing_count }}</div>
+            </div>
+            <div class="stat-card positive">
+                <div class="stat-label">New Employees</div>
+                <div class="stat-value positive">+{{ headcount.new_count }}</div>
+            </div>
+            <div class="stat-card negative">
+                <div class="stat-label">Departed</div>
+                <div class="stat-value negative">-{{ headcount.departed_count }}</div>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button type="button" class="download-btn" onclick="downloadComparison()">
+                Download Full Report (CSV)
+            </button>
+        </div>
+    </div>
+
+    <!-- Variance Breakdown -->
+    <div class="dashboard-section">
+        <h2 class="section-title">Variance by Location & Department</h2>
+
+        <div class="breakdown-grid">
+            <div class="breakdown-card">
+                <h4>By Location</h4>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Location</th>
+                            <th class="text-right">Period A</th>
+                            <th class="text-right">Period B</th>
+                            <th class="text-right">Variance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for loc in comparison.location_breakdown %}
+                            <tr>
+                                <td>{{ loc.location }}</td>
+                                <td class="text-right">${{ loc.period_a|floatformat:2 }}</td>
+                                <td class="text-right">${{ loc.period_b|floatformat:2 }}</td>
+                                <td class="text-right {% if loc.variance >= 0 %}positive{% else %}negative{% endif %}">
+                                    {% if loc.variance >= 0 %}+{% endif %}${{ loc.variance|floatformat:2 }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="breakdown-card">
+                <h4>By Department</h4>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Department</th>
+                            <th class="text-right">Period A</th>
+                            <th class="text-right">Period B</th>
+                            <th class="text-right">Variance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dept in comparison.dept_breakdown %}
+                            <tr>
+                                <td>{{ dept.department }}</td>
+                                <td class="text-right">${{ dept.period_a|floatformat:2 }}</td>
+                                <td class="text-right">${{ dept.period_b|floatformat:2 }}</td>
+                                <td class="text-right {% if dept.variance >= 0 %}positive{% else %}negative{% endif %}">
+                                    {% if dept.variance >= 0 %}+{% endif %}${{ dept.variance|floatformat:2 }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Waterfall Chart -->
+    {% if waterfall %}
+    <div class="dashboard-section">
+        <h2 class="section-title">Cost Movement Analysis</h2>
+
+        <div class="chart-container">
+            <canvas id="waterfallChart"></canvas>
+        </div>
+
+        <div class="waterfall-legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #3498db;"></div>
+                <span>Opening Balance (Period A)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #27ae60;"></div>
+                <span>Positive Changes</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #e74c3c;"></div>
+                <span>Negative Changes</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #9b59b6;"></div>
+                <span>Closing Balance (Period B)</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Employee Details Tabs -->
+    <div class="dashboard-section">
+        <h2 class="section-title">Employee Details</h2>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('all')">All Employees (Top Variances)</button>
+            <button class="tab" onclick="showTab('new')">New Employees ({{ headcount.new_count }})</button>
+            <button class="tab" onclick="showTab('departed')">Departed ({{ headcount.departed_count }})</button>
+        </div>
+
+        <!-- All Employees Tab -->
+        <div id="tab-all" class="tab-content active">
+            <div class="table-container">
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Employee Code</th>
+                            <th>Employee Name</th>
+                            <th>Status</th>
+                            <th class="text-right">Period A Cost</th>
+                            <th class="text-right">Period B Cost</th>
+                            <th class="text-right">Variance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for emp in comparison.comparison_list|slice:":50" %}
+                            <tr>
+                                <td>{{ emp.employee_code }}</td>
+                                <td>{{ emp.employee_name }}</td>
+                                <td>
+                                    {% if emp.period_a_cost == 0 %}
+                                        <span class="badge badge-new">New</span>
+                                    {% elif emp.period_b_cost == 0 %}
+                                        <span class="badge badge-departed">Departed</span>
+                                    {% else %}
+                                        <span class="badge badge-continuing">Continuing</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-right">${{ emp.period_a_cost|floatformat:2 }}</td>
+                                <td class="text-right">${{ emp.period_b_cost|floatformat:2 }}</td>
+                                <td class="text-right {% if emp.variance >= 0 %}positive{% else %}negative{% endif %}">
+                                    {% if emp.variance >= 0 %}+{% endif %}${{ emp.variance|floatformat:2 }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="help-text" style="margin-top: 10px;">Showing top 50 employees by variance. Download full report for all employees.</p>
+        </div>
+
+        <!-- New Employees Tab -->
+        <div id="tab-new" class="tab-content">
+            <div class="summary-totals" style="margin-bottom: 20px;">
+                <strong>Total Cost Impact:</strong> +${{ comparison.new_employee_cost|floatformat:2 }}
+            </div>
+            <div class="table-container">
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Employee Code</th>
+                            <th>Employee Name</th>
+                            <th class="text-right">Period B Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for emp in comparison.new_employee_list %}
+                            <tr>
+                                <td>{{ emp.employee_code }}</td>
+                                <td>{{ emp.employee_name }}</td>
+                                <td class="text-right">${{ emp.period_b_cost|floatformat:2 }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: #777;">No new employees in Period B</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Departed Employees Tab -->
+        <div id="tab-departed" class="tab-content">
+            <div class="summary-totals" style="margin-bottom: 20px;">
+                <strong>Previous Period Cost:</strong> ${{ comparison.departed_employee_cost|floatformat:2 }}
+            </div>
+            <div class="table-container">
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Employee Code</th>
+                            <th>Employee Name</th>
+                            <th class="text-right">Period A Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for emp in comparison.departed_employee_list %}
+                            <tr>
+                                <td>{{ emp.employee_code }}</td>
+                                <td>{{ emp.employee_name }}</td>
+                                <td class="text-right">${{ emp.period_a_cost|floatformat:2 }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: #777;">No departed employees</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="dashboard-section">
+        <p style="text-align: center; color: #777; padding: 40px;">
+            Select two pay periods above to compare payroll costs.
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    // Tab switching
+    function showTab(tabName) {
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+
+        // Remove active from all tabs
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+
+        // Show selected tab content
+        document.getElementById('tab-' + tabName).classList.add('active');
+
+        // Mark clicked tab as active
+        event.target.classList.add('active');
+    }
+
+    // Download comparison function
+    function downloadComparison() {
+        const periodA = document.getElementById('period_a').value;
+        const periodB = document.getElementById('period_b').value;
+
+        if (!periodA || !periodB) {
+            alert('Please select both periods first.');
+            return;
+        }
+
+        window.location.href = '{% url "reconciliation:download_fne_comparison" %}?period_a=' + periodA + '&period_b=' + periodB;
+    }
+
+    // Waterfall chart initialization
+    {% if waterfall %}
+    const ctx = document.getElementById('waterfallChart');
+
+    const labels = ['Opening Balance'];
+    const data = [{{ waterfall.opening_balance }}];
+    const colors = ['#3498db'];
+
+    // Add location deltas
+    {% for location, delta in waterfall.location_deltas.items %}
+        labels.push('{{ location }}');
+        data.push({{ delta }});
+        colors.push({{ delta }} >= 0 ? '#27ae60' : '#e74c3c');
+    {% endfor %}
+
+    // Add new headcount
+    if ({{ waterfall.new_headcount }} !== 0) {
+        labels.push('New Employees (+{{ waterfall.new_count }})');
+        data.push({{ waterfall.new_headcount }});
+        colors.push('#27ae60');
+    }
+
+    // Add departed headcount
+    if ({{ waterfall.departed_headcount }} !== 0) {
+        labels.push('Departed (-{{ waterfall.departed_count }})');
+        data.push({{ waterfall.departed_headcount }});
+        colors.push('#e74c3c');
+    }
+
+    // Add closing balance
+    labels.push('Closing Balance');
+    data.push({{ waterfall.closing_balance }});
+    colors.push('#9b59b6');
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Cost Movement',
+                data: data,
+                backgroundColor: colors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: 'Cost Movement from Period A to Period B',
+                    font: {
+                        size: 16
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let value = context.parsed.y || 0;
+                            return '$' + value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                        }
+                    }
+                },
+                datalabels: {
+                    anchor: 'end',
+                    align: 'top',
+                    formatter: function(value) {
+                        return '$' + value.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                    },
+                    font: {
+                        weight: 'bold',
+                        size: 11
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                        }
+                    }
+                }
+            }
+        },
+        plugins: [ChartDataLabels]
+    });
+    {% endif %}
+</script>
+{% endblock %}

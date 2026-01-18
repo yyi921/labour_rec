@@ -21,6 +21,10 @@ urlpatterns = [
     path('monthly-dashboard/', dashboard_views.monthly_dashboard, name='monthly_dashboard'),
     path('monthly-dashboard/download/', dashboard_views.download_comparison_data, name='download_comparison_data'),
 
+    # FNE Payroll Comparison dashboard
+    path('fne-dashboard/', dashboard_views.fne_dashboard, name='fne_dashboard'),
+    path('fne-dashboard/download/', dashboard_views.download_fne_comparison, name='download_fne_comparison'),
+
     # Payroll Tax & Workcover dashboard
     path('prt-wc-dashboard/<str:period_id>/', prt_wc_dashboard.prt_wc_dashboard, name='prt_wc_dashboard'),
     path('prt-wc-dashboard/<str:period_id>/download-employee-breakdown/', prt_wc_dashboard.download_prt_wc_employee_breakdown, name='download_prt_wc_breakdown'),
