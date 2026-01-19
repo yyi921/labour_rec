@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "labour-reconciliation": {
+      "command": "python",
+      "args": ["-m", "mcp_server.server"],
+      "cwd": "C:\\Users\\yuany\\OneDrive\\Desktop\\labour_reconciliation",
+      "env": {
+        "PYTHONPATH": "C:\\Users\\yuany\\OneDrive\\Desktop\\labour_reconciliation"
+      }
+    }
+  }
+}
