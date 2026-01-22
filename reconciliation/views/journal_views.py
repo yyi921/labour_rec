@@ -13,7 +13,7 @@ from django.db.models import Sum
 from reconciliation.models import (
     PayPeriod, EmployeePayPeriodSnapshot, JournalEntry, Upload,
     SageLocation, SageDepartment, JournalReconciliation, IQBLeaveBalance,
-    IQBDetail, PayCompCodeMapping, JournalDescriptionMapping
+    IQBDetail, IQBDetailV2, PayCompCodeMapping, JournalDescriptionMapping
 )
 
 
@@ -89,6 +89,13 @@ def generate_journal(request, pay_period_id):
     journal_entries_from_db = JournalEntry.objects.filter(upload=journal_upload)
     journal_mapping = load_journal_mapping()
 
+    # Get IQB upload for special GL handling (e.g., 4880 uses IQB cost_account_code)
+    iqb_upload = Upload.objects.filter(
+        pay_period=pay_period,
+        source_system='Micropay_IQB',
+        is_active=True
+    ).first()
+
     # Get location and department names
     location_names = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}
     department_names = {dept.department_id: dept.department_name for dept in SageDepartment.objects.all()}
@@ -126,25 +133,52 @@ def generate_journal(request, pay_period_id):
             # Prorate this GL across employee allocations
             prorated_entries = defaultdict(Decimal)  # {(location, dept): amount}
 
-            for snapshot in snapshots:
-                cost_allocation = snapshot.cost_allocation
-                if not cost_allocation:
-                    continue
+            # Special handling for GL 2317 - use IQBDetailV2 for Time in Lieu Taken
+            if gl_account == '2317':
+                # Get IQBDetailV2 records where Transaction Type = 'User Defined Leave'
+                # AND Leave Reason = 'Time in Lieu Taken'
+                iqb_2317_records = IQBDetailV2.objects.filter(
+                    period_end_date=pay_period.period_end,
+                    transaction_type='User Defined Leave',
+                    leave_reason_description='Time in Lieu Taken'
+                )
+                for iqb_record in iqb_2317_records:
+                    amount = Decimal(str(iqb_record.amount or 0))
+                    cost_account = iqb_record.cost_account_code or ''
 
-                # Find the matching GL field in the snapshot
-                gl_amount = Decimal('0')
-                for field_name, field_gl in gl_field_to_account.items():
-                    if field_gl == gl_account:
-                        gl_amount = getattr(snapshot, field_name, Decimal('0'))
-                        break
+                    # Parse location/dept from cost_account_code format: "location-deptNN"
+                    location_id = ''
+                    dept_id = ''
+                    if '-' in cost_account:
+                        parts = cost_account.split('-')
+                        location_id = parts[0]
+                        # dept is first 2 chars of second part (e.g., "5000" -> "50")
+                        dept_id = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
 
-                if gl_amount and gl_amount != 0:
-                    # Distribute across cost allocation
-                    for location_id, departments in cost_allocation.items():
-                        for dept_id, percentage in departments.items():
-                            allocated_amount = gl_amount * (Decimal(str(percentage)) / Decimal('100'))
-                            key = (location_id, dept_id)
-                            prorated_entries[key] += allocated_amount
+                    if location_id:
+                        key = (location_id, dept_id)
+                        prorated_entries[key] += amount
+            else:
+                # Standard prorated processing from employee snapshots
+                for snapshot in snapshots:
+                    cost_allocation = snapshot.cost_allocation
+                    if not cost_allocation:
+                        continue
+
+                    # Find the matching GL field in the snapshot
+                    gl_amount = Decimal('0')
+                    for field_name, field_gl in gl_field_to_account.items():
+                        if field_gl == gl_account:
+                            gl_amount = getattr(snapshot, field_name, Decimal('0'))
+                            break
+
+                    if gl_amount and gl_amount != 0:
+                        # Distribute across cost allocation
+                        for location_id, departments in cost_allocation.items():
+                            for dept_id, percentage in departments.items():
+                                allocated_amount = gl_amount * (Decimal(str(percentage)) / Decimal('100'))
+                                key = (location_id, dept_id)
+                                prorated_entries[key] += allocated_amount
 
             # If no prorated entries were generated, skip this GL entirely
             if not prorated_entries:
@@ -162,7 +196,8 @@ def generate_journal(request, pay_period_id):
                 project_id = ''
                 customer_id = ''
 
-                if location_id == '700':
+                # GL accounts starting with '23' (liability accounts) should NOT be on-charged to 1180
+                if location_id == '700' and not gl_account.startswith('23'):
                     acct_no = '1180'
                     final_location = '10'
                     billable = 'T'
@@ -187,36 +222,60 @@ def generate_journal(request, pay_period_id):
             # Group by location-dept from ledger_account
             non_prorated_entries = defaultdict(Decimal)  # {(location, dept): amount}
 
-            for journal in journal_entries_from_db:
-                ledger_account = journal.ledger_account.strip()
+            # Special handling for GL 4880 - use IQB cost_account_code for location/dept
+            if gl_account == '4880' and iqb_upload:
+                # Get IQB records for pay comp codes that map to GL 4880
+                iqb_4880_records = IQBDetail.objects.filter(
+                    upload=iqb_upload,
+                    pay_comp_code='Rent'  # Rent maps to GL 4880
+                )
+                for iqb_record in iqb_4880_records:
+                    amount = iqb_record.amount or Decimal('0')
+                    cost_account = iqb_record.cost_account_code or ''
 
-                # Determine GL account
-                if ledger_account.startswith('-'):
-                    entry_gl = ledger_account[1:]
-                else:
-                    if '-' in ledger_account:
-                        entry_gl = ledger_account.split('-')[-1]
-                    else:
-                        entry_gl = ledger_account
-
-                # Only process entries matching this GL account
-                if entry_gl != gl_account:
-                    continue
-
-                # Calculate net amount (debit - credit)
-                amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
-
-                # Parse location/dept from ledger_account format: "location-dept-GL"
-                location_id = ''
-                dept_id = ''
-                if '-' in ledger_account and not ledger_account.startswith('-'):
-                    parts = ledger_account.split('-')
-                    if len(parts) == 3:  # Format: location-dept-GL
+                    # Parse location/dept from cost_account_code format: "location-deptNN"
+                    location_id = ''
+                    dept_id = ''
+                    if '-' in cost_account:
+                        parts = cost_account.split('-')
                         location_id = parts[0]
-                        dept_id = parts[1]
+                        # dept is first 2 chars of second part (e.g., "5000" -> "50")
+                        dept_id = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
 
-                key = (location_id, dept_id)
-                non_prorated_entries[key] += amount
+                    key = (location_id, dept_id)
+                    non_prorated_entries[key] += amount
+            else:
+                # Standard non-prorated processing from Micropay Journal
+                for journal in journal_entries_from_db:
+                    ledger_account = journal.ledger_account.strip()
+
+                    # Determine GL account
+                    if ledger_account.startswith('-'):
+                        entry_gl = ledger_account[1:]
+                    else:
+                        if '-' in ledger_account:
+                            entry_gl = ledger_account.split('-')[-1]
+                        else:
+                            entry_gl = ledger_account
+
+                    # Only process entries matching this GL account
+                    if entry_gl != gl_account:
+                        continue
+
+                    # Calculate net amount (debit - credit)
+                    amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
+
+                    # Parse location/dept from ledger_account format: "location-dept-GL"
+                    location_id = ''
+                    dept_id = ''
+                    if '-' in ledger_account and not ledger_account.startswith('-'):
+                        parts = ledger_account.split('-')
+                        if len(parts) == 3:  # Format: location-dept-GL
+                            location_id = parts[0]
+                            dept_id = parts[1]
+
+                    key = (location_id, dept_id)
+                    non_prorated_entries[key] += amount
 
             # If no journal entries found, use journal_net from JournalReconciliation
             if not non_prorated_entries:
@@ -236,7 +295,8 @@ def generate_journal(request, pay_period_id):
                 project_id = ''
                 customer_id = ''
 
-                if location_id == '700':
+                # GL accounts starting with '23' (liability accounts) should NOT be on-charged to 1180
+                if location_id == '700' and not gl_account.startswith('23'):
                     acct_no = '1180'
                     final_location = '10'
                     billable = 'T'
@@ -338,6 +398,64 @@ def generate_journal(request, pay_period_id):
             'customer_id': line['customer_id'],
         })
 
+    # Build GL Batch vs Sage Journal comparison table
+    # GL Batch totals from Micropay Journal (ledger_account last 4 digits = GL, debit - credit)
+    gl_batch_totals = defaultdict(Decimal)
+    for journal in journal_entries_from_db:
+        ledger_account = journal.ledger_account.strip()
+        # Extract GL account (last part after dash, or whole thing if starts with -)
+        if ledger_account.startswith('-'):
+            gl_account = ledger_account[1:]
+        elif '-' in ledger_account:
+            gl_account = ledger_account.split('-')[-1]
+        else:
+            gl_account = ledger_account
+
+        amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
+        gl_batch_totals[gl_account] += amount
+
+    # Sage Journal totals from generated journal_lines
+    sage_journal_totals = defaultdict(Decimal)
+    for line in journal_lines:
+        # Use the original GL account (not 1180 which is the on-charge account)
+        # Extract from memo which contains the original GL: "... {gl_account} {gl_desc}"
+        memo = line['memo']
+        acct_no = line['acct_no']
+
+        # For 1180 entries, the original GL is in the memo
+        if acct_no == '1180' and 'Payroll journal' in memo:
+            # Extract original GL from memo format: "Payroll journal ending ... {gl_account} {gl_desc}"
+            parts = memo.split()
+            for i, part in enumerate(parts):
+                if part.isdigit() and len(part) == 4:
+                    acct_no = part
+                    break
+
+        sage_journal_totals[acct_no] += line['debit']
+
+    # Build comparison list
+    all_gl_accounts = sorted(set(gl_batch_totals.keys()) | set(sage_journal_totals.keys()))
+    gl_comparison = []
+
+    # Get GL descriptions from journal mapping
+    gl_descriptions = {}
+    for mapping in JournalDescriptionMapping.objects.all():
+        gl_descriptions[mapping.gl_account] = mapping.description
+
+    for gl_account in all_gl_accounts:
+        batch_total = gl_batch_totals.get(gl_account, Decimal('0'))
+        sage_total = sage_journal_totals.get(gl_account, Decimal('0'))
+        variance = sage_total - batch_total
+
+        gl_comparison.append({
+            'gl_account': gl_account,
+            'description': gl_descriptions.get(gl_account, ''),
+            'gl_batch': batch_total,
+            'sage_journal': sage_total,
+            'variance': variance,
+            'matched': abs(variance) < Decimal('0.01')
+        })
+
     context = {
         'pay_period': pay_period,
         'entries': entries_for_display,
@@ -346,7 +464,8 @@ def generate_journal(request, pay_period_id):
         'description': description,
         'balanced': abs(total_debit) < Decimal('0.01'),
         'employee_count': snapshots.count(),
-        'journal_entry_count': len(journal_lines)
+        'journal_entry_count': len(journal_lines),
+        'gl_comparison': gl_comparison
     }
 
     return render(request, 'reconciliation/journal_generated.html', context)
@@ -378,6 +497,13 @@ def download_journal_sage(request, pay_period_id):
 
     journal_entries_from_db = JournalEntry.objects.filter(upload=journal_upload)
     journal_mapping = load_journal_mapping()
+
+    # Get IQB upload for special GL handling (e.g., 4880 uses IQB cost_account_code)
+    iqb_upload = Upload.objects.filter(
+        pay_period=pay_period,
+        source_system='Micropay_IQB',
+        is_active=True
+    ).first()
 
     # Build GL field mapping dynamically from EmployeePayPeriodSnapshot fields
     gl_field_to_account = {}
@@ -413,25 +539,51 @@ def download_journal_sage(request, pay_period_id):
             # Prorate this GL across employee allocations
             prorated_entries = defaultdict(Decimal)
 
-            for snapshot in snapshots:
-                cost_allocation = snapshot.cost_allocation
-                if not cost_allocation:
-                    continue
+            # Special handling for GL 2317 - use IQBDetailV2 for Time in Lieu Taken
+            if gl_account == '2317':
+                # Get IQBDetailV2 records where Transaction Type = 'User Defined Leave'
+                # AND Leave Reason = 'Time in Lieu Taken'
+                iqb_2317_records = IQBDetailV2.objects.filter(
+                    period_end_date=pay_period.period_end,
+                    transaction_type='User Defined Leave',
+                    leave_reason_description='Time in Lieu Taken'
+                )
+                for iqb_record in iqb_2317_records:
+                    amount = Decimal(str(iqb_record.amount or 0))
+                    cost_account = iqb_record.cost_account_code or ''
 
-                # Find the matching GL field in the snapshot
-                gl_amount = Decimal('0')
-                for field_name, field_gl in gl_field_to_account.items():
-                    if field_gl == gl_account:
-                        gl_amount = getattr(snapshot, field_name, Decimal('0'))
-                        break
+                    # Parse location/dept from cost_account_code format: "location-deptNN"
+                    location_id = ''
+                    dept_id = ''
+                    if '-' in cost_account:
+                        parts = cost_account.split('-')
+                        location_id = parts[0]
+                        dept_id = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
 
-                if gl_amount and gl_amount != 0:
-                    # Distribute across cost allocation
-                    for location_id, departments in cost_allocation.items():
-                        for dept_id, percentage in departments.items():
-                            allocated_amount = gl_amount * (Decimal(str(percentage)) / Decimal('100'))
-                            key = (location_id, dept_id)
-                            prorated_entries[key] += allocated_amount
+                    if location_id:
+                        key = (location_id, dept_id)
+                        prorated_entries[key] += amount
+            else:
+                # Standard prorated processing from employee snapshots
+                for snapshot in snapshots:
+                    cost_allocation = snapshot.cost_allocation
+                    if not cost_allocation:
+                        continue
+
+                    # Find the matching GL field in the snapshot
+                    gl_amount = Decimal('0')
+                    for field_name, field_gl in gl_field_to_account.items():
+                        if field_gl == gl_account:
+                            gl_amount = getattr(snapshot, field_name, Decimal('0'))
+                            break
+
+                    if gl_amount and gl_amount != 0:
+                        # Distribute across cost allocation
+                        for location_id, departments in cost_allocation.items():
+                            for dept_id, percentage in departments.items():
+                                allocated_amount = gl_amount * (Decimal(str(percentage)) / Decimal('100'))
+                                key = (location_id, dept_id)
+                                prorated_entries[key] += allocated_amount
 
             # If no prorated entries were generated, skip this GL entirely
             if not prorated_entries:
@@ -449,7 +601,8 @@ def download_journal_sage(request, pay_period_id):
                 project_id = ''
                 customer_id = ''
 
-                if location_id == '700':
+                # GL accounts starting with '23' (liability accounts) should NOT be on-charged to 1180
+                if location_id == '700' and not gl_account.startswith('23'):
                     acct_no = '1180'
                     final_location = '10'
                     billable = 'T'
@@ -473,36 +626,60 @@ def download_journal_sage(request, pay_period_id):
             # Non-prorated: use journal entries directly
             non_prorated_entries = defaultdict(Decimal)
 
-            for journal in journal_entries_from_db:
-                ledger_account = journal.ledger_account.strip()
+            # Special handling for GL 4880 - use IQB cost_account_code for location/dept
+            if gl_account == '4880' and iqb_upload:
+                # Get IQB records for pay comp codes that map to GL 4880
+                iqb_4880_records = IQBDetail.objects.filter(
+                    upload=iqb_upload,
+                    pay_comp_code='Rent'  # Rent maps to GL 4880
+                )
+                for iqb_record in iqb_4880_records:
+                    amount = iqb_record.amount or Decimal('0')
+                    cost_account = iqb_record.cost_account_code or ''
 
-                # Determine GL account
-                if ledger_account.startswith('-'):
-                    entry_gl = ledger_account[1:]
-                else:
-                    if '-' in ledger_account:
-                        entry_gl = ledger_account.split('-')[-1]
-                    else:
-                        entry_gl = ledger_account
-
-                # Only process entries matching this GL account
-                if entry_gl != gl_account:
-                    continue
-
-                # Calculate net amount (debit - credit)
-                amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
-
-                # Parse location/dept from ledger_account format: "location-dept-GL"
-                location_id = ''
-                dept_id = ''
-                if '-' in ledger_account and not ledger_account.startswith('-'):
-                    parts = ledger_account.split('-')
-                    if len(parts) == 3:
+                    # Parse location/dept from cost_account_code format: "location-deptNN"
+                    location_id = ''
+                    dept_id = ''
+                    if '-' in cost_account:
+                        parts = cost_account.split('-')
                         location_id = parts[0]
-                        dept_id = parts[1]
+                        # dept is first 2 chars of second part (e.g., "5000" -> "50")
+                        dept_id = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
 
-                key = (location_id, dept_id)
-                non_prorated_entries[key] += amount
+                    key = (location_id, dept_id)
+                    non_prorated_entries[key] += amount
+            else:
+                # Standard non-prorated processing from Micropay Journal
+                for journal in journal_entries_from_db:
+                    ledger_account = journal.ledger_account.strip()
+
+                    # Determine GL account
+                    if ledger_account.startswith('-'):
+                        entry_gl = ledger_account[1:]
+                    else:
+                        if '-' in ledger_account:
+                            entry_gl = ledger_account.split('-')[-1]
+                        else:
+                            entry_gl = ledger_account
+
+                    # Only process entries matching this GL account
+                    if entry_gl != gl_account:
+                        continue
+
+                    # Calculate net amount (debit - credit)
+                    amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
+
+                    # Parse location/dept from ledger_account format: "location-dept-GL"
+                    location_id = ''
+                    dept_id = ''
+                    if '-' in ledger_account and not ledger_account.startswith('-'):
+                        parts = ledger_account.split('-')
+                        if len(parts) == 3:
+                            location_id = parts[0]
+                            dept_id = parts[1]
+
+                    key = (location_id, dept_id)
+                    non_prorated_entries[key] += amount
 
             # If no journal entries found, use journal_net from JournalReconciliation
             if not non_prorated_entries:
@@ -522,7 +699,8 @@ def download_journal_sage(request, pay_period_id):
                 project_id = ''
                 customer_id = ''
 
-                if location_id == '700':
+                # GL accounts starting with '23' (liability accounts) should NOT be on-charged to 1180
+                if location_id == '700' and not gl_account.startswith('23'):
                     acct_no = '1180'
                     final_location = '10'
                     billable = 'T'
@@ -696,6 +874,13 @@ def download_journal_xero(request, pay_period_id):
     journal_entries_from_db = JournalEntry.objects.filter(upload=journal_upload)
     journal_mapping = load_journal_mapping()
 
+    # Get IQB upload for special GL handling (e.g., 4880 uses IQB cost_account_code)
+    iqb_upload = Upload.objects.filter(
+        pay_period=pay_period,
+        source_system='Micropay_IQB',
+        is_active=True
+    ).first()
+
     # Get location and department names
     location_names = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}
     department_names = {dept.department_id: dept.department_name for dept in SageDepartment.objects.all()}
@@ -727,23 +912,45 @@ def download_journal_xero(request, pay_period_id):
         if include_in_total:
             prorated_entries = defaultdict(Decimal)
 
-            for snapshot in snapshots:
-                cost_allocation = snapshot.cost_allocation
-                if not cost_allocation:
-                    continue
+            # Special handling for GL 2317 - use IQBDetailV2 for Time in Lieu Taken
+            if gl_account == '2317':
+                iqb_2317_records = IQBDetailV2.objects.filter(
+                    period_end_date=pay_period.period_end,
+                    transaction_type='User Defined Leave',
+                    leave_reason_description='Time in Lieu Taken'
+                )
+                for iqb_record in iqb_2317_records:
+                    amount = Decimal(str(iqb_record.amount or 0))
+                    cost_account = iqb_record.cost_account_code or ''
 
-                gl_amount = Decimal('0')
-                for field_name, field_gl in gl_field_to_account.items():
-                    if field_gl == gl_account:
-                        gl_amount = getattr(snapshot, field_name, Decimal('0'))
-                        break
+                    location_id = ''
+                    dept_id = ''
+                    if '-' in cost_account:
+                        parts = cost_account.split('-')
+                        location_id = parts[0]
+                        dept_id = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
 
-                if gl_amount and gl_amount != 0:
-                    for location_id, departments in cost_allocation.items():
-                        for dept_id, percentage in departments.items():
-                            allocated_amount = gl_amount * (Decimal(str(percentage)) / Decimal('100'))
-                            key = (location_id, dept_id)
-                            prorated_entries[key] += allocated_amount
+                    if location_id:
+                        key = (location_id, dept_id)
+                        prorated_entries[key] += amount
+            else:
+                for snapshot in snapshots:
+                    cost_allocation = snapshot.cost_allocation
+                    if not cost_allocation:
+                        continue
+
+                    gl_amount = Decimal('0')
+                    for field_name, field_gl in gl_field_to_account.items():
+                        if field_gl == gl_account:
+                            gl_amount = getattr(snapshot, field_name, Decimal('0'))
+                            break
+
+                    if gl_amount and gl_amount != 0:
+                        for location_id, departments in cost_allocation.items():
+                            for dept_id, percentage in departments.items():
+                                allocated_amount = gl_amount * (Decimal(str(percentage)) / Decimal('100'))
+                                key = (location_id, dept_id)
+                                prorated_entries[key] += allocated_amount
 
             if not prorated_entries:
                 continue
@@ -758,7 +965,8 @@ def download_journal_xero(request, pay_period_id):
                 project_id = ''
                 customer_id = ''
 
-                if location_id == '700':
+                # GL accounts starting with '23' (liability accounts) should NOT be on-charged to 1180
+                if location_id == '700' and not gl_account.startswith('23'):
                     acct_no = '1180'
                     final_location = '10'
                     billable = 'T'
@@ -781,32 +989,56 @@ def download_journal_xero(request, pay_period_id):
         else:
             non_prorated_entries = defaultdict(Decimal)
 
-            for journal in journal_entries_from_db:
-                ledger_account = journal.ledger_account.strip()
+            # Special handling for GL 4880 - use IQB cost_account_code for location/dept
+            if gl_account == '4880' and iqb_upload:
+                # Get IQB records for pay comp codes that map to GL 4880
+                iqb_4880_records = IQBDetail.objects.filter(
+                    upload=iqb_upload,
+                    pay_comp_code='Rent'  # Rent maps to GL 4880
+                )
+                for iqb_record in iqb_4880_records:
+                    amount = iqb_record.amount or Decimal('0')
+                    cost_account = iqb_record.cost_account_code or ''
 
-                if ledger_account.startswith('-'):
-                    entry_gl = ledger_account[1:]
-                else:
-                    if '-' in ledger_account:
-                        entry_gl = ledger_account.split('-')[-1]
-                    else:
-                        entry_gl = ledger_account
-
-                if entry_gl != gl_account:
-                    continue
-
-                amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
-
-                location_id = ''
-                dept_id = ''
-                if '-' in ledger_account and not ledger_account.startswith('-'):
-                    parts = ledger_account.split('-')
-                    if len(parts) == 3:
+                    # Parse location/dept from cost_account_code format: "location-deptNN"
+                    location_id = ''
+                    dept_id = ''
+                    if '-' in cost_account:
+                        parts = cost_account.split('-')
                         location_id = parts[0]
-                        dept_id = parts[1]
+                        # dept is first 2 chars of second part (e.g., "5000" -> "50")
+                        dept_id = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
 
-                key = (location_id, dept_id)
-                non_prorated_entries[key] += amount
+                    key = (location_id, dept_id)
+                    non_prorated_entries[key] += amount
+            else:
+                # Standard non-prorated processing from Micropay Journal
+                for journal in journal_entries_from_db:
+                    ledger_account = journal.ledger_account.strip()
+
+                    if ledger_account.startswith('-'):
+                        entry_gl = ledger_account[1:]
+                    else:
+                        if '-' in ledger_account:
+                            entry_gl = ledger_account.split('-')[-1]
+                        else:
+                            entry_gl = ledger_account
+
+                    if entry_gl != gl_account:
+                        continue
+
+                    amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
+
+                    location_id = ''
+                    dept_id = ''
+                    if '-' in ledger_account and not ledger_account.startswith('-'):
+                        parts = ledger_account.split('-')
+                        if len(parts) == 3:
+                            location_id = parts[0]
+                            dept_id = parts[1]
+
+                    key = (location_id, dept_id)
+                    non_prorated_entries[key] += amount
 
             if not non_prorated_entries:
                 total_net = sum(entry.journal_net for entry in recon_entries_for_gl)
@@ -823,7 +1055,8 @@ def download_journal_xero(request, pay_period_id):
                 project_id = ''
                 customer_id = ''
 
-                if location_id == '700':
+                # GL accounts starting with '23' (liability accounts) should NOT be on-charged to 1180
+                if location_id == '700' and not gl_account.startswith('23'):
                     acct_no = '1180'
                     final_location = '10'
                     billable = 'T'

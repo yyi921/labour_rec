@@ -149,6 +149,44 @@
             </a>
         </div>
 
+        {% if gl_comparison %}
+        <h3 style="margin-top: 30px; border-bottom: 2px solid #2196F3; padding-bottom: 10px;">GL Batch vs Sage Journal Comparison</h3>
+        <p style="color: #666; font-size: 14px;">Compares Micropay GL Batch totals with generated Sage Journal totals by GL Account</p>
+        <table style="max-width: 900px;">
+            <thead>
+                <tr>
+                    <th>GL Account</th>
+                    <th>Description</th>
+                    <th class="number">GL Batch</th>
+                    <th class="number">Sage Journal</th>
+                    <th class="number">Variance</th>
+                    <th style="text-align: center;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in gl_comparison %}
+                <tr style="{% if not row.matched %}background-color: #fff3cd;{% endif %}">
+                    <td><strong>{{ row.gl_account }}</strong></td>
+                    <td>{{ row.description }}</td>
+                    <td class="number">${{ row.gl_batch|floatformat:2 }}</td>
+                    <td class="number">${{ row.sage_journal|floatformat:2 }}</td>
+                    <td class="number" style="{% if not row.matched %}color: #dc3545; font-weight: bold;{% endif %}">
+                        ${{ row.variance|floatformat:2 }}
+                    </td>
+                    <td style="text-align: center;">
+                        {% if row.matched %}
+                            <span style="color: #28a745;">&#10003;</span>
+                        {% else %}
+                            <span style="color: #dc3545;">&#10007;</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+        <h3 style="margin-top: 30px; border-bottom: 2px solid #4CAF50; padding-bottom: 10px;">Journal Entries Detail</h3>
         <table>
             <thead>
                 <tr>
