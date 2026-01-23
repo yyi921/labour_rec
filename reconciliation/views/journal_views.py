@@ -122,6 +122,17 @@ def generate_journal(request, pay_period_id):
     for recon_entry in journal_recon_entries:
         gl_groups[recon_entry.gl_account].append(recon_entry)
 
+    # Calculate GL 2317 TIL total from IQBDetailV2 (used to adjust GL 6372)
+    # This is needed because snapshot gl_6372 includes TIL amounts that should go to gl_2317
+    iqb_2317_total = Decimal('0')
+    iqb_2317_records_all = IQBDetailV2.objects.filter(
+        period_end_date=pay_period.period_end,
+        transaction_type='User Defined Leave',
+        leave_reason_description='Time in Lieu Taken'
+    )
+    for rec in iqb_2317_records_all:
+        iqb_2317_total += Decimal(str(rec.amount or 0))
+
     # Process each unique GL account
     for gl_account, recon_entries_for_gl in gl_groups.items():
         # Use the first entry's metadata (all should have same include_in_total_cost for same GL)
@@ -158,6 +169,35 @@ def generate_journal(request, pay_period_id):
                     if location_id:
                         key = (location_id, dept_id)
                         prorated_entries[key] += amount
+
+            # Special handling for prorated 23* GLs - use IQBDetail cost_account_code
+            elif gl_account.startswith('23') and iqb_upload:
+                # Get pay_comp_codes that map to this GL account
+                pay_comp_codes = list(PayCompCodeMapping.objects.filter(
+                    gl_account=gl_account
+                ).values_list('pay_comp_code', flat=True))
+
+                if pay_comp_codes:
+                    iqb_records = IQBDetail.objects.filter(
+                        upload=iqb_upload,
+                        pay_comp_code__in=pay_comp_codes
+                    )
+                    for iqb_record in iqb_records:
+                        amount = iqb_record.amount or Decimal('0')
+                        cost_account = iqb_record.cost_account_code or ''
+
+                        # Parse location/dept from cost_account_code format: "location-deptNN"
+                        location_id = ''
+                        dept_id = ''
+                        if '-' in cost_account:
+                            parts = cost_account.split('-')
+                            location_id = parts[0]
+                            # dept is first 2 chars of second part (e.g., "5000" -> "50")
+                            dept_id = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
+
+                        if location_id:
+                            key = (location_id, dept_id)
+                            prorated_entries[key] += amount
             else:
                 # Standard prorated processing from employee snapshots
                 for snapshot in snapshots:
@@ -179,6 +219,16 @@ def generate_journal(request, pay_period_id):
                                 allocated_amount = gl_amount * (Decimal(str(percentage)) / Decimal('100'))
                                 key = (location_id, dept_id)
                                 prorated_entries[key] += allocated_amount
+
+                # For GL 6372, subtract the TIL amount (which goes to 2317 instead)
+                # The snapshot's gl_6372 includes TIL amounts that are captured separately in 2317
+                if gl_account == '6372' and iqb_2317_total != 0 and prorated_entries:
+                    total_6372 = sum(prorated_entries.values())
+                    if total_6372 != 0:
+                        # Subtract proportionally across all entries
+                        adjustment_ratio = iqb_2317_total / total_6372
+                        for key in prorated_entries:
+                            prorated_entries[key] -= prorated_entries[key] * adjustment_ratio
 
             # If no prorated entries were generated, skip this GL entirely
             if not prorated_entries:
@@ -230,7 +280,8 @@ def generate_journal(request, pay_period_id):
                     pay_comp_code='Rent'  # Rent maps to GL 4880
                 )
                 for iqb_record in iqb_4880_records:
-                    amount = iqb_record.amount or Decimal('0')
+                    # Negate amount because 4880 is a liability (credit) account
+                    amount = -(iqb_record.amount or Decimal('0'))
                     cost_account = iqb_record.cost_account_code or ''
 
                     # Parse location/dept from cost_account_code format: "location-deptNN"
@@ -528,6 +579,17 @@ def download_journal_sage(request, pay_period_id):
     for recon_entry in journal_recon_entries:
         gl_groups[recon_entry.gl_account].append(recon_entry)
 
+    # Calculate GL 2317 TIL total from IQBDetailV2 (used to adjust GL 6372)
+    # This is needed because snapshot gl_6372 includes TIL amounts that should go to gl_2317
+    iqb_2317_total = Decimal('0')
+    iqb_2317_records_all = IQBDetailV2.objects.filter(
+        period_end_date=pay_period.period_end,
+        transaction_type='User Defined Leave',
+        leave_reason_description='Time in Lieu Taken'
+    )
+    for rec in iqb_2317_records_all:
+        iqb_2317_total += Decimal(str(rec.amount or 0))
+
     # Process each unique GL account
     for gl_account, recon_entries_for_gl in gl_groups.items():
         # Use the first entry's metadata (all should have same include_in_total_cost for same GL)
@@ -563,6 +625,35 @@ def download_journal_sage(request, pay_period_id):
                     if location_id:
                         key = (location_id, dept_id)
                         prorated_entries[key] += amount
+
+            # Special handling for prorated 23* GLs - use IQBDetail cost_account_code
+            elif gl_account.startswith('23') and iqb_upload:
+                # Get pay_comp_codes that map to this GL account
+                pay_comp_codes = list(PayCompCodeMapping.objects.filter(
+                    gl_account=gl_account
+                ).values_list('pay_comp_code', flat=True))
+
+                if pay_comp_codes:
+                    iqb_records = IQBDetail.objects.filter(
+                        upload=iqb_upload,
+                        pay_comp_code__in=pay_comp_codes
+                    )
+                    for iqb_record in iqb_records:
+                        amount = iqb_record.amount or Decimal('0')
+                        cost_account = iqb_record.cost_account_code or ''
+
+                        # Parse location/dept from cost_account_code format: "location-deptNN"
+                        location_id = ''
+                        dept_id = ''
+                        if '-' in cost_account:
+                            parts = cost_account.split('-')
+                            location_id = parts[0]
+                            # dept is first 2 chars of second part (e.g., "5000" -> "50")
+                            dept_id = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
+
+                        if location_id:
+                            key = (location_id, dept_id)
+                            prorated_entries[key] += amount
             else:
                 # Standard prorated processing from employee snapshots
                 for snapshot in snapshots:
@@ -584,6 +675,16 @@ def download_journal_sage(request, pay_period_id):
                                 allocated_amount = gl_amount * (Decimal(str(percentage)) / Decimal('100'))
                                 key = (location_id, dept_id)
                                 prorated_entries[key] += allocated_amount
+
+                # For GL 6372, subtract the TIL amount (which goes to 2317 instead)
+                # The snapshot's gl_6372 includes TIL amounts that are captured separately in 2317
+                if gl_account == '6372' and iqb_2317_total != 0 and prorated_entries:
+                    total_6372 = sum(prorated_entries.values())
+                    if total_6372 != 0:
+                        # Subtract proportionally across all entries
+                        adjustment_ratio = iqb_2317_total / total_6372
+                        for key in prorated_entries:
+                            prorated_entries[key] -= prorated_entries[key] * adjustment_ratio
 
             # If no prorated entries were generated, skip this GL entirely
             if not prorated_entries:
@@ -634,7 +735,8 @@ def download_journal_sage(request, pay_period_id):
                     pay_comp_code='Rent'  # Rent maps to GL 4880
                 )
                 for iqb_record in iqb_4880_records:
-                    amount = iqb_record.amount or Decimal('0')
+                    # Negate amount because 4880 is a liability (credit) account
+                    amount = -(iqb_record.amount or Decimal('0'))
                     cost_account = iqb_record.cost_account_code or ''
 
                     # Parse location/dept from cost_account_code format: "location-deptNN"
@@ -933,6 +1035,33 @@ def download_journal_xero(request, pay_period_id):
                     if location_id:
                         key = (location_id, dept_id)
                         prorated_entries[key] += amount
+
+            # Special handling for prorated 23* GLs - use IQBDetail cost_account_code
+            elif gl_account.startswith('23') and iqb_upload:
+                # Get pay_comp_codes that map to this GL account
+                pay_comp_codes = list(PayCompCodeMapping.objects.filter(
+                    gl_account=gl_account
+                ).values_list('pay_comp_code', flat=True))
+
+                if pay_comp_codes:
+                    iqb_records = IQBDetail.objects.filter(
+                        upload=iqb_upload,
+                        pay_comp_code__in=pay_comp_codes
+                    )
+                    for iqb_record in iqb_records:
+                        amount = iqb_record.amount or Decimal('0')
+                        cost_account = iqb_record.cost_account_code or ''
+
+                        location_id = ''
+                        dept_id = ''
+                        if '-' in cost_account:
+                            parts = cost_account.split('-')
+                            location_id = parts[0]
+                            dept_id = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
+
+                        if location_id:
+                            key = (location_id, dept_id)
+                            prorated_entries[key] += amount
             else:
                 for snapshot in snapshots:
                     cost_allocation = snapshot.cost_allocation
@@ -997,7 +1126,8 @@ def download_journal_xero(request, pay_period_id):
                     pay_comp_code='Rent'  # Rent maps to GL 4880
                 )
                 for iqb_record in iqb_4880_records:
-                    amount = iqb_record.amount or Decimal('0')
+                    # Negate amount because 4880 is a liability (credit) account
+                    amount = -(iqb_record.amount or Decimal('0'))
                     cost_account = iqb_record.cost_account_code or ''
 
                     # Parse location/dept from cost_account_code format: "location-deptNN"
