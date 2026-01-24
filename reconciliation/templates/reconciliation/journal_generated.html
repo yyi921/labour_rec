@@ -185,13 +185,15 @@
             </tbody>
         </table>
 
-        <!-- GL 1180 Summary -->
+        <!-- GL Batch Location 700 Summary -->
         <div style="margin-top: 20px; padding: 15px; background-color: #e8f5e9; border-left: 4px solid #4CAF50; border-radius: 4px;">
-            <h4 style="margin-top: 0; color: #2e7d32;">GL 1180 (TECC On-Charge) Summary</h4>
+            <h4 style="margin-top: 0; color: #2e7d32;">Location 700 (TECC) Cost Summary</h4>
             <p style="margin-bottom: 0; font-size: 16px;">
-                <strong>Total 1180 in Sage Journal:</strong> ${{ total_1180_sage|floatformat:2 }}
+                <strong>GL Batch Location 700 Total:</strong> ${{ location_700_total|floatformat:2 }}
                 <br>
-                <small style="color: #666;">This is the total amount on-charged to TECC (Location 700 non-23* entries converted to GL 1180)</small>
+                <strong>Sage Journal GL 1180:</strong> ${{ total_1180_sage|floatformat:2 }}
+                <br>
+                <small style="color: #666;">GL Batch total is from Micropay GL Batch where Cost Account starts with "700-". Compare with Sage 1180.</small>
             </p>
         </div>
         {% endif %}
@@ -229,8 +231,8 @@
         </table>
         <div style="margin-top: 10px; padding: 10px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
             <small style="color: #856404;">
-                <strong>Note:</strong> Compare this total (${{ location_700_total|floatformat:2 }}) with GL 1180 in Sage Journal (${{ total_1180_sage|floatformat:2 }}).
-                The difference is due to 23* GL accounts which stay at Location 700 (not converted to 1180).
+                <strong>Note:</strong> This table shows all GL Batch entries where Cost Account starts with "700-" (TECC location).
+                The difference between this total and Sage GL 1180 is due to 23* GL accounts which stay at Location 700 in Sage (not converted to 1180).
             </small>
         </div>
         {% endif %}

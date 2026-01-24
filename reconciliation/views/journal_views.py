@@ -467,11 +467,12 @@ def generate_journal(request, pay_period_id):
         amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
         gl_batch_totals[gl_account] += amount
 
-        # Collect Location 700 entries for breakdown table
-        if ledger_account.startswith('700-'):
+        # Collect Location 700 entries for breakdown table (Cost Account starts with 700-)
+        cost_account = (journal.cost_account or '').strip()
+        if cost_account.startswith('700-'):
             location_700_entries.append({
                 'ledger_account': ledger_account,
-                'cost_account': ledger_account.rsplit('-', 1)[0] if '-' in ledger_account else '',
+                'cost_account': cost_account,
                 'gl_account': gl_account,
                 'debit': journal.debit or Decimal('0'),
                 'credit': journal.credit or Decimal('0'),
@@ -514,6 +515,9 @@ def generate_journal(request, pay_period_id):
         gl_descriptions[mapping.gl_account] = mapping.description
 
     for gl_account in all_gl_accounts:
+        # Skip 1180 - we'll add it manually with actual values
+        if gl_account == '1180':
+            continue
         batch_total = gl_batch_totals.get(gl_account, Decimal('0'))
         sage_total = sage_journal_totals.get(gl_account, Decimal('0'))
         variance = sage_total - batch_total
@@ -527,8 +531,19 @@ def generate_journal(request, pay_period_id):
             'matched': abs(variance) < Decimal('0.01')
         })
 
-    # Add 1180 summary row (actual Sage Journal 1180 total)
+    # Add 1180 row with actual values (GL Batch = Location 700 total, Sage = actual 1180)
     total_1180_sage = sage_journal_actual.get('1180', Decimal('0'))
+    variance_1180 = total_1180_sage - location_700_total
+    gl_comparison.append({
+        'gl_account': '1180',
+        'description': 'TECC On-Charge (Location 700)',
+        'gl_batch': location_700_total,
+        'sage_journal': total_1180_sage,
+        'variance': variance_1180,
+        'matched': abs(variance_1180) < Decimal('0.01')
+    })
+    # Re-sort to put 1180 in proper position
+    gl_comparison.sort(key=lambda x: x['gl_account'])
 
     context = {
         'pay_period': pay_period,
