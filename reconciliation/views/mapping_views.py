@@ -739,15 +739,25 @@ def _employee_has_location_700(iqb_upload, emp_code, include_transaction_types, 
     # Check Tanda allocation for location 700
     if tanda_upload:
         from reconciliation.models import TandaTimesheet, LocationMapping
-        tanda_entries = TandaTimesheet.objects.filter(
+        tanda_records = TandaTimesheet.objects.filter(
             upload=tanda_upload,
-            employee_code=emp_code
-        ).values_list('location', 'team_name').distinct()
+            employee_id=emp_code
+        ).values('gl_code', 'location_name').distinct()
 
-        for location_name, team_name in tanda_entries:
-            tanda_location = f"{location_name} - {team_name}"
-            mapping = LocationMapping.objects.filter(tanda_location=tanda_location).first()
-            if mapping and mapping.cost_account_code and mapping.cost_account_code.startswith('700-'):
+        # Get location mappings for fallback
+        location_mappings = {
+            mapping.tanda_location: mapping.cost_account_code
+            for mapping in LocationMapping.objects.filter(is_active=True)
+        }
+
+        for record in tanda_records:
+            gl_code = record['gl_code']
+            location = record['location_name']
+
+            # Use gl_code if available, otherwise fall back to location mapping
+            cost_account = gl_code if gl_code else location_mappings.get(location)
+
+            if cost_account and cost_account.startswith('700-'):
                 return True
 
     # Check Override allocation for location 700
