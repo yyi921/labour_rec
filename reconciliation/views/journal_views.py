@@ -1522,7 +1522,8 @@ def download_employee_snapshot(request, pay_period_id):
 
 def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expense_account,
                                         opening_upload, closing_upload, iqb_upload,
-                                        tp_pay_period, transaction_type=None):
+                                        tp_pay_period, transaction_type=None, pay_comp_codes=None,
+                                        use_iqb_v2=False, leave_reason_code=None):
     """
     Calculate accruals for a specific leave type using direct transaction type matching
 
@@ -1535,6 +1536,9 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
         iqb_upload: IQB detail upload (RET002) for TP period
         tp_pay_period: This Period pay period object
         transaction_type: Optional - IQB transaction type for leave taken (defaults to leave_type)
+        pay_comp_codes: Optional - List of IQB pay_comp_codes for leave taken (overrides transaction_type)
+        use_iqb_v2: If True, use IQBDetailV2 model instead of IQBDetail (for TOIL with leave_reason_code)
+        leave_reason_code: Optional - Additional filter for IQBDetailV2 (e.g., 'TIL Taken' for TOIL)
 
     Returns: List of employee-level accrual dictionaries
     """
@@ -1586,14 +1590,36 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
         opening_loading = opening_aggregation['total_loading'] or Decimal('0')
         opening_value = opening_balance + opening_loading
 
-        # Calculate leave taken directly from IQB Detail using transaction_type
-        leave_taken_aggregation = IQBDetail.objects.filter(
-            upload=iqb_upload,
-            employee_code=emp_code,
-            transaction_type=transaction_type
-        ).aggregate(
-            total_amount=Sum('amount')
-        )
+        # Calculate leave taken directly from IQB Detail
+        # Use IQBDetailV2 for TOIL (requires leave_reason_code filter)
+        if use_iqb_v2 and pay_comp_codes and leave_reason_code:
+            # TOIL uses IQBDetailV2 with pay_comp_code and leave_reason_code filters
+            leave_taken_aggregation = IQBDetailV2.objects.filter(
+                upload=iqb_upload,
+                employee_code=emp_code,
+                pay_comp_add_ded_code__in=pay_comp_codes,
+                leave_reason_code=leave_reason_code
+            ).aggregate(
+                total_amount=Sum('amount')
+            )
+        elif pay_comp_codes:
+            # Annual Leave and LSL use IQBDetail with pay_comp_codes
+            leave_taken_aggregation = IQBDetail.objects.filter(
+                upload=iqb_upload,
+                employee_code=emp_code,
+                pay_comp_code__in=pay_comp_codes
+            ).aggregate(
+                total_amount=Sum('amount')
+            )
+        else:
+            # Fallback to transaction_type
+            leave_taken_aggregation = IQBDetail.objects.filter(
+                upload=iqb_upload,
+                employee_code=emp_code,
+                transaction_type=transaction_type
+            ).aggregate(
+                total_amount=Sum('amount')
+            )
 
         leave_taken = leave_taken_aggregation['total_amount'] or Decimal('0')
 
@@ -1737,8 +1763,10 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
             ).aggregate(total_balance=Sum('balance_value'), total_loading=Sum('leave_loading'))
             closing_value = (closing_agg['total_balance'] or Decimal('0')) + (closing_agg['total_loading'] or Decimal('0'))
 
+            # Annual Leave taken includes: Annual, LLV, TPo93ALG, TPo93LLG pay comp codes
             leave_taken_agg = IQBDetail.objects.filter(
-                upload=iqb_upload, employee_code=emp_code, transaction_type='Annual Leave'
+                upload=iqb_upload, employee_code=emp_code,
+                pay_comp_code__in=['Annual', 'LLV', 'TPo93ALG', 'TPo93LLG']
             ).aggregate(total=Sum('amount'))
             leave_taken = leave_taken_agg['total'] or Decimal('0')
 
@@ -1778,8 +1806,10 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
             ).aggregate(total_balance=Sum('balance_value'), total_loading=Sum('leave_loading'))
             closing_value = (closing_agg['total_balance'] or Decimal('0')) + (closing_agg['total_loading'] or Decimal('0'))
 
+            # Long Service Leave taken includes: LSL, TPo93LSLG pay comp codes
             leave_taken_agg = IQBDetail.objects.filter(
-                upload=iqb_upload, employee_code=emp_code, transaction_type='Long Service Leave'
+                upload=iqb_upload, employee_code=emp_code,
+                pay_comp_code__in=['LSL', 'TPo93LSLG']
             ).aggregate(total=Sum('amount'))
             leave_taken = leave_taken_agg['total'] or Decimal('0')
 
@@ -1819,8 +1849,10 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
             ).aggregate(total_balance=Sum('balance_value'), total_loading=Sum('leave_loading'))
             closing_value = (closing_agg['total_balance'] or Decimal('0')) + (closing_agg['total_loading'] or Decimal('0'))
 
-            leave_taken_agg = IQBDetail.objects.filter(
-                upload=iqb_upload, employee_code=emp_code, transaction_type='User Defined Leave'
+            # TOIL taken uses IQBDetailV2 with pay_comp_code='UDLeave' and leave_reason_code='TIL Taken'
+            leave_taken_agg = IQBDetailV2.objects.filter(
+                upload=iqb_upload, employee_code=emp_code,
+                pay_comp_add_ded_code='UDLeave', leave_reason_code='TIL Taken'
             ).aggregate(total=Sum('amount'))
             leave_taken = leave_taken_agg['total'] or Decimal('0')
 
@@ -1854,7 +1886,8 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
     toil_journal = _aggregate_journal_by_location_department(toil_accruals, location_lookup, department_lookup)
 
     # Calculate totals using the same logic as main view
-    def calc_totals(leave_type, gl_liability, accruals, journal, transaction_type):
+    def calc_totals(leave_type, gl_liability, accruals, journal, transaction_type=None,
+                    pay_comp_codes=None, use_iqb_v2=False, leave_reason_code=None):
         opening_agg = IQBLeaveBalance.objects.filter(
             upload=opening_upload, leave_type=leave_type
         ).aggregate(total_balance=Sum('balance_value'), total_loading=Sum('leave_loading'))
@@ -1865,9 +1898,19 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
         ).aggregate(total_balance=Sum('balance_value'), total_loading=Sum('leave_loading'))
         total_closing = (closing_agg['total_balance'] or Decimal('0')) + (closing_agg['total_loading'] or Decimal('0'))
 
-        leave_taken_agg = IQBDetail.objects.filter(
-            upload=iqb_upload, transaction_type=transaction_type
-        ).aggregate(total=Sum('amount'))
+        # Use IQBDetailV2 for TOIL (requires leave_reason_code filter)
+        if use_iqb_v2 and pay_comp_codes and leave_reason_code:
+            leave_taken_agg = IQBDetailV2.objects.filter(
+                upload=iqb_upload, pay_comp_add_ded_code__in=pay_comp_codes, leave_reason_code=leave_reason_code
+            ).aggregate(total=Sum('amount'))
+        elif pay_comp_codes:
+            leave_taken_agg = IQBDetail.objects.filter(
+                upload=iqb_upload, pay_comp_code__in=pay_comp_codes
+            ).aggregate(total=Sum('amount'))
+        else:
+            leave_taken_agg = IQBDetail.objects.filter(
+                upload=iqb_upload, transaction_type=transaction_type
+            ).aggregate(total=Sum('amount'))
         total_leave_taken = leave_taken_agg['total'] or Decimal('0')
 
         # Calculate base accrual from aggregate totals (formula: Closing - Opening + Leave Taken)
@@ -1894,9 +1937,15 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
             'total_credit': sum(j['credit'] for j in journal),
         }
 
-    annual_totals = calc_totals('Annual Leave', '2310', annual_leave_accruals, annual_journal, 'Annual Leave')
-    lsl_totals = calc_totals('Long Service Leave', '2317', lsl_accruals, lsl_journal, 'Long Service Leave')
-    toil_totals = calc_totals('User Defined Leave', '2318', toil_accruals, toil_journal, 'User Defined Leave')
+    # Annual Leave taken includes: Annual, LLV, TPo93ALG, TPo93LLG pay comp codes
+    annual_totals = calc_totals('Annual Leave', '2310', annual_leave_accruals, annual_journal,
+                                pay_comp_codes=['Annual', 'LLV', 'TPo93ALG', 'TPo93LLG'])
+    # Long Service Leave taken includes: LSL, TPo93LSLG pay comp codes
+    lsl_totals = calc_totals('Long Service Leave', '2317', lsl_accruals, lsl_journal,
+                             pay_comp_codes=['LSL', 'TPo93LSLG'])
+    # TOIL taken uses IQBDetailV2 with pay_comp_code='UDLeave' and leave_reason_code='TIL Taken'
+    toil_totals = calc_totals('User Defined Leave', '2318', toil_accruals, toil_journal,
+                              pay_comp_codes=['UDLeave'], use_iqb_v2=True, leave_reason_code='TIL Taken')
 
     annual_balanced = abs(annual_totals['total_debit'] - annual_totals['total_credit']) < Decimal('0.01')
     lsl_balanced = abs(lsl_totals['total_debit'] - lsl_totals['total_credit']) < Decimal('0.01')
@@ -1930,17 +1979,31 @@ def leave_accrual_auto_period(request, this_period_id):
     """
     Wrapper view that auto-determines the previous pay period for leave accrual
     Routes to generate_leave_accrual_journal with both period IDs
+
+    Finds the most recent previous period that has an IQB Leave Balance file uploaded.
     """
     tp_pay_period = get_object_or_404(PayPeriod, period_id=this_period_id)
 
-    # Find the most recent previous pay period
-    previous_period = PayPeriod.objects.filter(
+    # Find the most recent previous pay period that has an IQB Leave Balance file
+    previous_periods = PayPeriod.objects.filter(
         period_end__lt=tp_pay_period.period_end
-    ).order_by('-period_end').first()
+    ).order_by('-period_end')
+
+    previous_period = None
+    for period in previous_periods:
+        # Check if this period has an IQB Leave Balance file
+        has_leave_file = Upload.objects.filter(
+            pay_period=period,
+            source_system='Micropay_IQB_Leave',
+            is_active=True
+        ).exists()
+        if has_leave_file:
+            previous_period = period
+            break
 
     if not previous_period:
         return render(request, 'reconciliation/leave_accrual_error.html', {
-            'error': f'No previous pay period found before {this_period_id}',
+            'error': f'No previous pay period with IQB Leave Balance file found before {this_period_id}',
             'pay_period': tp_pay_period
         })
 
@@ -2046,22 +2109,25 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
     department_lookup = {dept.department_id: dept.department_name for dept in SageDepartment.objects.all()}
 
     # Calculate accruals for all three leave types
+    # Annual Leave taken includes: Annual, LLV, TPo93ALG, TPo93LLG pay comp codes
     annual_leave_accruals = _calculate_leave_accruals_for_type(
         'Annual Leave', '2310', '6300',
         opening_upload, closing_upload, iqb_upload, tp_pay_period,
-        transaction_type='Annual Leave'
+        pay_comp_codes=['Annual', 'LLV', 'TPo93ALG', 'TPo93LLG']
     )
 
+    # Long Service Leave taken includes: LSL, TPo93LSLG pay comp codes
     lsl_accruals = _calculate_leave_accruals_for_type(
         'Long Service Leave', '2317', '6345',
         opening_upload, closing_upload, iqb_upload, tp_pay_period,
-        transaction_type='Long Service Leave'
+        pay_comp_codes=['LSL', 'TPo93LSLG']
     )
 
+    # TOIL taken uses IQBDetailV2 with pay_comp_code='UDLeave' and leave_reason_code='TIL Taken'
     toil_accruals = _calculate_leave_accruals_for_type(
         'User Defined Leave', '2318', '6372',
         opening_upload, closing_upload, iqb_upload, tp_pay_period,
-        transaction_type='User Defined Leave'  # TOIL leave taken uses "User Defined Leave" transaction type
+        pay_comp_codes=['UDLeave'], use_iqb_v2=True, leave_reason_code='TIL Taken'
     )
 
     # Store accruals in EmployeePayPeriodSnapshot for TP period
@@ -2099,7 +2165,8 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
     toil_journal = _aggregate_journal_by_location_department(toil_accruals, location_lookup, department_lookup)
 
     # Calculate totals for each leave type
-    def calc_totals(leave_type, gl_liability, accruals, journal, transaction_type):
+    def calc_totals(leave_type, gl_liability, accruals, journal, transaction_type=None,
+                    pay_comp_codes=None, use_iqb_v2=False, leave_reason_code=None):
         # Calculate opening/closing/leave taken for ALL employees (not just those with accruals)
         from django.db.models import Sum
 
@@ -2123,11 +2190,20 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
         )
         total_closing = (closing_agg['total_balance'] or Decimal('0')) + (closing_agg['total_loading'] or Decimal('0'))
 
-        # Leave taken total (ALL employees) - use correct transaction_type
-        leave_taken_agg = IQBDetail.objects.filter(
-            upload=iqb_upload,
-            transaction_type=transaction_type
-        ).aggregate(total=Sum('amount'))
+        # Leave taken total (ALL employees)
+        # Use IQBDetailV2 for TOIL (requires leave_reason_code filter)
+        if use_iqb_v2 and pay_comp_codes and leave_reason_code:
+            leave_taken_agg = IQBDetailV2.objects.filter(
+                upload=iqb_upload, pay_comp_add_ded_code__in=pay_comp_codes, leave_reason_code=leave_reason_code
+            ).aggregate(total=Sum('amount'))
+        elif pay_comp_codes:
+            leave_taken_agg = IQBDetail.objects.filter(
+                upload=iqb_upload, pay_comp_code__in=pay_comp_codes
+            ).aggregate(total=Sum('amount'))
+        else:
+            leave_taken_agg = IQBDetail.objects.filter(
+                upload=iqb_upload, transaction_type=transaction_type
+            ).aggregate(total=Sum('amount'))
         total_leave_taken = leave_taken_agg['total'] or Decimal('0')
 
         # Calculate base accrual from aggregate totals (formula: Closing - Opening + Leave Taken)
@@ -2154,9 +2230,15 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
             'total_credit': sum(j['credit'] for j in journal),
         }
 
-    annual_totals = calc_totals('Annual Leave', '2310', annual_leave_accruals, annual_journal, 'Annual Leave')
-    lsl_totals = calc_totals('Long Service Leave', '2317', lsl_accruals, lsl_journal, 'Long Service Leave')
-    toil_totals = calc_totals('User Defined Leave', '2318', toil_accruals, toil_journal, 'User Defined Leave')
+    # Annual Leave taken includes: Annual, LLV, TPo93ALG, TPo93LLG pay comp codes
+    annual_totals = calc_totals('Annual Leave', '2310', annual_leave_accruals, annual_journal,
+                                pay_comp_codes=['Annual', 'LLV', 'TPo93ALG', 'TPo93LLG'])
+    # Long Service Leave taken includes: LSL, TPo93LSLG pay comp codes
+    lsl_totals = calc_totals('Long Service Leave', '2317', lsl_accruals, lsl_journal,
+                             pay_comp_codes=['LSL', 'TPo93LSLG'])
+    # TOIL taken uses IQBDetailV2 with pay_comp_code='UDLeave' and leave_reason_code='TIL Taken'
+    toil_totals = calc_totals('User Defined Leave', '2318', toil_accruals, toil_journal,
+                              pay_comp_codes=['UDLeave'], use_iqb_v2=True, leave_reason_code='TIL Taken')
 
     # Check if balanced
     annual_balanced = abs(annual_totals['total_debit'] - annual_totals['total_credit']) < Decimal('0.01')
@@ -2358,11 +2440,24 @@ def download_leave_employee_breakdown(request, last_period_id, this_period_id, l
 
     from django.db.models import Sum
 
-    # All leave type configurations
+    # All leave type configurations with pay_comp_codes for leave taken
     leave_configs = {
-        'annual': {'name': 'Annual Leave', 'transaction_type': 'Annual Leave'},
-        'lsl': {'name': 'Long Service Leave', 'transaction_type': 'Long Service Leave'},
-        'toil': {'name': 'User Defined Leave', 'transaction_type': 'User Defined Leave'},
+        'annual': {
+            'name': 'Annual Leave',
+            'pay_comp_codes': ['Annual', 'LLV', 'TPo93ALG', 'TPo93LLG'],
+            'use_iqb_v2': False
+        },
+        'lsl': {
+            'name': 'Long Service Leave',
+            'pay_comp_codes': ['LSL', 'TPo93LSLG'],
+            'use_iqb_v2': False
+        },
+        'toil': {
+            'name': 'User Defined Leave',
+            'pay_comp_codes': ['UDLeave'],
+            'use_iqb_v2': True,
+            'leave_reason_code': 'TIL Taken'
+        },
     }
 
     # Get ALL unique employee codes from all leave types
@@ -2447,12 +2542,22 @@ def download_leave_employee_breakdown(request, last_period_id, this_period_id, l
             opening_loading = opening_aggregation['total_loading'] or Decimal('0')
             opening_value = opening_balance + opening_loading
 
-            # Leave taken using transaction_type
-            leave_taken_aggregation = IQBDetail.objects.filter(
-                upload=iqb_upload,
-                employee_code=emp_code,
-                transaction_type=config['transaction_type']
-            ).aggregate(total_amount=Sum('amount'))
+            # Leave taken using pay_comp_codes
+            if config.get('use_iqb_v2'):
+                # TOIL uses IQBDetailV2 with pay_comp_add_ded_code and leave_reason_code
+                leave_taken_aggregation = IQBDetailV2.objects.filter(
+                    upload=iqb_upload,
+                    employee_code=emp_code,
+                    pay_comp_add_ded_code__in=config['pay_comp_codes'],
+                    leave_reason_code=config['leave_reason_code']
+                ).aggregate(total_amount=Sum('amount'))
+            else:
+                # Annual Leave and LSL use IQBDetail with pay_comp_codes
+                leave_taken_aggregation = IQBDetail.objects.filter(
+                    upload=iqb_upload,
+                    employee_code=emp_code,
+                    pay_comp_code__in=config['pay_comp_codes']
+                ).aggregate(total_amount=Sum('amount'))
             leave_taken = leave_taken_aggregation['total_amount'] or Decimal('0')
 
             # Calculate base accrual
