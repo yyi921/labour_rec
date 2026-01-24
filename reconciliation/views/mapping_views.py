@@ -738,15 +738,16 @@ def _employee_has_location_700(iqb_upload, emp_code, include_transaction_types, 
 
     # Check Tanda allocation for location 700
     if tanda_upload:
-        from reconciliation.models import TandaTimesheet, TandaLocationMapping
+        from reconciliation.models import TandaTimesheet, LocationMapping
         tanda_entries = TandaTimesheet.objects.filter(
             upload=tanda_upload,
             employee_code=emp_code
-        ).values_list('location', flat=True).distinct()
+        ).values_list('location', 'team_name').distinct()
 
-        for tanda_loc in tanda_entries:
-            mapping = TandaLocationMapping.objects.filter(tanda_location=tanda_loc).first()
-            if mapping and mapping.sage_location_id == '700':
+        for location_name, team_name in tanda_entries:
+            tanda_location = f"{location_name} - {team_name}"
+            mapping = LocationMapping.objects.filter(tanda_location=tanda_location).first()
+            if mapping and mapping.cost_account_code and mapping.cost_account_code.startswith('700-'):
                 return True
 
     # Check Override allocation for location 700
