@@ -97,6 +97,22 @@
             <button type="button" onclick="clearFilters()" class="btn btn-secondary">Clear Filters</button>
         </form>
     </div>
+
+    <!-- TECC (Location 700) Quick Filter -->
+    <div class="tecc-filter" style="margin-top: 20px; padding: 15px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+        <h3 style="margin-top: 0; color: #856404;">🏢 TECC Employees (Location 700)</h3>
+        <p style="font-size: 14px; color: #856404; margin-bottom: 10px;">
+            Find employees with Location 700 in any source (IQB, Tanda, or Override)
+        </p>
+        <button type="button" onclick="filterTECC()" class="btn" style="background-color: #ffc107; color: #212529; font-weight: bold;">
+            🔍 Show TECC Employees
+        </button>
+        {% if tecc_filter %}
+        <span style="margin-left: 15px; color: #28a745; font-weight: bold;">
+            ✓ Showing {{ employees|length }} TECC employees
+        </span>
+        {% endif %}
+    </div>
 </div>
 
 <!-- Employee Allocation Table -->
@@ -566,6 +582,15 @@ function clearFilters() {
     document.getElementById('locationFilter').value = '';
     document.getElementById('departmentFilter').value = '';
     document.getElementById('filterForm').submit();
+}
+
+function filterTECC() {
+    // Navigate to TECC filter view
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('tecc', '1');
+    currentUrl.searchParams.delete('location');
+    currentUrl.searchParams.delete('department');
+    window.location.href = currentUrl.toString();
 }
 
 function saveOverrideIfSelected(textarea) {

@@ -452,6 +452,8 @@ def generate_journal(request, pay_period_id):
     # Build GL Batch vs Sage Journal comparison table
     # GL Batch totals from Micropay Journal (ledger_account last 4 digits = GL, debit - credit)
     gl_batch_totals = defaultdict(Decimal)
+    location_700_entries = []  # For the new Location 700 breakdown table
+
     for journal in journal_entries_from_db:
         ledger_account = journal.ledger_account.strip()
         # Extract GL account (last part after dash, or whole thing if starts with -)
@@ -465,13 +467,31 @@ def generate_journal(request, pay_period_id):
         amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
         gl_batch_totals[gl_account] += amount
 
-    # Sage Journal totals from generated journal_lines
-    sage_journal_totals = defaultdict(Decimal)
+        # Collect Location 700 entries for breakdown table
+        if ledger_account.startswith('700-'):
+            location_700_entries.append({
+                'ledger_account': ledger_account,
+                'cost_account': ledger_account.rsplit('-', 1)[0] if '-' in ledger_account else '',
+                'gl_account': gl_account,
+                'debit': journal.debit or Decimal('0'),
+                'credit': journal.credit or Decimal('0'),
+                'net': amount
+            })
+
+    # Calculate Location 700 total
+    location_700_total = sum(e['net'] for e in location_700_entries)
+
+    # Sage Journal totals - keep both actual GL and mapped-back totals
+    sage_journal_totals = defaultdict(Decimal)  # Mapped back to original GLs for comparison
+    sage_journal_actual = defaultdict(Decimal)  # Actual GL accounts in Sage Journal
+
     for line in journal_lines:
-        # Use the original GL account (not 1180 which is the on-charge account)
-        # Extract from memo which contains the original GL: "... {gl_account} {gl_desc}"
-        memo = line['memo']
         acct_no = line['acct_no']
+        sage_journal_actual[acct_no] += line['debit']
+
+        # For comparison, map 1180 back to original GL
+        memo = line['memo']
+        mapped_acct = acct_no
 
         # For 1180 entries, the original GL is in the memo
         if acct_no == '1180' and 'Payroll journal' in memo:
@@ -479,10 +499,10 @@ def generate_journal(request, pay_period_id):
             parts = memo.split()
             for i, part in enumerate(parts):
                 if part.isdigit() and len(part) == 4:
-                    acct_no = part
+                    mapped_acct = part
                     break
 
-        sage_journal_totals[acct_no] += line['debit']
+        sage_journal_totals[mapped_acct] += line['debit']
 
     # Build comparison list
     all_gl_accounts = sorted(set(gl_batch_totals.keys()) | set(sage_journal_totals.keys()))
@@ -507,6 +527,9 @@ def generate_journal(request, pay_period_id):
             'matched': abs(variance) < Decimal('0.01')
         })
 
+    # Add 1180 summary row (actual Sage Journal 1180 total)
+    total_1180_sage = sage_journal_actual.get('1180', Decimal('0'))
+
     context = {
         'pay_period': pay_period,
         'entries': entries_for_display,
@@ -516,7 +539,10 @@ def generate_journal(request, pay_period_id):
         'balanced': abs(total_debit) < Decimal('0.01'),
         'employee_count': snapshots.count(),
         'journal_entry_count': len(journal_lines),
-        'gl_comparison': gl_comparison
+        'gl_comparison': gl_comparison,
+        'total_1180_sage': total_1180_sage,
+        'location_700_entries': location_700_entries,
+        'location_700_total': location_700_total,
     }
 
     return render(request, 'reconciliation/journal_generated.html', context)

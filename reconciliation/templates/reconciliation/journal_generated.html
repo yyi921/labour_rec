@@ -184,6 +184,55 @@
                 {% endfor %}
             </tbody>
         </table>
+
+        <!-- GL 1180 Summary -->
+        <div style="margin-top: 20px; padding: 15px; background-color: #e8f5e9; border-left: 4px solid #4CAF50; border-radius: 4px;">
+            <h4 style="margin-top: 0; color: #2e7d32;">GL 1180 (TECC On-Charge) Summary</h4>
+            <p style="margin-bottom: 0; font-size: 16px;">
+                <strong>Total 1180 in Sage Journal:</strong> ${{ total_1180_sage|floatformat:2 }}
+                <br>
+                <small style="color: #666;">This is the total amount on-charged to TECC (Location 700 non-23* entries converted to GL 1180)</small>
+            </p>
+        </div>
+        {% endif %}
+
+        {% if location_700_entries %}
+        <h3 style="margin-top: 30px; border-bottom: 2px solid #ffc107; padding-bottom: 10px;">Location 700 (TECC) GL Batch Breakdown</h3>
+        <p style="color: #666; font-size: 14px;">Entries from GL Batch where Cost Account starts with 700- (TECC location)</p>
+        <table style="max-width: 900px;">
+            <thead>
+                <tr>
+                    <th>Ledger Account</th>
+                    <th>Cost Account</th>
+                    <th>GL Account</th>
+                    <th class="number">Debit</th>
+                    <th class="number">Credit</th>
+                    <th class="number">Net</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in location_700_entries %}
+                <tr>
+                    <td>{{ entry.ledger_account }}</td>
+                    <td>{{ entry.cost_account }}</td>
+                    <td><strong>{{ entry.gl_account }}</strong></td>
+                    <td class="number">${{ entry.debit|floatformat:2 }}</td>
+                    <td class="number">${{ entry.credit|floatformat:2 }}</td>
+                    <td class="number">${{ entry.net|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+                <tr class="total-row">
+                    <td colspan="5" style="text-align: right;"><strong>TOTAL Location 700:</strong></td>
+                    <td class="number"><strong>${{ location_700_total|floatformat:2 }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+        <div style="margin-top: 10px; padding: 10px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+            <small style="color: #856404;">
+                <strong>Note:</strong> Compare this total (${{ location_700_total|floatformat:2 }}) with GL 1180 in Sage Journal (${{ total_1180_sage|floatformat:2 }}).
+                The difference is due to 23* GL accounts which stay at Location 700 (not converted to 1180).
+            </small>
+        </div>
         {% endif %}
 
         <h3 style="margin-top: 30px; border-bottom: 2px solid #4CAF50; padding-bottom: 10px;">Journal Entries Detail</h3>

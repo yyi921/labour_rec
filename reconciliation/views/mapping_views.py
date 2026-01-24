@@ -360,6 +360,7 @@ def cost_allocation_view(request, pay_period_id):
     # Get filter parameters
     location_filter = request.GET.get('location', '')
     department_filter = request.GET.get('department', '')
+    tecc_filter = request.GET.get('tecc', '')  # TECC (Location 700) filter
     view_mode = request.GET.get('view', 'percentage')  # 'percentage' or 'dollar'
 
     # If switching to dollar view, return dollar view
@@ -368,7 +369,7 @@ def cost_allocation_view(request, pay_period_id):
 
     # Default behavior: if no filters applied, show empty list (for performance)
     # User must select location/department to load data
-    if not location_filter and not department_filter:
+    if not location_filter and not department_filter and not tecc_filter:
         # Get filter options
         locations = SageLocation.objects.all().order_by('location_id')
         departments = SageDepartment.objects.all().order_by('department_id')
@@ -381,6 +382,7 @@ def cost_allocation_view(request, pay_period_id):
             'departments': departments,
             'selected_location': location_filter,
             'selected_department': department_filter,
+            'tecc_filter': tecc_filter,
             'view_mode': view_mode,
             'show_filter_message': True,
         }
@@ -453,6 +455,15 @@ def cost_allocation_view(request, pay_period_id):
             if not _employee_matches_filter_by_cost_account(
                 iqb_upload, emp_code, include_transaction_types, location_filter, department_filter
             ):
+                continue
+
+        # TECC filter: check if employee has location 700 in any source
+        if tecc_filter:
+            has_tecc = _employee_has_location_700(
+                iqb_upload, emp_code, include_transaction_types,
+                tanda_upload, override_rules.get(emp_code)
+            )
+            if not has_tecc:
                 continue
 
         # Get total cost by pay_comp_code for this employee
@@ -538,6 +549,7 @@ def cost_allocation_view(request, pay_period_id):
         'departments': departments,
         'selected_location': location_filter,
         'selected_department': department_filter,
+        'tecc_filter': tecc_filter,
         'view_mode': view_mode,
     }
 
@@ -704,6 +716,44 @@ def _employee_matches_filter_by_cost_account(iqb_upload, emp_code, include_trans
 
         if location_match and department_match:
             return True
+
+    return False
+
+
+def _employee_has_location_700(iqb_upload, emp_code, include_transaction_types, tanda_upload, override_rule):
+    """
+    Check if employee has location 700 in any source (IQB, Tanda, or Override)
+    Used for TECC filtering
+    """
+    # Check IQB cost accounts for location 700
+    if iqb_upload:
+        iqb_has_700 = IQBDetail.objects.filter(
+            upload=iqb_upload,
+            employee_code=emp_code,
+            transaction_type__in=include_transaction_types,
+            cost_account_code__startswith='700-'
+        ).exists()
+        if iqb_has_700:
+            return True
+
+    # Check Tanda allocation for location 700
+    if tanda_upload:
+        from reconciliation.models import TandaTimesheet, TandaLocationMapping
+        tanda_entries = TandaTimesheet.objects.filter(
+            upload=tanda_upload,
+            employee_code=emp_code
+        ).values_list('location', flat=True).distinct()
+
+        for tanda_loc in tanda_entries:
+            mapping = TandaLocationMapping.objects.filter(tanda_location=tanda_loc).first()
+            if mapping and mapping.sage_location_id == '700':
+                return True
+
+    # Check Override allocation for location 700
+    if override_rule and override_rule.allocations:
+        for cost_account in override_rule.allocations.keys():
+            if cost_account.startswith('700-') or cost_account == '700':
+                return True
 
     return False
 
