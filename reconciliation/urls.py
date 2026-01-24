@@ -53,6 +53,7 @@ urlpatterns = [
     path('leave-accrual/<str:last_period_id>/<str:this_period_id>/', journal_views.generate_leave_accrual_journal, name='generate_leave_accrual'),
     path('leave-accrual/<str:last_period_id>/<str:this_period_id>/download-<str:leave_type>-sage/', journal_views.download_leave_journal_sage, name='download_leave_journal_sage'),
     path('leave-accrual/<str:last_period_id>/<str:this_period_id>/download-<str:leave_type>-employees/', journal_views.download_leave_employee_breakdown, name='download_leave_employee_breakdown'),
+    path('leave-accrual/<str:last_period_id>/<str:this_period_id>/download-cost-allocation/', journal_views.download_employee_cost_allocation, name='download_employee_cost_allocation'),
 
     # Upload endpoints
     path('uploads/multi/', upload_views.multi_upload, name='multi_upload'),

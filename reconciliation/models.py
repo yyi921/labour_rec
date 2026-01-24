@@ -362,13 +362,24 @@ class LSLProbability(models.Model):
         if years_of_service is None:
             return Decimal('0')
 
+        # Try to find exact range match
         prob_record = cls.objects.filter(
             is_active=True,
             years_from__lte=years_of_service,
             years_to__gte=years_of_service
         ).first()
 
-        return prob_record.probability if prob_record else Decimal('0')
+        if prob_record:
+            return prob_record.probability
+
+        # If no match found, check if years_of_service exceeds all ranges
+        # Get the highest years_to value
+        max_range = cls.objects.filter(is_active=True).order_by('-years_to').first()
+        if max_range and years_of_service >= max_range.years_to:
+            # Return the probability of the highest range
+            return max_range.probability
+
+        return Decimal('0')
 
 
 class CostCenterSplit(models.Model):

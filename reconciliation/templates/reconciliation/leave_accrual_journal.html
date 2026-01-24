@@ -159,6 +159,17 @@
             </a>
         </div>
 
+        <!-- GENERAL DOWNLOADS -->
+        <div class="download-section">
+            <h3>📊 General Downloads:</h3>
+            <a href="{% url 'reconciliation:download_employee_cost_allocation' lp_pay_period.period_id tp_pay_period.period_id %}" class="btn-download">
+                📍 Employee Cost Allocation
+            </a>
+            <a href="{% url 'reconciliation:download_leave_employee_breakdown' lp_pay_period.period_id tp_pay_period.period_id 'all' %}" class="btn-download">
+                👥 All Leave Employee Breakdown
+            </a>
+        </div>
+
         <!-- ANNUAL LEAVE SECTION -->
         <div class="leave-section annual">
             <h2>Annual Leave Accrual</h2>

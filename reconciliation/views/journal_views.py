@@ -1417,12 +1417,13 @@ def download_employee_snapshot(request, pay_period_id):
     # Define GL account columns in order
     gl_columns = [
         ('gl_2310_annual_leave', '2310 Annual Leave'),
-        ('gl_2317_long_service_leave', '2317 TIL Provision'),
-        ('gl_2318_toil_liability', '2318 TOIL Liability'),
+        ('gl_2317_toil', '2317 TOIL'),
+        ('gl_2318_toil_liability', '2318 TOIL Liability (Deprecated)'),
         ('gl_2320_sick_leave', '2320 WorkCover'),
         ('gl_2321_paid_parental', '2321 Paid Parental'),
         ('gl_2325_leasing', '2325 Leasing'),
-        ('gl_2330_long_service_leave', '2330 Long Service Leave'),
+        ('gl_2330_long_service_leave', '2330 Long Service Leave (Current)'),
+        ('gl_2705_long_service_leave', '2705 Long Service Leave (Non-Current)'),
         ('gl_2350_net_wages', '2350 Net Wages'),
         ('gl_2351_other_deductions', '2351 Other Deductions'),
         ('gl_2360_payg_withholding', '2360 PAYG Withholding'),
@@ -1529,7 +1530,7 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
 
     Args:
         leave_type: 'Annual Leave', 'Long Service Leave', or 'User Defined Leave'
-        gl_liability_account: GL account for liability (2310, 2317, or 2318)
+        gl_liability_account: GL account for liability (2310, 2317, 2705, 2330, or None for LSL - determined by years of service)
         gl_expense_account: GL account for expense (6300, 6345, or 6372)
         opening_upload: Opening balance upload (LP)
         closing_upload: Closing balance upload (TP)
@@ -1551,32 +1552,60 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
     if transaction_type is None:
         transaction_type = leave_type
 
-    # Get unique employees with closing balances for this leave type
-    closing_employees = IQBLeaveBalance.objects.filter(
+    # Get ALL unique employees from BOTH opening and closing periods
+    # This ensures we include terminated employees (in opening but not closing)
+    # and new hires (in closing but not opening)
+    opening_employees_set = set(IQBLeaveBalance.objects.filter(
+        upload=opening_upload,
+        leave_type=leave_type
+    ).values_list('employee_code', flat=True))
+
+    closing_employees_set = set(IQBLeaveBalance.objects.filter(
         upload=closing_upload,
         leave_type=leave_type
-    ).values('employee_code').annotate(
-        total_balance=Sum('balance_value'),
-        total_loading=Sum('leave_loading')
-    ).order_by('employee_code')
+    ).values_list('employee_code', flat=True))
 
-    for emp_data in closing_employees:
-        emp_code = emp_data['employee_code']
+    all_employees = sorted(opening_employees_set | closing_employees_set)
 
+    for emp_code in all_employees:
         # Closing balance (value in $, including leave loading)
-        closing_balance = emp_data['total_balance'] or Decimal('0')
-        closing_loading = emp_data['total_loading'] or Decimal('0')
+        closing_aggregation = IQBLeaveBalance.objects.filter(
+            upload=closing_upload,
+            employee_code=emp_code,
+            leave_type=leave_type
+        ).aggregate(
+            total_balance=Sum('balance_value'),
+            total_loading=Sum('leave_loading')
+        )
+        closing_balance = closing_aggregation['total_balance'] or Decimal('0')
+        closing_loading = closing_aggregation['total_loading'] or Decimal('0')
         closing_value = closing_balance + closing_loading
 
-        # Get employee name
+        # Get employee name from closing record (or opening if not in closing)
         emp_record = IQBLeaveBalance.objects.filter(
             upload=closing_upload,
             employee_code=emp_code,
             leave_type=leave_type
         ).first()
+
+        if not emp_record:
+            # Try opening record if not in closing (terminated employee)
+            emp_record = IQBLeaveBalance.objects.filter(
+                upload=opening_upload,
+                employee_code=emp_code,
+                leave_type=leave_type
+            ).first()
+
         emp_name = emp_record.full_name if emp_record else emp_code
 
         # Get opening balance (value in $, including leave loading)
+        # Also get the opening record for years_of_service (needed for LSL probability)
+        opening_record = IQBLeaveBalance.objects.filter(
+            upload=opening_upload,
+            employee_code=emp_code,
+            leave_type=leave_type
+        ).first()
+
         opening_aggregation = IQBLeaveBalance.objects.filter(
             upload=opening_upload,
             employee_code=emp_code,
@@ -1628,10 +1657,29 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
 
         # Apply LSL probability if this is Long Service Leave
         if leave_type == 'Long Service Leave':
-            years_of_service = emp_record.years_of_service if emp_record else None
-            probability = LSLProbability.get_probability(years_of_service)
-            accrual_amount = base_accrual * probability
+            # Get closing probability based on closing years of service
+            closing_years = emp_record.years_of_service if emp_record else None
+            closing_probability = LSLProbability.get_probability(closing_years)
+
+            # Get opening probability based on opening years of service
+            opening_years = opening_record.years_of_service if opening_record else None
+            opening_probability = LSLProbability.get_probability(opening_years)
+
+            # New formula: (C/B × closing prob) - (O/B × opening prob) + leave taken
+            accrual_amount = (closing_value * closing_probability) - (opening_value * opening_probability) + leave_taken
+
+            # Determine GL liability account based on closing years of service
+            # If <= 7 years: 2705 (LSL Provision - Non-current)
+            # If > 7 years: 2330 (LSL Provision - Current)
+            if closing_years is not None and closing_years <= 7:
+                gl_liability_account = '2705'
+            else:
+                gl_liability_account = '2330'
         else:
+            closing_years = None
+            closing_probability = None
+            opening_years = None
+            opening_probability = None
             accrual_amount = base_accrual
 
         # Calculate oncosts
@@ -1648,8 +1696,49 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
             )
             cost_allocation = snapshot.cost_allocation or {}
         except EmployeePayPeriodSnapshot.DoesNotExist:
-            # No cost allocation - skip this employee
-            continue
+            # No snapshot - use employee's default cost account
+            from reconciliation.models import Employee, CostCenterSplit
+            try:
+                employee = Employee.objects.get(code=emp_code)
+                cost_allocation = {}
+
+                if employee.default_cost_account:
+                    # Check if this is a SPL- account
+                    if employee.default_cost_account.startswith('SPL-'):
+                        # Look up all split targets for this source account
+                        splits = CostCenterSplit.objects.filter(
+                            source_account=employee.default_cost_account,
+                            is_active=True
+                        )
+                        for split in splits:
+                            target_account = split.target_account
+                            split_pct = split.percentage
+                            # Parse target account (format: location-department)
+                            if '-' in target_account:
+                                parts = target_account.split('-')
+                                if len(parts) >= 2:
+                                    location_code = parts[0]
+                                    dept_code = parts[1]
+                                    if location_code not in cost_allocation:
+                                        cost_allocation[location_code] = {}
+                                    cost_allocation[location_code][dept_code] = float(split_pct)
+                    else:
+                        # Parse default_cost_account (format: location-department)
+                        if '-' in employee.default_cost_account:
+                            parts = employee.default_cost_account.split('-')
+                            if len(parts) >= 2:
+                                location_code = parts[0]
+                                dept_code = parts[1]
+                                cost_allocation = {location_code: {dept_code: 100.0}}
+
+                # If still no cost allocation, skip this employee
+                if not cost_allocation:
+                    continue
+
+                snapshot = None  # No snapshot exists
+            except Employee.DoesNotExist:
+                # No employee record either - skip
+                continue
 
         accruals.append({
             'employee_code': emp_code,
@@ -1659,6 +1748,10 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
             'leave_taken': leave_taken,
             'base_accrual': base_accrual,  # Base accrual before probability
             'accrual_amount': accrual_amount,  # Final accrual after probability (if LSL)
+            'opening_years_of_service': opening_years,  # For LSL tracking
+            'closing_years_of_service': closing_years,  # For LSL tracking
+            'opening_probability': opening_probability,  # For LSL tracking
+            'closing_probability': closing_probability,  # For LSL tracking
             'super_amount': super_amount,
             'prt_amount': prt_amount,
             'workcover_amount': workcover_amount,
@@ -1673,7 +1766,17 @@ def _calculate_leave_accruals_for_type(leave_type, gl_liability_account, gl_expe
 
 
 def _aggregate_journal_by_location_department(accruals, location_lookup, department_lookup):
-    """Aggregate journal entries by location and department"""
+    """
+    Aggregate journal entries by location and department
+
+    For each employee accrual:
+    1. Take the accrual_amount (with LSL probability already applied if applicable)
+    2. Split according to their cost_allocation percentages
+    3. Truncate department ID to first 2 characters (e.g., "4200" → "42")
+    4. Create journal entries:
+       - DR expense account, CR liability account (using accrual_amount)
+       - DR oncost accounts (super/PRT/workcover), CR 2055
+    """
     from collections import defaultdict
 
     aggregated = defaultdict(lambda: Decimal('0'))
@@ -1681,21 +1784,27 @@ def _aggregate_journal_by_location_department(accruals, location_lookup, departm
     for accrual in accruals:
         for location_id, departments in accrual['cost_allocation'].items():
             for dept_id, percentage in departments.items():
+                # Truncate department ID to first 2 characters
+                dept_id_truncated = dept_id[:2] if len(dept_id) >= 2 else dept_id
+
                 allocation_pct = Decimal(str(percentage)) / Decimal('100')
 
-                # Base
+                # Base accrual entry
+                # DR expense, CR liability
                 base = accrual['accrual_amount'] * allocation_pct
                 if base != 0:
-                    aggregated[(location_id, dept_id, accrual['gl_expense'], 'debit')] += base
-                    aggregated[(location_id, dept_id, accrual['gl_liability'], 'credit')] += base
+                    aggregated[(location_id, dept_id_truncated, accrual['gl_expense'], 'debit')] += base
+                    aggregated[(location_id, dept_id_truncated, accrual['gl_liability'], 'credit')] += base
 
-                # Oncosts
+                # Oncosts entries
+                # DR oncost expense accounts, CR 2055
                 for (gl_dr, amount_key) in [('6370', 'super_amount'), ('6335', 'prt_amount'), ('6380', 'workcover_amount')]:
                     amt = accrual[amount_key] * allocation_pct
                     if amt != 0:
-                        aggregated[(location_id, dept_id, gl_dr, 'debit')] += amt
-                        aggregated[(location_id, dept_id, '2055', 'credit')] += amt
+                        aggregated[(location_id, dept_id_truncated, gl_dr, 'debit')] += amt
+                        aggregated[(location_id, dept_id_truncated, '2055', 'credit')] += amt
 
+    # Convert aggregated dict to list of journal entries
     journal_entries = []
     for (location_id, dept_id, gl_account, dr_cr), amount in aggregated.items():
         existing = next((e for e in journal_entries
@@ -1819,6 +1928,16 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
             prt_amount = accrual_amount * Decimal('0.0495')
             workcover_amount = accrual_amount * Decimal('0.01384')
 
+            # Determine LSL GL liability account based on closing years of service
+            closing_record = IQBLeaveBalance.objects.filter(
+                upload=closing_upload, employee_code=emp_code, leave_type='Long Service Leave'
+            ).first()
+            closing_years = closing_record.years_of_service if closing_record else None
+            if closing_years is not None and closing_years <= 7:
+                lsl_gl_liability = '2705'
+            else:
+                lsl_gl_liability = '2330'
+
             lsl_accruals.append({
                 'employee_code': emp_code,
                 'employee_name': snapshot.employee_name,
@@ -1832,7 +1951,7 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
                 'workcover_amount': workcover_amount,
                 'total_with_oncosts': accrual_amount + super_amount + prt_amount + workcover_amount,
                 'cost_allocation': snapshot.cost_allocation,
-                'gl_liability': '2317',
+                'gl_liability': lsl_gl_liability,
                 'gl_expense': '6345',
                 'snapshot': snapshot
             })
@@ -1875,7 +1994,7 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
                 'workcover_amount': workcover_amount,
                 'total_with_oncosts': accrual_amount + super_amount + prt_amount + workcover_amount,
                 'cost_allocation': snapshot.cost_allocation,
-                'gl_liability': '2318',
+                'gl_liability': '2317',
                 'gl_expense': '6372',
                 'snapshot': snapshot
             })
@@ -1914,25 +2033,29 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
         total_leave_taken = leave_taken_agg['total'] or Decimal('0')
 
         # Calculate base accrual from aggregate totals (formula: Closing - Opening + Leave Taken)
+        # This includes ALL employees with leave balances, regardless of whether they have snapshots
         total_base_calculated = total_closing - total_opening + total_leave_taken
 
-        # Calculate oncosts from base accrual total (not summing individuals)
+        # Calculate oncosts from total_base (includes ALL employees)
         total_super_calculated = total_base_calculated * Decimal('0.12')
         total_prt_calculated = total_base_calculated * Decimal('0.0495')
         total_workcover_calculated = total_base_calculated * Decimal('0.01384')
         total_with_oncosts_calculated = total_base_calculated + total_super_calculated + total_prt_calculated + total_workcover_calculated
+
+        # For LSL, also track the accrual after probability is applied
+        total_accrual_from_employees = sum(a['accrual_amount'] for a in accruals)
 
         return {
             'employee_count': len(accruals),
             'total_opening': total_opening,
             'total_closing': total_closing,
             'total_leave_taken': total_leave_taken,
-            'total_base': total_base_calculated,  # Derived from aggregate totals
-            'total_accrual': sum(a['accrual_amount'] for a in accruals),  # Final accrual after probability (for LSL)
-            'total_super': total_super_calculated,  # Derived: base * 12%
-            'total_prt': total_prt_calculated,  # Derived: base * 4.95%
-            'total_workcover': total_workcover_calculated,  # Derived: base * 1.384%
-            'total_with_oncosts': total_with_oncosts_calculated,  # Derived: base + super + prt + workcover
+            'total_base': total_base_calculated,  # Includes ALL employees (aggregate totals)
+            'total_accrual': total_accrual_from_employees,  # Sum of individual accruals (with LSL probability applied if applicable)
+            'total_super': total_super_calculated,  # 12% of total_base (ALL employees)
+            'total_prt': total_prt_calculated,  # 4.95% of total_base (ALL employees)
+            'total_workcover': total_workcover_calculated,  # 1.384% of total_base (ALL employees)
+            'total_with_oncosts': total_with_oncosts_calculated,  # total_base + oncosts (ALL employees)
             'total_debit': sum(j['debit'] for j in journal),
             'total_credit': sum(j['credit'] for j in journal),
         }
@@ -1941,10 +2064,11 @@ def _render_leave_accrual_from_cache(request, lp_pay_period, tp_pay_period,
     annual_totals = calc_totals('Annual Leave', '2310', annual_leave_accruals, annual_journal,
                                 pay_comp_codes=['Annual', 'LLV', 'TPo93ALG', 'TPo93LLG'])
     # Long Service Leave taken includes: LSL, TPo93LSLG pay comp codes
-    lsl_totals = calc_totals('Long Service Leave', '2317', lsl_accruals, lsl_journal,
+    # Note: LSL uses multiple GL accounts (2705 and 2330) based on years of service
+    lsl_totals = calc_totals('Long Service Leave', None, lsl_accruals, lsl_journal,
                              pay_comp_codes=['LSL', 'TPo93LSLG'])
     # TOIL taken uses IQBDetailV2 with pay_comp_code='UDLeave' and leave_reason_code='TIL Taken'
-    toil_totals = calc_totals('User Defined Leave', '2318', toil_accruals, toil_journal,
+    toil_totals = calc_totals('User Defined Leave', '2317', toil_accruals, toil_journal,
                               pay_comp_codes=['UDLeave'], use_iqb_v2=True, leave_reason_code='TIL Taken')
 
     annual_balanced = abs(annual_totals['total_debit'] - annual_totals['total_credit']) < Decimal('0.01')
@@ -2024,11 +2148,11 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
     - Workcover 1.384%: DR 6380, CR 2055
 
     Long Service Leave:
-    - Base: DR 6345, CR 2317
+    - Base: DR 6345, CR 2705 (if years of service <= 7) or CR 2330 (if years of service > 7)
     - Super/PRT/Workcover: CR 2055
 
     Time-in-Lieu (User Defined Leave):
-    - Base: DR 6372, CR 2318
+    - Base: DR 6372, CR 2317
     - Super/PRT/Workcover: CR 2055
 
     Args:
@@ -2117,15 +2241,17 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
     )
 
     # Long Service Leave taken includes: LSL, TPo93LSLG pay comp codes
+    # Note: GL liability account will be determined per employee based on years of service
+    # (2705 if <= 7 years, 2330 if > 7 years)
     lsl_accruals = _calculate_leave_accruals_for_type(
-        'Long Service Leave', '2317', '6345',
+        'Long Service Leave', None, '6345',
         opening_upload, closing_upload, iqb_upload, tp_pay_period,
         pay_comp_codes=['LSL', 'TPo93LSLG']
     )
 
     # TOIL taken uses IQBDetailV2 with pay_comp_code='UDLeave' and leave_reason_code='TIL Taken'
     toil_accruals = _calculate_leave_accruals_for_type(
-        'User Defined Leave', '2318', '6372',
+        'User Defined Leave', '2317', '6372',
         opening_upload, closing_upload, iqb_upload, tp_pay_period,
         pay_comp_codes=['UDLeave'], use_iqb_v2=True, leave_reason_code='TIL Taken'
     )
@@ -2140,24 +2266,27 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
 
     for accrual in annual_leave_accruals:
         snapshot = accrual['snapshot']
-        snapshot.accrual_annual_leave = accrual['accrual_amount']
-        snapshot.accrual_period_start = accrual_start_date
-        snapshot.accrual_period_end = accrual_end_date
-        snapshot.save(update_fields=['accrual_annual_leave', 'accrual_period_start', 'accrual_period_end'])
+        if snapshot:  # Only save if snapshot exists (not using default cost account)
+            snapshot.accrual_annual_leave = accrual['accrual_amount']
+            snapshot.accrual_period_start = accrual_start_date
+            snapshot.accrual_period_end = accrual_end_date
+            snapshot.save(update_fields=['accrual_annual_leave', 'accrual_period_start', 'accrual_period_end'])
 
     for accrual in lsl_accruals:
         snapshot = accrual['snapshot']
-        snapshot.accrual_long_service_leave = accrual['accrual_amount']
-        snapshot.accrual_period_start = accrual_start_date
-        snapshot.accrual_period_end = accrual_end_date
-        snapshot.save(update_fields=['accrual_long_service_leave', 'accrual_period_start', 'accrual_period_end'])
+        if snapshot:  # Only save if snapshot exists (not using default cost account)
+            snapshot.accrual_long_service_leave = accrual['accrual_amount']
+            snapshot.accrual_period_start = accrual_start_date
+            snapshot.accrual_period_end = accrual_end_date
+            snapshot.save(update_fields=['accrual_long_service_leave', 'accrual_period_start', 'accrual_period_end'])
 
     for accrual in toil_accruals:
         snapshot = accrual['snapshot']
-        snapshot.accrual_toil = accrual['accrual_amount']
-        snapshot.accrual_period_start = accrual_start_date
-        snapshot.accrual_period_end = accrual_end_date
-        snapshot.save(update_fields=['accrual_toil', 'accrual_period_start', 'accrual_period_end'])
+        if snapshot:  # Only save if snapshot exists (not using default cost account)
+            snapshot.accrual_toil = accrual['accrual_amount']
+            snapshot.accrual_period_start = accrual_start_date
+            snapshot.accrual_period_end = accrual_end_date
+            snapshot.save(update_fields=['accrual_toil', 'accrual_period_start', 'accrual_period_end'])
 
     # Aggregate journal entries by location/department
     annual_journal = _aggregate_journal_by_location_department(annual_leave_accruals, location_lookup, department_lookup)
@@ -2207,25 +2336,29 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
         total_leave_taken = leave_taken_agg['total'] or Decimal('0')
 
         # Calculate base accrual from aggregate totals (formula: Closing - Opening + Leave Taken)
+        # This includes ALL employees with leave balances, regardless of whether they have snapshots
         total_base_calculated = total_closing - total_opening + total_leave_taken
 
-        # Calculate oncosts from base accrual total (not summing individuals)
+        # Calculate oncosts from total_base (includes ALL employees)
         total_super_calculated = total_base_calculated * Decimal('0.12')
         total_prt_calculated = total_base_calculated * Decimal('0.0495')
         total_workcover_calculated = total_base_calculated * Decimal('0.01384')
         total_with_oncosts_calculated = total_base_calculated + total_super_calculated + total_prt_calculated + total_workcover_calculated
+
+        # For LSL, also track the accrual after probability is applied
+        total_accrual_from_employees = sum(a['accrual_amount'] for a in accruals)
 
         return {
             'employee_count': len(accruals),
             'total_opening': total_opening,
             'total_closing': total_closing,
             'total_leave_taken': total_leave_taken,
-            'total_base': total_base_calculated,  # Derived from aggregate totals
-            'total_accrual': sum(a['accrual_amount'] for a in accruals),  # Final accrual after probability (for LSL)
-            'total_super': total_super_calculated,  # Derived: base * 12%
-            'total_prt': total_prt_calculated,  # Derived: base * 4.95%
-            'total_workcover': total_workcover_calculated,  # Derived: base * 1.384%
-            'total_with_oncosts': total_with_oncosts_calculated,  # Derived: base + super + prt + workcover
+            'total_base': total_base_calculated,  # Includes ALL employees (aggregate totals)
+            'total_accrual': total_accrual_from_employees,  # Sum of individual accruals (with LSL probability applied if applicable)
+            'total_super': total_super_calculated,  # 12% of total_base (ALL employees)
+            'total_prt': total_prt_calculated,  # 4.95% of total_base (ALL employees)
+            'total_workcover': total_workcover_calculated,  # 1.384% of total_base (ALL employees)
+            'total_with_oncosts': total_with_oncosts_calculated,  # total_base + oncosts (ALL employees)
             'total_debit': sum(j['debit'] for j in journal),
             'total_credit': sum(j['credit'] for j in journal),
         }
@@ -2234,10 +2367,11 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
     annual_totals = calc_totals('Annual Leave', '2310', annual_leave_accruals, annual_journal,
                                 pay_comp_codes=['Annual', 'LLV', 'TPo93ALG', 'TPo93LLG'])
     # Long Service Leave taken includes: LSL, TPo93LSLG pay comp codes
-    lsl_totals = calc_totals('Long Service Leave', '2317', lsl_accruals, lsl_journal,
+    # Note: LSL uses multiple GL accounts (2705 and 2330) based on years of service
+    lsl_totals = calc_totals('Long Service Leave', None, lsl_accruals, lsl_journal,
                              pay_comp_codes=['LSL', 'TPo93LSLG'])
     # TOIL taken uses IQBDetailV2 with pay_comp_code='UDLeave' and leave_reason_code='TIL Taken'
-    toil_totals = calc_totals('User Defined Leave', '2318', toil_accruals, toil_journal,
+    toil_totals = calc_totals('User Defined Leave', '2317', toil_accruals, toil_journal,
                               pay_comp_codes=['UDLeave'], use_iqb_v2=True, leave_reason_code='TIL Taken')
 
     # Check if balanced
@@ -2277,11 +2411,30 @@ def generate_leave_accrual_journal(request, last_period_id, this_period_id):
 
 def download_leave_journal_sage(request, last_period_id, this_period_id, leave_type):
     """Download leave accrual journal in Sage Intacct format"""
-    # Map leave type to GL accounts and transaction types
+    # Map leave type to correct parameters (same as employee breakdown CSV and main journal view)
     leave_configs = {
-        'annual': {'name': 'Annual Leave', 'liability': '2310', 'expense': '6300', 'transaction_type': 'Annual Leave'},
-        'lsl': {'name': 'Long Service Leave', 'liability': '2317', 'expense': '6345', 'transaction_type': 'Long Service Leave'},
-        'toil': {'name': 'User Defined Leave', 'liability': '2318', 'expense': '6372', 'transaction_type': 'User Defined Leave'},
+        'annual': {
+            'name': 'Annual Leave',
+            'liability': '2310',
+            'expense': '6300',
+            'pay_comp_codes': ['Annual', 'LLV', 'TPo93ALG', 'TPo93LLG'],
+            'use_iqb_v2': False
+        },
+        'lsl': {
+            'name': 'Long Service Leave',
+            'liability': None,  # Determined per employee based on years of service (2705 or 2330)
+            'expense': '6345',
+            'pay_comp_codes': ['LSL', 'TPo93LSLG'],
+            'use_iqb_v2': False
+        },
+        'toil': {
+            'name': 'User Defined Leave',
+            'liability': '2317',
+            'expense': '6372',
+            'pay_comp_codes': ['UDLeave'],
+            'use_iqb_v2': True,
+            'leave_reason_code': 'TIL Taken'
+        },
     }
 
     if leave_type not in leave_configs:
@@ -2308,11 +2461,13 @@ def download_leave_journal_sage(request, last_period_id, this_period_id, leave_t
     location_lookup = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}
     department_lookup = {dept.department_id: dept.department_name for dept in SageDepartment.objects.all()}
 
-    # Calculate accruals
+    # Calculate accruals using the same logic as employee breakdown and main journal view
     accruals = _calculate_leave_accruals_for_type(
         config['name'], config['liability'], config['expense'],
         opening_upload, closing_upload, iqb_upload, tp_pay_period,
-        transaction_type=config['transaction_type']
+        pay_comp_codes=config['pay_comp_codes'],
+        use_iqb_v2=config.get('use_iqb_v2', False),
+        leave_reason_code=config.get('leave_reason_code', None)
     )
     
     journal = _aggregate_journal_by_location_department(accruals, location_lookup, department_lookup)
@@ -2483,9 +2638,9 @@ def download_leave_employee_breakdown(request, last_period_id, this_period_id, l
 
     # Header row with all leave types
     writer.writerow([
-        'Employee Code', 'Employee Name', 'Years of Service',
+        'Employee Code', 'Employee Name', 'Years of Service (Closing)', 'Years of Service (Opening)',
         'Annual Leave - Opening', 'Annual Leave - Closing', 'Annual Leave - Taken', 'Annual Leave - Accrual', 'Annual Leave - Total with Oncosts',
-        'LSL - Opening', 'LSL - Closing', 'LSL - Taken', 'LSL - Base Accrual (before probability)', 'LSL - Probability', 'LSL - Accrual', 'LSL - Total with Oncosts',
+        'LSL - Opening', 'LSL - Closing', 'LSL - Taken', 'LSL - Opening Probability', 'LSL - Closing Probability', 'LSL - Accrual', 'LSL - Total with Oncosts',
         'TOIL - Opening', 'TOIL - Closing', 'TOIL - Taken', 'TOIL - Accrual', 'TOIL - Total with Oncosts',
         'Total Accrual (All Leave)', 'Total with Oncosts (All Leave)'
     ])
@@ -2493,21 +2648,40 @@ def download_leave_employee_breakdown(request, last_period_id, this_period_id, l
     for emp_code in all_employee_codes:
         row_data = [emp_code]
 
-        # Get employee name and years of service (try to find from any leave type)
+        # Get employee name and years of service from both closing and opening (try to find from any leave type)
         emp_name = emp_code
-        years_of_service = Decimal('0')
+        closing_years_of_service = Decimal('0')
+        opening_years_of_service = Decimal('0')
+
         for config in leave_configs.values():
-            emp_record = IQBLeaveBalance.objects.filter(
+            # Get closing record
+            closing_emp_record = IQBLeaveBalance.objects.filter(
                 upload=closing_upload,
                 employee_code=emp_code,
                 leave_type=config['name']
             ).first()
-            if emp_record:
-                emp_name = emp_record.full_name
-                years_of_service = emp_record.years_of_service or Decimal('0')
+            if closing_emp_record:
+                emp_name = closing_emp_record.full_name
+                closing_years_of_service = closing_emp_record.years_of_service or Decimal('0')
+
+            # Get opening record
+            opening_emp_record = IQBLeaveBalance.objects.filter(
+                upload=opening_upload,
+                employee_code=emp_code,
+                leave_type=config['name']
+            ).first()
+            if opening_emp_record:
+                if not emp_name or emp_name == emp_code:
+                    emp_name = opening_emp_record.full_name
+                opening_years_of_service = opening_emp_record.years_of_service or Decimal('0')
+
+            # Break if we found both
+            if closing_emp_record or opening_emp_record:
                 break
+
         row_data.append(emp_name)
-        row_data.append(f"{years_of_service:.2f}")
+        row_data.append(f"{closing_years_of_service:.2f}")
+        row_data.append(f"{opening_years_of_service:.2f}")
 
         total_accrual = Decimal('0')
         total_with_oncosts_all = Decimal('0')
@@ -2566,10 +2740,14 @@ def download_leave_employee_breakdown(request, last_period_id, this_period_id, l
             # Apply LSL probability if this is LSL
             from reconciliation.models import LSLProbability
             if leave_key == 'lsl':
-                probability = LSLProbability.get_probability(years_of_service)
-                accrual_amount = base_accrual * probability
+                # Get separate probabilities for opening and closing
+                opening_probability = LSLProbability.get_probability(opening_years_of_service)
+                closing_probability = LSLProbability.get_probability(closing_years_of_service)
+                # New formula: (C/B × closing prob) - (O/B × opening prob) + leave taken
+                accrual_amount = (closing_value * closing_probability) - (opening_value * opening_probability) + leave_taken
             else:
-                probability = Decimal('1.0')  # 100% for non-LSL
+                opening_probability = Decimal('1.0')  # Not used for non-LSL
+                closing_probability = Decimal('1.0')  # Not used for non-LSL
                 accrual_amount = base_accrual
 
             # Calculate oncosts
@@ -2584,9 +2762,9 @@ def download_leave_employee_breakdown(request, last_period_id, this_period_id, l
                     f"{opening_value:.2f}",
                     f"{closing_value:.2f}",
                     f"{leave_taken:.2f}",
-                    f"{base_accrual:.2f}",  # Base accrual before probability
-                    f"{probability:.4f}",    # Probability
-                    f"{accrual_amount:.2f}", # Final accrual after probability
+                    f"{opening_probability:.4f}",  # Opening probability
+                    f"{closing_probability:.4f}",  # Closing probability
+                    f"{accrual_amount:.2f}",       # Final accrual with new formula
                     f"{total_with_oncosts:.2f}",
                 ])
             else:
@@ -2608,5 +2786,157 @@ def download_leave_employee_breakdown(request, last_period_id, this_period_id, l
         ])
 
         writer.writerow(row_data)
+
+    return response
+
+
+def download_employee_cost_allocation(request, last_period_id, this_period_id):
+    """Download employee cost allocation breakdown showing snapshot allocations or default cost accounts"""
+    lp_pay_period = get_object_or_404(PayPeriod, period_id=last_period_id)
+    tp_pay_period = get_object_or_404(PayPeriod, period_id=this_period_id)
+
+    # Get uploads from specific periods
+    opening_upload = Upload.objects.filter(
+        pay_period=lp_pay_period, source_system='Micropay_IQB_Leave', is_active=True
+    ).first()
+    closing_upload = Upload.objects.filter(
+        pay_period=tp_pay_period, source_system='Micropay_IQB_Leave', is_active=True
+    ).first()
+
+    if not all([opening_upload, closing_upload]):
+        return HttpResponse("Missing required uploads", status=400)
+
+    from django.db.models import Sum
+
+    # All leave type configurations
+    leave_configs = {
+        'annual': {'name': 'Annual Leave'},
+        'lsl': {'name': 'Long Service Leave'},
+        'toil': {'name': 'User Defined Leave'},
+    }
+
+    # Get ALL unique employee codes from all leave types
+    all_employee_codes = set()
+    for config in leave_configs.values():
+        closing_emp_codes = set(IQBLeaveBalance.objects.filter(
+            upload=closing_upload,
+            leave_type=config['name']
+        ).values_list('employee_code', flat=True).distinct())
+        opening_emp_codes = set(IQBLeaveBalance.objects.filter(
+            upload=opening_upload,
+            leave_type=config['name']
+        ).values_list('employee_code', flat=True).distinct())
+        all_employee_codes.update(closing_emp_codes | opening_emp_codes)
+
+    all_employee_codes = sorted(all_employee_codes)
+
+    # Get location and department lookups for display names
+    location_lookup = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}
+    department_lookup = {dept.department_id: dept.department_name for dept in SageDepartment.objects.all()}
+
+    # Generate CSV
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="employee_cost_allocation_{last_period_id}_to_{this_period_id}.csv"'
+
+    writer = csv.writer(response)
+
+    # Header row
+    writer.writerow([
+        'Employee Code', 'Employee Name', 'Location ID', 'Location Name',
+        'Department ID', 'Department Name', 'Allocation %', 'Source'
+    ])
+
+    for emp_code in all_employee_codes:
+        # Get employee name (try to find from any leave type)
+        emp_name = emp_code
+        for config in leave_configs.values():
+            emp_record = IQBLeaveBalance.objects.filter(
+                upload=closing_upload,
+                employee_code=emp_code,
+                leave_type=config['name']
+            ).first()
+            if emp_record:
+                emp_name = emp_record.full_name
+                break
+
+        # Try to get cost allocation from snapshot first
+        cost_allocation = {}
+        source = 'Unknown'
+
+        try:
+            snapshot = EmployeePayPeriodSnapshot.objects.get(
+                pay_period=tp_pay_period,
+                employee_code=emp_code
+            )
+            cost_allocation = snapshot.cost_allocation or {}
+            if cost_allocation:
+                source = f'Snapshot ({tp_pay_period.period_id})'
+        except EmployeePayPeriodSnapshot.DoesNotExist:
+            pass
+
+        # If no snapshot allocation, use employee's default cost account
+        if not cost_allocation:
+            from reconciliation.models import Employee, CostCenterSplit
+            try:
+                employee = Employee.objects.get(code=emp_code)
+                if employee.default_cost_account:
+                    source = 'Default Cost Account'
+
+                    # Check if this is a SPL- account
+                    if employee.default_cost_account.startswith('SPL-'):
+                        # Look up all split targets for this source account
+                        splits = CostCenterSplit.objects.filter(
+                            source_account=employee.default_cost_account,
+                            is_active=True
+                        )
+                        for split in splits:
+                            target_account = split.target_account
+                            split_pct = split.percentage
+                            # Parse target account (format: location-department)
+                            if '-' in target_account:
+                                parts = target_account.split('-')
+                                if len(parts) >= 2:
+                                    location_code = parts[0]
+                                    dept_code = parts[1]
+                                    if location_code not in cost_allocation:
+                                        cost_allocation[location_code] = {}
+                                    cost_allocation[location_code][dept_code] = float(split_pct)
+                    else:
+                        # Parse default_cost_account (format: location-department)
+                        if '-' in employee.default_cost_account:
+                            parts = employee.default_cost_account.split('-')
+                            if len(parts) >= 2:
+                                location_code = parts[0]
+                                dept_code = parts[1]
+                                cost_allocation = {location_code: {dept_code: 100.0}}
+            except Employee.DoesNotExist:
+                pass
+
+        # Write rows for each allocation
+        if cost_allocation:
+            for location_id, departments in cost_allocation.items():
+                for dept_id, percentage in departments.items():
+                    writer.writerow([
+                        emp_code,
+                        emp_name,
+                        location_id,
+                        location_lookup.get(location_id, ''),
+                        dept_id,
+                        department_lookup.get(dept_id, ''),
+                        f"{percentage:.2f}",
+                        source
+                    ])
+        else:
+            # No allocation found
+            writer.writerow([
+                emp_code,
+                emp_name,
+                '',
+                '',
+                '',
+                '',
+                '',
+                'No Allocation Found'
+            ])
 
     return response
