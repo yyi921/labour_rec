@@ -6,6 +6,7 @@ import json
 from datetime import datetime, date
 from decimal import Decimal
 from typing import Optional
+from collections import defaultdict
 from mcp.server.fastmcp import FastMCP
 
 from .database import execute_query, execute_single
@@ -510,6 +511,284 @@ def get_period_summary(period: Optional[str] = None) -> str:
     sorted_locations = sorted(location_totals.items(), key=lambda x: -x[1]['cost'])[:10]
     for loc_id, data in sorted_locations:
         result += f"  {loc_id} - {data['name'][:20]:<20}: ${data['cost']:>12,.2f} ({data['headcount']} employees)\n"
+
+    return result
+
+
+@mcp.tool()
+def analyze_location_costs_detailed(
+    location: str,
+    period_a: str,
+    period_b: str
+) -> str:
+    """
+    Detailed cost analysis for a location comparing two pay periods.
+    Shows cost breakdown by GL account (Salaries, Super, Annual Leave, etc.) and by department.
+    Provides multiple matrices showing costs from different perspectives.
+
+    Args:
+        location: Location name (e.g., 'Gaming', 'Kitchen')
+        period_a: First period (e.g., '2025-11-16' or '16 Nov')
+        period_b: Second period (e.g., '2026-01-11' or '11 Jan')
+
+    Returns:
+        Multi-section report with:
+        1. GL Account totals comparison
+        2. Department totals comparison
+        3. Detailed matrix for Period A (Department x GL Account)
+        4. Detailed matrix for Period B (Department x GL Account)
+        5. Variance matrix showing changes
+    """
+    # Resolve location
+    loc = resolve_location(location)
+    if not loc:
+        return f"Location '{location}' not found. Use list_locations() to see valid locations."
+
+    location_id = loc['location_id']
+    location_name = loc['location_name']
+
+    # Parse dates
+    date_a = parse_date_reference(period_a)
+    date_b = parse_date_reference(period_b)
+
+    if not date_a:
+        return f"Could not parse date '{period_a}'. Use format like '11 Jan' or '2025-01-11'."
+    if not date_b:
+        return f"Could not parse date '{period_b}'. Use format like '28 Dec' or '2024-12-28'."
+
+    # Verify periods exist
+    ph = get_placeholder()
+    period_a_obj = execute_single(
+        f"SELECT period_id FROM reconciliation_payperiod WHERE period_id = {ph}",
+        (date_a,)
+    )
+    period_b_obj = execute_single(
+        f"SELECT period_id FROM reconciliation_payperiod WHERE period_id = {ph}",
+        (date_b,)
+    )
+
+    if not period_a_obj:
+        return f"No pay period found for date {date_a}. Use list_pay_periods() to see available periods."
+    if not period_b_obj:
+        return f"No pay period found for date {date_b}. Use list_pay_periods() to see available periods."
+
+    # Load department names for display
+    departments = execute_query("SELECT department_id, department_name FROM reconciliation_sagedepartment")
+    dept_names = {d['department_id']: d['department_name'] for d in departments}
+
+    # Helper function to get breakdown for a period
+    def get_period_breakdown(period_id):
+        snapshots = execute_query(
+            f"""
+            SELECT
+                employee_code, employee_name, total_cost, cost_allocation,
+                gl_6345_salaries, gl_6370_superannuation,
+                gl_2310_annual_leave, gl_6355_sick_leave, gl_6305, gl_6372_toil
+            FROM reconciliation_employeepayperiodsnapshot
+            WHERE pay_period_id = {ph}
+            """,
+            (period_id,)
+        )
+
+        # Structure: {department: {gl_account: cost}}
+        dept_costs = defaultdict(lambda: defaultdict(Decimal))
+        gl_totals = defaultdict(Decimal)
+        dept_totals = defaultdict(Decimal)
+        dept_headcount = defaultdict(int)
+
+        for snap in snapshots:
+            allocation = snap['cost_allocation']
+            if isinstance(allocation, str):
+                allocation = json.loads(allocation)
+
+            if not allocation or location_id not in allocation:
+                continue
+
+            # Get departments this employee is allocated to
+            location_depts = allocation[location_id]
+
+            for dept_code, dept_pct in location_depts.items():
+                pct_decimal = Decimal(str(dept_pct)) / 100
+
+                # Calculate allocated costs for each GL account
+                gl_costs = {
+                    'Salaries (6345)': Decimal(str(snap['gl_6345_salaries'] or 0)) * pct_decimal,
+                    'Superannuation (6370)': Decimal(str(snap['gl_6370_superannuation'] or 0)) * pct_decimal,
+                    'Payroll Liab - AL Provision (2310)': Decimal(str(snap['gl_2310_annual_leave'] or 0)) * pct_decimal,
+                    'Sick Leave (6355)': Decimal(str(snap['gl_6355_sick_leave'] or 0)) * pct_decimal,
+                    'Other (6305)': Decimal(str(snap['gl_6305'] or 0)) * pct_decimal,
+                    'TOIL (6372)': Decimal(str(snap['gl_6372_toil'] or 0)) * pct_decimal,
+                }
+
+                total_allocated = Decimal(str(snap['total_cost'] or 0)) * pct_decimal
+
+                # Add to department breakdown
+                for gl_name, cost in gl_costs.items():
+                    dept_costs[dept_code][gl_name] += cost
+                    gl_totals[gl_name] += cost
+
+                dept_totals[dept_code] += total_allocated
+                dept_headcount[dept_code] += 1
+
+        return {
+            'dept_costs': dict(dept_costs),
+            'gl_totals': dict(gl_totals),
+            'dept_totals': dict(dept_totals),
+            'dept_headcount': dict(dept_headcount),
+            'grand_total': sum(dept_totals.values())
+        }
+
+    # Get breakdowns for both periods
+    data_a = get_period_breakdown(date_a)
+    data_b = get_period_breakdown(date_b)
+
+    # Start building the report
+    result = f"\n{'='*100}\n"
+    result += f"DETAILED COST ANALYSIS: {location_name} ({location_id})\n"
+    result += f"{'='*100}\n\n"
+
+    # Get all GL accounts and departments
+    all_gl_accounts = sorted(set(list(data_a['gl_totals'].keys()) + list(data_b['gl_totals'].keys())))
+    all_depts = sorted(set(list(data_a['dept_totals'].keys()) + list(data_b['dept_totals'].keys())))
+
+    # Helper function to format department display
+    def format_dept(dept_code):
+        dept_name = dept_names.get(dept_code, dept_code)
+        return f"{dept_name} ({dept_code})"
+
+    # SECTION 1: GL Account Totals Comparison
+    result += f"{'='*100}\n"
+    result += "1. COST BREAKDOWN BY GL ACCOUNT\n"
+    result += f"{'='*100}\n\n"
+    result += f"{'GL Account':<30} {date_a:>15} {date_b:>15} {'Variance':>15} {'% Change':>12}\n"
+    result += "-" * 100 + "\n"
+
+    for gl in all_gl_accounts:
+        cost_a = data_a['gl_totals'].get(gl, Decimal('0'))
+        cost_b = data_b['gl_totals'].get(gl, Decimal('0'))
+        variance = cost_b - cost_a
+        pct_change = (variance / cost_a * 100) if cost_a > 0 else (100 if cost_b > 0 else 0)
+
+        result += f"{gl:<30} ${cost_a:>13,.2f} ${cost_b:>13,.2f} ${variance:>13,.2f} {pct_change:>11.1f}%\n"
+
+    result += "-" * 100 + "\n"
+    grand_variance = data_b['grand_total'] - data_a['grand_total']
+    grand_pct = (grand_variance / data_a['grand_total'] * 100) if data_a['grand_total'] > 0 else 0
+    result += f"{'TOTAL':<30} ${data_a['grand_total']:>13,.2f} ${data_b['grand_total']:>13,.2f} "
+    result += f"${grand_variance:>13,.2f} {grand_pct:>11.1f}%\n"
+
+    # SECTION 2: Department Totals Comparison
+    result += f"\n\n{'='*100}\n"
+    result += "2. COST BREAKDOWN BY DEPARTMENT\n"
+    result += f"{'='*100}\n\n"
+    result += f"{'Department':<30} {'HC':>5} {date_a:>15} {'HC':>5} {date_b:>15} {'Variance':>15} {'% Change':>12}\n"
+    result += "-" * 110 + "\n"
+
+    total_hc_a = sum(data_a['dept_headcount'].values())
+    total_hc_b = sum(data_b['dept_headcount'].values())
+
+    for dept in all_depts:
+        hc_a = data_a['dept_headcount'].get(dept, 0)
+        cost_a = data_a['dept_totals'].get(dept, Decimal('0'))
+        hc_b = data_b['dept_headcount'].get(dept, 0)
+        cost_b = data_b['dept_totals'].get(dept, Decimal('0'))
+        variance = cost_b - cost_a
+        pct_change = (variance / cost_a * 100) if cost_a > 0 else (100 if cost_b > 0 else 0)
+
+        result += f"{format_dept(dept):<30} {hc_a:>5} ${cost_a:>13,.2f} {hc_b:>5} ${cost_b:>13,.2f} ${variance:>13,.2f} {pct_change:>11.1f}%\n"
+
+    result += "-" * 110 + "\n"
+    result += f"{'TOTAL':<30} {total_hc_a:>5} ${data_a['grand_total']:>13,.2f} "
+    result += f"{total_hc_b:>5} ${data_b['grand_total']:>13,.2f} "
+    result += f"${grand_variance:>13,.2f} {grand_pct:>11.1f}%\n"
+
+    # SECTION 3: Detailed Matrix for Period A
+    result += f"\n\n{'='*100}\n"
+    result += f"3. DETAILED MATRIX - {date_a}\n"
+    result += f"{'='*100}\n\n"
+
+    # Build header
+    header = f"{'Department':<25}"
+    for gl in all_gl_accounts:
+        gl_short = gl.split('(')[0].strip()[:12]
+        header += f" {gl_short:>13}"
+    header += f" {'TOTAL':>13}"
+    result += header + "\n"
+    result += "-" * (25 + 14 * (len(all_gl_accounts) + 1)) + "\n"
+
+    for dept in all_depts:
+        row = f"{format_dept(dept):<25}"
+        dept_data = data_a['dept_costs'].get(dept, {})
+        for gl in all_gl_accounts:
+            cost = dept_data.get(gl, Decimal('0'))
+            row += f" ${cost:>11,.2f}"
+        row += f" ${data_a['dept_totals'].get(dept, Decimal('0')):>11,.2f}"
+        result += row + "\n"
+
+    # Totals row
+    totals_row = f"{'TOTAL':<25}"
+    for gl in all_gl_accounts:
+        totals_row += f" ${data_a['gl_totals'].get(gl, Decimal('0')):>11,.2f}"
+    totals_row += f" ${data_a['grand_total']:>11,.2f}"
+    result += "-" * (25 + 14 * (len(all_gl_accounts) + 1)) + "\n"
+    result += totals_row + "\n"
+
+    # SECTION 4: Detailed Matrix for Period B
+    result += f"\n\n{'='*100}\n"
+    result += f"4. DETAILED MATRIX - {date_b}\n"
+    result += f"{'='*100}\n\n"
+
+    result += header + "\n"
+    result += "-" * (25 + 14 * (len(all_gl_accounts) + 1)) + "\n"
+
+    for dept in all_depts:
+        row = f"{format_dept(dept):<25}"
+        dept_data = data_b['dept_costs'].get(dept, {})
+        for gl in all_gl_accounts:
+            cost = dept_data.get(gl, Decimal('0'))
+            row += f" ${cost:>11,.2f}"
+        row += f" ${data_b['dept_totals'].get(dept, Decimal('0')):>11,.2f}"
+        result += row + "\n"
+
+    totals_row = f"{'TOTAL':<25}"
+    for gl in all_gl_accounts:
+        totals_row += f" ${data_b['gl_totals'].get(gl, Decimal('0')):>11,.2f}"
+    totals_row += f" ${data_b['grand_total']:>11,.2f}"
+    result += "-" * (25 + 14 * (len(all_gl_accounts) + 1)) + "\n"
+    result += totals_row + "\n"
+
+    # SECTION 5: Variance Matrix
+    result += f"\n\n{'='*100}\n"
+    result += f"5. VARIANCE MATRIX ({date_b} - {date_a})\n"
+    result += f"{'='*100}\n\n"
+
+    result += header + "\n"
+    result += "-" * (25 + 14 * (len(all_gl_accounts) + 1)) + "\n"
+
+    for dept in all_depts:
+        row = f"{format_dept(dept):<25}"
+        dept_data_a = data_a['dept_costs'].get(dept, {})
+        dept_data_b = data_b['dept_costs'].get(dept, {})
+        for gl in all_gl_accounts:
+            cost_a = dept_data_a.get(gl, Decimal('0'))
+            cost_b = dept_data_b.get(gl, Decimal('0'))
+            variance = cost_b - cost_a
+            row += f" ${variance:>11,.2f}"
+        total_var = data_b['dept_totals'].get(dept, Decimal('0')) - data_a['dept_totals'].get(dept, Decimal('0'))
+        row += f" ${total_var:>11,.2f}"
+        result += row + "\n"
+
+    totals_row = f"{'TOTAL':<25}"
+    for gl in all_gl_accounts:
+        variance = data_b['gl_totals'].get(gl, Decimal('0')) - data_a['gl_totals'].get(gl, Decimal('0'))
+        totals_row += f" ${variance:>11,.2f}"
+    totals_row += f" ${grand_variance:>11,.2f}"
+    result += "-" * (25 + 14 * (len(all_gl_accounts) + 1)) + "\n"
+    result += totals_row + "\n"
+
+    result += f"\n\n{'='*100}\n"
+    result += "ANALYSIS COMPLETE\n"
+    result += f"{'='*100}\n"
 
     return result
 

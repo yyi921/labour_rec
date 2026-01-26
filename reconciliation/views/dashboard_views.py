@@ -1315,3 +1315,270 @@ def download_fne_comparison(request):
         ])
 
     return response
+
+
+@require_http_methods(["POST"])
+def ai_cost_analysis(request):
+    """
+    AI-Powered cost analysis endpoint
+    Supports both structured queries and natural language
+    """
+    import os
+    from mcp_server.server import analyze_location_costs_detailed, list_locations, list_pay_periods
+
+    try:
+        data = json.loads(request.body)
+        query = data.get('query', '').strip()
+        mode = data.get('mode', 'auto')  # 'auto', 'structured', 'natural'
+
+        if not query:
+            return JsonResponse({'error': 'Query is required'}, status=400)
+
+        # Mode 1: Structured query (direct parameters)
+        if mode == 'structured':
+            location = data.get('location')
+            period_a = data.get('period_a')
+            period_b = data.get('period_b')
+
+            if not all([location, period_a, period_b]):
+                return JsonResponse({
+                    'error': 'Structured mode requires location, period_a, and period_b'
+                }, status=400)
+
+            result = analyze_location_costs_detailed(location, period_a, period_b)
+
+            return JsonResponse({
+                'success': True,
+                'mode': 'structured',
+                'result': result,
+                'query': f"Analyzing {location} between {period_a} and {period_b}"
+            })
+
+        # Mode 2: Natural language query using Claude API
+        elif mode == 'natural' or mode == 'auto':
+            import anthropic
+
+            api_key = os.environ.get('ANTHROPIC_API_KEY')
+            if not api_key:
+                return JsonResponse({
+                    'error': 'ANTHROPIC_API_KEY not configured'
+                }, status=500)
+
+            client = anthropic.Anthropic(api_key=api_key)
+
+            # Get available locations and periods for context
+            locations_list = list_locations()
+            periods_list = list_pay_periods(limit=20)
+
+            # Ask Claude to parse the query and extract parameters
+            parse_response = client.messages.create(
+                model="claude-sonnet-4-5-20250929",
+                max_tokens=1000,
+                temperature=0,
+                system=f"""You are a payroll data analysis assistant. Extract location and period information from user queries.
+
+Available locations:
+{locations_list}
+
+Available pay periods:
+{periods_list}
+
+Return a JSON object with these fields:
+- "location": the location name (match to available locations)
+- "period_a": first period ID in YYYY-MM-DD format
+- "period_b": second period ID in YYYY-MM-DD format
+- "intent": brief description of what the user wants
+
+If the query is unclear or missing information, return an error message in the "error" field instead.""",
+                messages=[{
+                    "role": "user",
+                    "content": query
+                }]
+            )
+
+            # Parse Claude's response
+            try:
+                parsed = json.loads(parse_response.content[0].text)
+
+                if 'error' in parsed:
+                    return JsonResponse({
+                        'success': False,
+                        'error': parsed['error'],
+                        'mode': 'natural'
+                    })
+
+                location = parsed.get('location')
+                period_a = parsed.get('period_a')
+                period_b = parsed.get('period_b')
+                intent = parsed.get('intent', query)
+
+                # Call the MCP function
+                result = analyze_location_costs_detailed(location, period_a, period_b)
+
+                return JsonResponse({
+                    'success': True,
+                    'mode': 'natural',
+                    'result': result,
+                    'query': intent,
+                    'parsed': {
+                        'location': location,
+                        'period_a': period_a,
+                        'period_b': period_b
+                    }
+                })
+
+            except json.JSONDecodeError:
+                return JsonResponse({
+                    'error': 'Failed to parse AI response',
+                    'mode': 'natural'
+                }, status=500)
+
+    except Exception as e:
+        return JsonResponse({
+            'error': str(e)
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def get_analysis_options(request):
+    """
+    Get available locations and periods for the AI analysis interface
+    """
+    from reconciliation.models import SageLocation, PayPeriod
+
+    # Get locations
+    locations = list(SageLocation.objects.all().order_by('location_name').values('location_id', 'location_name'))
+
+    # Get available pay periods
+    periods = list(PayPeriod.objects.filter(
+        process_type='actual_pay_period',
+        employee_snapshots__isnull=False
+    ).distinct().order_by('-period_end').values('period_id', 'period_start', 'period_end')[:20])
+
+    # Format periods for display
+    period_options = []
+    for p in periods:
+        if p['period_start']:
+            label = f"{p['period_id']} ({p['period_start'].strftime('%d %b')} - {p['period_end'].strftime('%d %b %Y')})"
+        else:
+            label = f"{p['period_id']} (ending {p['period_end'].strftime('%d %b %Y')})"
+        period_options.append({
+            'value': p['period_id'],
+            'label': label
+        })
+
+    return JsonResponse({
+        'locations': locations,
+        'periods': period_options
+    })
+
+
+@require_http_methods(["POST"])
+def get_department_employee_changes(request):
+    """
+    Get employee-level changes for a specific department and location between two periods
+    Shows who joined, left, and stayed
+    """
+    from reconciliation.models import EmployeePayPeriodSnapshot, SageDepartment
+    from collections import defaultdict
+
+    try:
+        data = json.loads(request.body)
+        location_id = data.get('location_id')
+        department_id = data.get('department_id')
+        period_a = data.get('period_a')
+        period_b = data.get('period_b')
+
+        if not all([location_id, department_id, period_a, period_b]):
+            return JsonResponse({'error': 'Missing required parameters'}, status=400)
+
+        # Get department name
+        dept = SageDepartment.objects.filter(department_id=department_id).first()
+        dept_name = dept.department_name if dept else department_id
+
+        # Get snapshots for both periods
+        snapshots_a = EmployeePayPeriodSnapshot.objects.filter(pay_period_id=period_a)
+        snapshots_b = EmployeePayPeriodSnapshot.objects.filter(pay_period_id=period_b)
+
+        # Helper to extract employees in specific department at location
+        def get_dept_employees(snapshots):
+            employees = {}
+            for snap in snapshots:
+                if not snap.cost_allocation:
+                    continue
+
+                allocation = snap.cost_allocation
+                if isinstance(allocation, str):
+                    allocation = json.loads(allocation)
+
+                # Check if employee is in this location and department
+                if location_id in allocation:
+                    dept_alloc = allocation[location_id]
+                    if department_id in dept_alloc:
+                        pct = Decimal(str(dept_alloc[department_id]))
+                        allocated_cost = (snap.total_cost or Decimal('0')) * pct / 100
+
+                        employees[snap.employee_code] = {
+                            'employee_code': snap.employee_code,
+                            'employee_name': snap.employee_name,
+                            'cost': float(allocated_cost),
+                            'allocation_pct': float(pct)
+                        }
+            return employees
+
+        employees_a = get_dept_employees(snapshots_a)
+        employees_b = get_dept_employees(snapshots_b)
+
+        # Categorize employees
+        codes_a = set(employees_a.keys())
+        codes_b = set(employees_b.keys())
+
+        new_employees = []
+        departed_employees = []
+        continuing_employees = []
+
+        # New employees (in B but not in A)
+        for code in codes_b - codes_a:
+            new_employees.append(employees_b[code])
+
+        # Departed employees (in A but not in B)
+        for code in codes_a - codes_b:
+            departed_employees.append(employees_a[code])
+
+        # Continuing employees (in both)
+        for code in codes_a & codes_b:
+            emp_a = employees_a[code]
+            emp_b = employees_b[code]
+            continuing_employees.append({
+                'employee_code': code,
+                'employee_name': emp_b['employee_name'],
+                'cost_a': emp_a['cost'],
+                'cost_b': emp_b['cost'],
+                'cost_change': emp_b['cost'] - emp_a['cost'],
+                'allocation_pct_a': emp_a['allocation_pct'],
+                'allocation_pct_b': emp_b['allocation_pct']
+            })
+
+        # Sort by cost
+        new_employees.sort(key=lambda x: -x['cost'])
+        departed_employees.sort(key=lambda x: -x['cost'])
+        continuing_employees.sort(key=lambda x: -abs(x['cost_change']))
+
+        return JsonResponse({
+            'success': True,
+            'department_name': dept_name,
+            'department_id': department_id,
+            'new_employees': new_employees,
+            'departed_employees': departed_employees,
+            'continuing_employees': continuing_employees,
+            'summary': {
+                'new_count': len(new_employees),
+                'departed_count': len(departed_employees),
+                'continuing_count': len(continuing_employees),
+                'new_total': sum(e['cost'] for e in new_employees),
+                'departed_total': sum(e['cost'] for e in departed_employees)
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

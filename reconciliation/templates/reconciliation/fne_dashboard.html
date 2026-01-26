@@ -284,10 +284,147 @@
         max-height: 400px;
         overflow-y: auto;
     }
+
+    /* AI Analysis Styles */
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    #analysisResults {
+        padding: 0;
+    }
+
+    .analysis-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .analysis-header h3 {
+        margin: 0 0 8px 0;
+        font-size: 22px;
+    }
+
+    .analysis-header p {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 14px;
+    }
+
+    .analysis-section {
+        margin-bottom: 35px;
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .analysis-section h4 {
+        margin: 0 0 20px 0;
+        padding-bottom: 12px;
+        border-bottom: 3px solid #3498db;
+        color: #2c3e50;
+        font-size: 18px;
+    }
+
+    .analysis-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 13px;
+    }
+
+    .analysis-table th {
+        background: #f8f9fa;
+        padding: 12px 10px;
+        text-align: left;
+        font-weight: 600;
+        color: #555;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .analysis-table th.text-right,
+    .analysis-table td.text-right {
+        text-align: right;
+    }
+
+    .analysis-table td {
+        padding: 10px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .analysis-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .analysis-table tfoot td {
+        font-weight: bold;
+        background: #e8f4f8;
+        border-top: 2px solid #3498db;
+        padding: 12px 10px;
+    }
+
+    .positive-value {
+        color: #27ae60;
+        font-weight: 600;
+    }
+
+    .negative-value {
+        color: #e74c3c;
+        font-weight: 600;
+    }
+
+    .neutral-value {
+        color: #7f8c8d;
+    }
+
+    .highlight-row {
+        background: #fff9e6 !important;
+    }
+
+    .error-message {
+        background: #ffe6e6;
+        border-left: 4px solid #e74c3c;
+        padding: 15px;
+        border-radius: 4px;
+        color: #c0392b;
+    }
+
+    /* Employee drill-down table styles */
+    #drillResults .analysis-table tbody tr[style*="background: #f0f0f0"] {
+        background: #f0f0f0 !important;
+    }
+
+    #drillResults .analysis-table tbody tr[style*="background: #e8f4f8"] {
+        background: #e8f4f8 !important;
+    }
+
+    #drillResults .analysis-table tbody tr[style*="background: #e8f8f0"] {
+        background: #e8f8f0 !important;
+    }
+
+    #drillResults .analysis-table tbody tr[style*="background: #fdecea"] {
+        background: #fdecea !important;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
+{% csrf_token %}
 <div class="container">
     <header>
         <h1>FNE Payroll Comparison</h1>
@@ -425,106 +562,85 @@
         </div>
     </div>
 
-    <!-- Variance Breakdown -->
+    <!-- AI-Powered Deep Dive Analysis -->
     <div class="dashboard-section">
-        <h2 class="section-title">Variance by Location & Department</h2>
+        <h2 class="section-title">📊 Detailed Cost Analysis</h2>
+        <p class="help-text" style="margin-bottom: 20px;">
+            Get detailed cost breakdowns by GL account and department for any location across two periods.
+        </p>
 
-        <div class="breakdown-grid">
-            <div class="breakdown-card">
-                <h4>By Location (Top 5)</h4>
-                <table class="comparison-table" id="locationTable">
-                    <thead>
-                        <tr>
-                            <th>Location</th>
-                            <th class="text-right">Period A</th>
-                            <th class="text-right">Period B</th>
-                            <th class="text-right">Variance</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for loc in comparison.location_breakdown|slice:":5" %}
-                            <tr>
-                                <td>{{ loc.location }}</td>
-                                <td class="text-right">${{ loc.period_a|floatformat:2|intcomma }}</td>
-                                <td class="text-right">${{ loc.period_b|floatformat:2|intcomma }}</td>
-                                <td class="text-right {% if loc.variance >= 0 %}positive{% else %}negative{% endif %}">
-                                    {% if loc.variance >= 0 %}+{% endif %}${{ loc.variance|floatformat:2|intcomma }}
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                    {% if comparison.location_breakdown|length > 5 %}
-                    <tbody class="hidden-rows" id="locationHiddenRows">
-                        {% for loc in comparison.location_breakdown|slice:"5:" %}
-                            <tr>
-                                <td>{{ loc.location }}</td>
-                                <td class="text-right">${{ loc.period_a|floatformat:2|intcomma }}</td>
-                                <td class="text-right">${{ loc.period_b|floatformat:2|intcomma }}</td>
-                                <td class="text-right {% if loc.variance >= 0 %}positive{% else %}negative{% endif %}">
-                                    {% if loc.variance >= 0 %}+{% endif %}${{ loc.variance|floatformat:2|intcomma }}
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                    {% endif %}
-                </table>
-                {% if comparison.location_breakdown|length > 5 %}
-                <button class="show-more-btn" onclick="toggleRows('location')">
-                    Show {{ comparison.location_breakdown|length|add:"-5" }} more
-                </button>
-                {% endif %}
+        <div class="filter-row">
+            <div class="filter-group">
+                <label for="aiLocation">Location</label>
+                <select id="aiLocation">
+                    <option value="">Select location...</option>
+                </select>
             </div>
-
-            <div class="breakdown-card">
-                <h4>By Department (Top 5)</h4>
-                <table class="comparison-table" id="deptTable">
-                    <thead>
-                        <tr>
-                            <th>Department</th>
-                            <th class="text-right">Period A</th>
-                            <th class="text-right">Period B</th>
-                            <th class="text-right">Variance</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for dept in comparison.dept_breakdown|slice:":5" %}
-                            <tr>
-                                <td>{{ dept.department }}</td>
-                                <td class="text-right">${{ dept.period_a|floatformat:2|intcomma }}</td>
-                                <td class="text-right">${{ dept.period_b|floatformat:2|intcomma }}</td>
-                                <td class="text-right {% if dept.variance >= 0 %}positive{% else %}negative{% endif %}">
-                                    {% if dept.variance >= 0 %}+{% endif %}${{ dept.variance|floatformat:2|intcomma }}
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                    {% if comparison.dept_breakdown|length > 5 %}
-                    <tbody class="hidden-rows" id="deptHiddenRows">
-                        {% for dept in comparison.dept_breakdown|slice:"5:" %}
-                            <tr>
-                                <td>{{ dept.department }}</td>
-                                <td class="text-right">${{ dept.period_a|floatformat:2|intcomma }}</td>
-                                <td class="text-right">${{ dept.period_b|floatformat:2|intcomma }}</td>
-                                <td class="text-right {% if dept.variance >= 0 %}positive{% else %}negative{% endif %}">
-                                    {% if dept.variance >= 0 %}+{% endif %}${{ dept.variance|floatformat:2|intcomma }}
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                    {% endif %}
-                </table>
-                {% if comparison.dept_breakdown|length > 5 %}
-                <button class="show-more-btn" onclick="toggleRows('dept')">
-                    Show {{ comparison.dept_breakdown|length|add:"-5" }} more
+            <div class="filter-group">
+                <label for="aiPeriodA">Period A (Earlier)</label>
+                <select id="aiPeriodA">
+                    <option value="">Select period...</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="aiPeriodB">Period B (Later)</label>
+                <select id="aiPeriodB">
+                    <option value="">Select period...</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <button onclick="runAnalysis()" style="width: 100%;">
+                    🔍 Analyze
                 </button>
-                {% endif %}
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="analysisLoading" style="display: none; text-align: center; padding: 30px;">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px; color: #888;">Analyzing data...</p>
+        </div>
+
+        <!-- Results Container -->
+        <div id="analysisResults" style="margin-top: 25px;"></div>
+
+        <!-- Employee Drill-Down Section -->
+        <div id="employeeDrillDown" style="display: none; margin-top: 30px;">
+            <div class="analysis-section">
+                <h4>👥 Employee Changes by Department</h4>
+                <p class="help-text" style="margin-bottom: 15px;">
+                    See which employees joined or left specific departments between the two periods.
+                </p>
+
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="drillDepartment">Select Department</label>
+                        <select id="drillDepartment">
+                            <option value="">Select a department...</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <button onclick="getDepartmentEmployeeChanges()" style="width: 100%;">
+                            🔍 Show Employee Changes
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loading Indicator -->
+                <div id="drillLoading" style="display: none; text-align: center; padding: 20px;">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 10px; color: #888;">Loading employee data...</p>
+                </div>
+
+                <!-- Employee Results -->
+                <div id="drillResults"></div>
             </div>
         </div>
     </div>
 
-    <!-- Cost Movement Analysis -->
+    <!-- Cost Movement Analysis (Hidden for now - kept for future use) -->
     {% if location_movement %}
-    <div class="dashboard-section">
+    <div class="dashboard-section" style="display: none;">
         <h2 class="section-title">Cost Movement Analysis (New/Departed Employees by Location)</h2>
         <p class="help-text" style="margin-bottom: 15px;">Click on a location row to see employee details</p>
 
@@ -579,40 +695,6 @@
     </div>
     {% endif %}
 
-    <!-- Employee Details (Top Variances) -->
-    <div class="dashboard-section">
-        <h2 class="section-title">Employee Details (Top Variances)</h2>
-
-        <div class="table-container">
-            <table class="comparison-table">
-                <thead>
-                    <tr>
-                        <th>Employee Code</th>
-                        <th>Employee Name</th>
-                        <th>Location</th>
-                        <th class="text-right">Period A Cost</th>
-                        <th class="text-right">Period B Cost</th>
-                        <th class="text-right">Variance</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for emp in comparison.comparison_list|slice:":50" %}
-                        <tr>
-                            <td>{{ emp.employee_code }}</td>
-                            <td>{{ emp.employee_name }}</td>
-                            <td>{{ emp.location_key }}</td>
-                            <td class="text-right">${{ emp.period_a_cost|floatformat:2|intcomma }}</td>
-                            <td class="text-right">${{ emp.period_b_cost|floatformat:2|intcomma }}</td>
-                            <td class="text-right {% if emp.variance >= 0 %}positive{% else %}negative{% endif %}">
-                                {% if emp.variance >= 0 %}+{% endif %}${{ emp.variance|floatformat:2|intcomma }}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <p class="help-text" style="margin-top: 10px;">Showing top 50 employees by variance. Download full report for all employees.</p>
-    </div>
     {% else %}
     <div class="dashboard-section">
         <p style="text-align: center; color: #777; padding: 40px;">
@@ -724,6 +806,639 @@
         }
 
         window.location.href = '{% url "reconciliation:download_fne_comparison" %}?period_a=' + periodA + '&period_b=' + periodB;
+    }
+
+    // ============= Analysis Functions =============
+
+    // Global variables to store current analysis context
+    let currentLocationId = null;
+    let currentLocationName = null;
+    let currentPeriodA = null;
+    let currentPeriodB = null;
+    let currentDepartments = [];
+
+    // Load analysis options on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadAnalysisOptions();
+    });
+
+    function loadAnalysisOptions() {
+        fetch('{% url "reconciliation:get_analysis_options" %}')
+            .then(response => response.json())
+            .then(data => {
+                // Populate locations
+                const locationSelect = document.getElementById('aiLocation');
+                data.locations.forEach(loc => {
+                    const option = document.createElement('option');
+                    option.value = loc.location_name;
+                    option.textContent = `${loc.location_id} - ${loc.location_name}`;
+                    locationSelect.appendChild(option);
+                });
+
+                // Populate periods
+                const periodASelect = document.getElementById('aiPeriodA');
+                const periodBSelect = document.getElementById('aiPeriodB');
+                data.periods.forEach(period => {
+                    const optionA = document.createElement('option');
+                    optionA.value = period.value;
+                    optionA.textContent = period.label;
+                    periodASelect.appendChild(optionA);
+
+                    const optionB = document.createElement('option');
+                    optionB.value = period.value;
+                    optionB.textContent = period.label;
+                    periodBSelect.appendChild(optionB);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading analysis options:', error);
+            });
+    }
+
+    function runAnalysis() {
+        const location = document.getElementById('aiLocation').value;
+        const periodA = document.getElementById('aiPeriodA').value;
+        const periodB = document.getElementById('aiPeriodB').value;
+
+        if (!location || !periodA || !periodB) {
+            alert('Please select location and both periods');
+            return;
+        }
+
+        // Store context for employee drill-down
+        currentLocationName = location;
+        currentPeriodA = periodA;
+        currentPeriodB = periodB;
+
+        const loadingDiv = document.getElementById('analysisLoading');
+        const resultsDiv = document.getElementById('analysisResults');
+
+        // Show loading
+        loadingDiv.style.display = 'block';
+        resultsDiv.innerHTML = '';
+
+        // Hide drill-down section until analysis completes
+        document.getElementById('employeeDrillDown').style.display = 'none';
+
+        // Get CSRF token
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch('{% url "reconciliation:ai_cost_analysis" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({
+                mode: 'structured',
+                query: `Analyzing ${location} between ${periodA} and ${periodB}`,
+                location: location,
+                period_a: periodA,
+                period_b: periodB
+            })
+        })
+        .then(response => response.json())
+        .then(result => {
+            loadingDiv.style.display = 'none';
+
+            if (result.success) {
+                displayAnalysisResults(result, location, periodA, periodB);
+            } else {
+                displayError(result.error || 'Analysis failed');
+            }
+        })
+        .catch(error => {
+            loadingDiv.style.display = 'none';
+            displayError('Network error: ' + error.message);
+        });
+    }
+
+    function displayAnalysisResults(result, location, periodA, periodB) {
+        const resultsDiv = document.getElementById('analysisResults');
+
+        let html = '<div class="analysis-header">';
+        html += '<h3>📊 Cost Analysis Complete</h3>';
+        html += `<p><strong>${location}</strong> | ${periodA} → ${periodB}</p>`;
+        html += '</div>';
+
+        // Parse the text output into structured data
+        const textResult = result.result;
+
+        // Display sections in requested order: Department → GL Account → Variance
+        // Section 1: Department Breakdown
+        html += parseDepartmentSection(textResult);
+
+        // Section 2: GL Account Breakdown
+        html += parseGLAccountSection(textResult);
+
+        // Section 3: Variance Matrix
+        html += parseVarianceMatrix(textResult);
+
+        // Hidden sections (kept for future use, not displayed)
+        // - parsePeriodMatrices() - detailed matrices for each period
+        // These can be re-enabled later if needed
+
+        resultsDiv.innerHTML = html;
+
+        // Extract location_id and departments for drill-down
+        extractAnalysisContext(result, textResult);
+
+        // Show employee drill-down section
+        document.getElementById('employeeDrillDown').style.display = 'block';
+    }
+
+    function extractAnalysisContext(result, textResult) {
+        // Extract location_id from the result
+        // Look for pattern like "Gaming (470)" in the header
+        const locationMatch = textResult.match(/DETAILED COST ANALYSIS: .+? \((\d+)\)/);
+        if (locationMatch) {
+            currentLocationId = locationMatch[1];
+        }
+
+        // Extract departments from section 2
+        const deptMatch = textResult.match(/2\. COST BREAKDOWN BY DEPARTMENT[\s\S]*?(?=\n\n3\.|$)/);
+        if (deptMatch) {
+            const lines = deptMatch[0].split('\n');
+            currentDepartments = [];
+
+            for (let line of lines) {
+                // Match department lines like "EGM (65)     34 $82,805.22..."
+                const match = line.match(/^(.+?)\s+\((\d+)\)\s+\d+\s+\$/);
+                if (match) {
+                    const [, name, id] = match;
+                    currentDepartments.push({
+                        id: id,
+                        name: name.trim()
+                    });
+                }
+            }
+        }
+
+        // Populate department dropdown
+        const select = document.getElementById('drillDepartment');
+        select.innerHTML = '<option value="">Select a department...</option>';
+
+        currentDepartments.forEach(dept => {
+            const option = document.createElement('option');
+            option.value = dept.id;
+            option.textContent = `${dept.name} (${dept.id})`;
+            select.appendChild(option);
+        });
+    }
+
+    function getDepartmentEmployeeChanges() {
+        const departmentId = document.getElementById('drillDepartment').value;
+
+        if (!departmentId) {
+            alert('Please select a department');
+            return;
+        }
+
+        if (!currentLocationId) {
+            alert('Please run a cost analysis first');
+            return;
+        }
+
+        const loadingDiv = document.getElementById('drillLoading');
+        const resultsDiv = document.getElementById('drillResults');
+
+        // Show loading
+        loadingDiv.style.display = 'block';
+        resultsDiv.innerHTML = '';
+
+        // Get CSRF token
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch('{% url "reconciliation:department_employee_changes" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({
+                location_id: currentLocationId,
+                department_id: departmentId,
+                period_a: currentPeriodA,
+                period_b: currentPeriodB
+            })
+        })
+        .then(response => response.json())
+        .then(result => {
+            loadingDiv.style.display = 'none';
+
+            if (result.success) {
+                displayEmployeeChanges(result);
+            } else {
+                displayError(result.error || 'Failed to load employee data');
+            }
+        })
+        .catch(error => {
+            loadingDiv.style.display = 'none';
+            resultsDiv.innerHTML = `
+                <div class="error-message">
+                    <strong>Error:</strong> ${error.message}
+                </div>
+            `;
+        });
+    }
+
+    function displayEmployeeChanges(data) {
+        const resultsDiv = document.getElementById('drillResults');
+
+        let html = '<div style="margin-top: 20px;">';
+
+        // Summary header
+        html += '<div style="background: #e8f4f8; padding: 15px; border-radius: 6px; margin-bottom: 20px;">';
+        html += `<h5 style="margin: 0 0 10px 0;">${data.department_name} (${data.department_id})</h5>`;
+        html += `<p style="margin: 0; color: #666;">`;
+        html += `Total: ${data.summary.continuing_count + data.summary.new_count} employees in Period B `;
+        html += `(${data.summary.continuing_count} continuing, ${data.summary.new_count} new, ${data.summary.departed_count} departed)`;
+        html += `</p>`;
+        html += '</div>';
+
+        // Main table
+        html += '<table class="analysis-table">';
+        html += '<thead>';
+        html += '<tr>';
+        html += '<th>Employee Code</th>';
+        html += '<th>Employee Name</th>';
+        html += '<th class="text-right">Period A</th>';
+        html += '<th class="text-right">Period B</th>';
+        html += '<th class="text-right">Variance</th>';
+        html += '<th class="text-right">% Change</th>';
+        html += '</tr>';
+        html += '</thead>';
+        html += '<tbody>';
+
+        // Helper function to format currency
+        function formatCurrency(value) {
+            return value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+
+        let continuingTotal = {a: 0, b: 0, variance: 0};
+        let newTotal = {a: 0, b: 0, variance: 0};
+        let departedTotal = {a: 0, b: 0, variance: 0};
+
+        // Group 1: Continuing Employees
+        if (data.continuing_employees.length > 0) {
+            html += '<tr style="background: #f0f0f0;"><td colspan="6"><strong>CONTINUING EMPLOYEES</strong></td></tr>';
+
+            data.continuing_employees.forEach(emp => {
+                const variance = emp.cost_change;
+                const pctChange = emp.cost_a !== 0 ? (variance / emp.cost_a * 100) : 0;
+                const varClass = variance >= 0 ? 'positive-value' : 'negative-value';
+
+                continuingTotal.a += emp.cost_a;
+                continuingTotal.b += emp.cost_b;
+                continuingTotal.variance += variance;
+
+                html += '<tr>';
+                html += `<td>${emp.employee_code}</td>`;
+                html += `<td>${emp.employee_name}</td>`;
+                html += `<td class="text-right">$${formatCurrency(emp.cost_a)}</td>`;
+                html += `<td class="text-right">$${formatCurrency(emp.cost_b)}</td>`;
+                html += `<td class="text-right ${varClass}">$${formatCurrency(variance)}</td>`;
+                html += `<td class="text-right ${varClass}">${pctChange.toFixed(1)}%</td>`;
+                html += '</tr>';
+            });
+
+            // Continuing subtotal
+            const contPctChange = continuingTotal.a !== 0 ? (continuingTotal.variance / continuingTotal.a * 100) : 0;
+            const contVarClass = continuingTotal.variance >= 0 ? 'positive-value' : 'negative-value';
+
+            html += '<tr style="background: #e8f4f8; font-weight: 600;">';
+            html += `<td colspan="2"><strong>Subtotal - Continuing (${data.continuing_employees.length})</strong></td>`;
+            html += `<td class="text-right"><strong>$${formatCurrency(continuingTotal.a)}</strong></td>`;
+            html += `<td class="text-right"><strong>$${formatCurrency(continuingTotal.b)}</strong></td>`;
+            html += `<td class="text-right ${contVarClass}"><strong>$${formatCurrency(continuingTotal.variance)}</strong></td>`;
+            html += `<td class="text-right ${contVarClass}"><strong>${contPctChange.toFixed(1)}%</strong></td>`;
+            html += '</tr>';
+        }
+
+        // Group 2: New Employees
+        if (data.new_employees.length > 0) {
+            html += '<tr style="background: #f0f0f0;"><td colspan="6"><strong>NEW EMPLOYEES (Joined in Period B)</strong></td></tr>';
+
+            data.new_employees.forEach(emp => {
+                const variance = emp.cost;
+
+                newTotal.a += 0;
+                newTotal.b += emp.cost;
+                newTotal.variance += variance;
+
+                html += '<tr>';
+                html += `<td>${emp.employee_code}</td>`;
+                html += `<td>${emp.employee_name}</td>`;
+                html += `<td class="text-right neutral-value">$0.00</td>`;
+                html += `<td class="text-right">$${formatCurrency(emp.cost)}</td>`;
+                html += `<td class="text-right positive-value">$${formatCurrency(variance)}</td>`;
+                html += `<td class="text-right positive-value">New</td>`;
+                html += '</tr>';
+            });
+
+            // New subtotal
+            html += '<tr style="background: #e8f8f0; font-weight: 600;">';
+            html += `<td colspan="2"><strong>Subtotal - New (${data.new_employees.length})</strong></td>`;
+            html += `<td class="text-right"><strong>$0.00</strong></td>`;
+            html += `<td class="text-right"><strong>$${formatCurrency(newTotal.b)}</strong></td>`;
+            html += `<td class="text-right positive-value"><strong>+$${formatCurrency(newTotal.variance)}</strong></td>`;
+            html += `<td class="text-right positive-value"><strong>+100%</strong></td>`;
+            html += '</tr>';
+        }
+
+        // Group 3: Departed Employees
+        if (data.departed_employees.length > 0) {
+            html += '<tr style="background: #f0f0f0;"><td colspan="6"><strong>DEPARTED EMPLOYEES (Left after Period A)</strong></td></tr>';
+
+            data.departed_employees.forEach(emp => {
+                const variance = -emp.cost;
+
+                departedTotal.a += emp.cost;
+                departedTotal.b += 0;
+                departedTotal.variance += variance;
+
+                html += '<tr>';
+                html += `<td>${emp.employee_code}</td>`;
+                html += `<td>${emp.employee_name}</td>`;
+                html += `<td class="text-right">$${formatCurrency(emp.cost)}</td>`;
+                html += `<td class="text-right neutral-value">$0.00</td>`;
+                html += `<td class="text-right negative-value">-$${formatCurrency(emp.cost)}</td>`;
+                html += `<td class="text-right negative-value">Departed</td>`;
+                html += '</tr>';
+            });
+
+            // Departed subtotal
+            html += '<tr style="background: #fdecea; font-weight: 600;">';
+            html += `<td colspan="2"><strong>Subtotal - Departed (${data.departed_employees.length})</strong></td>`;
+            html += `<td class="text-right"><strong>$${formatCurrency(departedTotal.a)}</strong></td>`;
+            html += `<td class="text-right"><strong>$0.00</strong></td>`;
+            html += `<td class="text-right negative-value"><strong>-$${formatCurrency(departedTotal.a)}</strong></td>`;
+            html += `<td class="text-right negative-value"><strong>-100%</strong></td>`;
+            html += '</tr>';
+        }
+
+        html += '</tbody>';
+
+        // Grand Total
+        const grandTotal = {
+            a: continuingTotal.a + newTotal.a + departedTotal.a,
+            b: continuingTotal.b + newTotal.b + departedTotal.b,
+            variance: continuingTotal.variance + newTotal.variance + departedTotal.variance
+        };
+
+        const grandPctChange = grandTotal.a !== 0 ? (grandTotal.variance / grandTotal.a * 100) : 0;
+        const grandVarClass = grandTotal.variance >= 0 ? 'positive-value' : 'negative-value';
+
+        html += '<tfoot>';
+        html += '<tr>';
+        html += `<td colspan="2"><strong>GRAND TOTAL</strong></td>`;
+        html += `<td class="text-right"><strong>$${formatCurrency(grandTotal.a)}</strong></td>`;
+        html += `<td class="text-right"><strong>$${formatCurrency(grandTotal.b)}</strong></td>`;
+        html += `<td class="text-right ${grandVarClass}"><strong>$${formatCurrency(grandTotal.variance)}</strong></td>`;
+        html += `<td class="text-right ${grandVarClass}"><strong>${grandPctChange.toFixed(1)}%</strong></td>`;
+        html += '</tr>';
+        html += '</tfoot>';
+
+        html += '</table>';
+        html += '</div>';
+
+        resultsDiv.innerHTML = html;
+    }
+
+    function parseGLAccountSection(text) {
+        const match = text.match(/1\. COST BREAKDOWN BY GL ACCOUNT[\s\S]*?(?=\n\n2\.|$)/);
+        if (!match) return '';
+
+        const lines = match[0].split('\n').filter(l => l.trim());
+
+        let html = '<div class="analysis-section">';
+        html += '<h4>2. Cost Breakdown by GL Account</h4>';
+        html += '<table class="analysis-table">';
+
+        // Find header line
+        const headerIdx = lines.findIndex(l => l.includes('GL Account'));
+        if (headerIdx >= 0) {
+            const headers = ['GL Account', 'Period A', 'Period B', 'Variance', '% Change'];
+            html += '<thead><tr>';
+            headers.forEach((h, i) => {
+                html += `<th class="${i > 0 ? 'text-right' : ''}">${h}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            // Parse data rows
+            for (let i = headerIdx + 2; i < lines.length; i++) {
+                const line = lines[i];
+                if (line.includes('---') || line.includes('===') || line.includes('TOTAL')) break;
+
+                const match = line.match(/^(.+?)\s+\$\s*([\d,.-]+)\s+\$\s*([\d,.-]+)\s+\$\s*([\d,.-]+)\s+([\d,.-]+)%/);
+                if (match) {
+                    const [, glAccount, periodA, periodB, variance, pctChange] = match;
+                    const varNum = parseFloat(variance.replace(/,/g, ''));
+                    const pctNum = parseFloat(pctChange);
+
+                    html += '<tr>';
+                    html += `<td>${glAccount.trim()}</td>`;
+                    html += `<td class="text-right">$${periodA}</td>`;
+                    html += `<td class="text-right">$${periodB}</td>`;
+                    html += `<td class="text-right ${varNum >= 0 ? 'positive-value' : 'negative-value'}">$${variance}</td>`;
+                    html += `<td class="text-right ${pctNum >= 0 ? 'positive-value' : 'negative-value'}">${pctChange}%</td>`;
+                    html += '</tr>';
+                }
+            }
+
+            // Add total row
+            const totalMatch = text.match(/TOTAL\s+\$\s*([\d,.-]+)\s+\$\s*([\d,.-]+)\s+\$\s*([\d,.-]+)\s+([\d,.-]+)%/);
+            if (totalMatch) {
+                const [, periodA, periodB, variance, pctChange] = totalMatch;
+                const varNum = parseFloat(variance.replace(/,/g, ''));
+                const pctNum = parseFloat(pctChange);
+
+                html += '<tfoot><tr>';
+                html += '<td><strong>TOTAL</strong></td>';
+                html += `<td class="text-right"><strong>$${periodA}</strong></td>`;
+                html += `<td class="text-right"><strong>$${periodB}</strong></td>`;
+                html += `<td class="text-right ${varNum >= 0 ? 'positive-value' : 'negative-value'}"><strong>$${variance}</strong></td>`;
+                html += `<td class="text-right ${pctNum >= 0 ? 'positive-value' : 'negative-value'}"><strong>${pctChange}%</strong></td>`;
+                html += '</tr></tfoot>';
+            }
+        }
+
+        html += '</tbody></table></div>';
+        return html;
+    }
+
+    function parseDepartmentSection(text) {
+        const match = text.match(/2\. COST BREAKDOWN BY DEPARTMENT[\s\S]*?(?=\n\n3\.|$)/);
+        if (!match) return '';
+
+        const lines = match[0].split('\n').filter(l => l.trim());
+
+        let html = '<div class="analysis-section">';
+        html += '<h4>1. Cost Breakdown by Department</h4>';
+        html += '<table class="analysis-table">';
+
+        const headerIdx = lines.findIndex(l => l.includes('Department'));
+        if (headerIdx >= 0) {
+            const headers = ['Department', 'HC A', 'Period A', 'HC B', 'Period B', 'Variance', '% Change'];
+            html += '<thead><tr>';
+            headers.forEach((h, i) => {
+                html += `<th class="${i > 0 ? 'text-right' : ''}">${h}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            for (let i = headerIdx + 2; i < lines.length; i++) {
+                const line = lines[i];
+                if (line.includes('---') || line.includes('===') || line.includes('TOTAL')) break;
+
+                const match = line.match(/^(.+?)\s+(\d+)\s+\$\s*([\d,.-]+)\s+(\d+)\s+\$\s*([\d,.-]+)\s+\$\s*([\d,.-]+)\s+([\d,.-]+)%/);
+                if (match) {
+                    const [, dept, hcA, periodA, hcB, periodB, variance, pctChange] = match;
+                    const varNum = parseFloat(variance.replace(/,/g, ''));
+                    const pctNum = parseFloat(pctChange);
+
+                    html += '<tr>';
+                    html += `<td>${dept.trim()}</td>`;
+                    html += `<td class="text-right">${hcA}</td>`;
+                    html += `<td class="text-right">$${periodA}</td>`;
+                    html += `<td class="text-right">${hcB}</td>`;
+                    html += `<td class="text-right">$${periodB}</td>`;
+                    html += `<td class="text-right ${varNum >= 0 ? 'positive-value' : 'negative-value'}">$${variance}</td>`;
+                    html += `<td class="text-right ${pctNum >= 0 ? 'positive-value' : 'negative-value'}">${pctChange}%</td>`;
+                    html += '</tr>';
+                }
+            }
+
+            // Add total row
+            const totalMatch = text.match(/TOTAL\s+(\d+)\s+\$\s*([\d,.-]+)\s+(\d+)\s+\$\s*([\d,.-]+)\s+\$\s*([\d,.-]+)\s+([\d,.-]+)%/);
+            if (totalMatch) {
+                const [, hcA, periodA, hcB, periodB, variance, pctChange] = totalMatch;
+                const varNum = parseFloat(variance.replace(/,/g, ''));
+                const pctNum = parseFloat(pctChange);
+
+                html += '<tfoot><tr>';
+                html += '<td><strong>TOTAL</strong></td>';
+                html += `<td class="text-right"><strong>${hcA}</strong></td>`;
+                html += `<td class="text-right"><strong>$${periodA}</strong></td>`;
+                html += `<td class="text-right"><strong>${hcB}</strong></td>`;
+                html += `<td class="text-right"><strong>$${periodB}</strong></td>`;
+                html += `<td class="text-right ${varNum >= 0 ? 'positive-value' : 'negative-value'}"><strong>$${variance}</strong></td>`;
+                html += `<td class="text-right ${pctNum >= 0 ? 'positive-value' : 'negative-value'}"><strong>${pctChange}%</strong></td>`;
+                html += '</tr></tfoot>';
+            }
+        }
+
+        html += '</tbody></table></div>';
+        return html;
+    }
+
+    function parsePeriodMatrices(text, periodA, periodB) {
+        let html = '';
+
+        // Period A Matrix
+        const matchA = text.match(/3\. DETAILED MATRIX - ([\d-]+)[\s\S]*?(?=\n\n4\.|$)/);
+        if (matchA) {
+            html += '<div class="analysis-section">';
+            html += `<h4>📋 Detailed Matrix - ${periodA}</h4>`;
+            html += '<div style="overflow-x: auto;"><table class="analysis-table" style="font-size: 11px;">';
+            html += parseMatrixTable(matchA[0]);
+            html += '</table></div></div>';
+        }
+
+        // Period B Matrix
+        const matchB = text.match(/4\. DETAILED MATRIX - ([\d-]+)[\s\S]*?(?=\n\n5\.|$)/);
+        if (matchB) {
+            html += '<div class="analysis-section">';
+            html += `<h4>📋 Detailed Matrix - ${periodB}</h4>`;
+            html += '<div style="overflow-x: auto;"><table class="analysis-table" style="font-size: 11px;">';
+            html += parseMatrixTable(matchB[0]);
+            html += '</table></div></div>';
+        }
+
+        return html;
+    }
+
+    function parseVarianceMatrix(text) {
+        const match = text.match(/5\. VARIANCE MATRIX[\s\S]*?(?=\n\nANALYSIS COMPLETE|$)/);
+        if (!match) return '';
+
+        let html = '<div class="analysis-section">';
+        html += '<h4>3. Variance Matrix (Change by Department & GL Account)</h4>';
+        html += '<div style="overflow-x: auto;"><table class="analysis-table" style="font-size: 11px;">';
+        html += parseMatrixTable(match[0]);
+        html += '</table></div></div>';
+        return html;
+    }
+
+    // ============= Hidden Section Parsers (Available for Future Use) =============
+    // These functions are kept in the code but not currently called in displayAnalysisResults()
+    // They can be re-enabled by uncommenting the relevant lines in displayAnalysisResults()
+
+    // Function: parsePeriodMatrices() - Shows detailed department x GL matrices for each period
+    // Function: Cost Movement Analysis section in HTML - Shows new/departed employees by location
+
+    function parseMatrixTable(sectionText) {
+        const lines = sectionText.split('\n').filter(l => l.trim() && !l.includes('==='));
+        let html = '';
+
+        let headerFound = false;
+        let totalRowStarted = false;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+
+            if (line.includes('Department') && !headerFound) {
+                // Header row
+                const cells = line.trim().split(/\s{2,}/);
+                html += '<thead><tr>';
+                cells.forEach((cell, idx) => {
+                    html += `<th class="${idx > 0 ? 'text-right' : ''}">${cell.trim()}</th>`;
+                });
+                html += '</tr></thead><tbody>';
+                headerFound = true;
+                continue;
+            }
+
+            if (line.includes('---')) continue;
+
+            if (line.includes('TOTAL') && !totalRowStarted) {
+                html += '</tbody><tfoot>';
+                totalRowStarted = true;
+            }
+
+            if (headerFound && !line.includes('DETAILED MATRIX') && !line.includes('VARIANCE MATRIX')) {
+                const cells = line.trim().split(/\s+\$/);
+                if (cells.length > 1) {
+                    html += '<tr>';
+                    html += `<td>${cells[0].trim()}</td>`;
+                    for (let j = 1; j < cells.length; j++) {
+                        const val = cells[j].trim().replace(/,/g, '');
+                        const numVal = parseFloat(val);
+                        let className = 'text-right';
+                        if (!isNaN(numVal)) {
+                            if (numVal > 0) className += ' positive-value';
+                            else if (numVal < 0) className += ' negative-value';
+                            else className += ' neutral-value';
+                        }
+                        html += `<td class="${className}">$${cells[j].trim()}</td>`;
+                    }
+                    html += '</tr>';
+                }
+            }
+        }
+
+        if (totalRowStarted) html += '</tfoot>';
+        else html += '</tbody>';
+
+        return html;
+    }
+
+    function displayError(message) {
+        const resultsDiv = document.getElementById('analysisResults');
+        resultsDiv.innerHTML = `
+            <div class="error-message">
+                <strong>Error:</strong> ${message}
+            </div>
+        `;
     }
 </script>
 {% endblock %}

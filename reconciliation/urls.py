@@ -24,6 +24,9 @@ urlpatterns = [
     # FNE Payroll Comparison dashboard
     path('fne-dashboard/', dashboard_views.fne_dashboard, name='fne_dashboard'),
     path('fne-dashboard/download/', dashboard_views.download_fne_comparison, name='download_fne_comparison'),
+    path('api/ai-cost-analysis/', dashboard_views.ai_cost_analysis, name='ai_cost_analysis'),
+    path('api/analysis-options/', dashboard_views.get_analysis_options, name='get_analysis_options'),
+    path('api/department-employee-changes/', dashboard_views.get_department_employee_changes, name='department_employee_changes'),
 
     # Payroll Tax & Workcover dashboard
     path('prt-wc-dashboard/<str:period_id>/', prt_wc_dashboard.prt_wc_dashboard, name='prt_wc_dashboard'),
