@@ -11,6 +11,7 @@ urlpatterns = [
     path('dashboard/', dashboard_views.pay_period_list, name='pay_period_list'),
     path('dashboard/<str:pay_period_id>/', dashboard_views.reconciliation_dashboard, name='dashboard'),
     path('dashboard/<str:pay_period_id>/download-accrual-journal/', dashboard_views.download_accrual_sage_journal, name='download_accrual_journal'),
+    path('dashboard/<str:pay_period_id>/download-employee-breakdown/', dashboard_views.download_employee_accrual_breakdown, name='download_employee_accrual_breakdown'),
     path('api/pay-periods/delete/', dashboard_views.delete_pay_periods, name='delete_pay_periods'),
 
     # Analytics dashboard

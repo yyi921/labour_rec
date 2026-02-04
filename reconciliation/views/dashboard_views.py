@@ -382,6 +382,97 @@ def accrual_dashboard(request, pay_period):
     return render(request, 'reconciliation/accrual_dashboard.html', context)
 
 
+def download_employee_accrual_breakdown(request, pay_period_id):
+    """
+    Download Employee Accrual Breakdown as CSV
+    """
+    pay_period = get_object_or_404(PayPeriod, period_id=pay_period_id)
+
+    # Get all employee snapshots
+    snapshots = EmployeePayPeriodSnapshot.objects.filter(
+        pay_period=pay_period
+    ).order_by('employee_code')
+
+    # Prepare CSV response
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="Employee_Accrual_Breakdown_{pay_period_id}.csv"'
+
+    writer = csv.writer(response)
+
+    # Write header
+    writer.writerow([
+        'Employee Code', 'Employee Name', 'Employee Type', 'Department', 'Location',
+        '6345 Salaries', '6300 Annual Leave', '6370 Superannuation',
+        '6380 WorkCover', '6335 Payroll Tax', 'Total', 'Source'
+    ])
+
+    # Track totals
+    total_6345 = Decimal('0')
+    total_6300 = Decimal('0')
+    total_6370 = Decimal('0')
+    total_6380 = Decimal('0')
+    total_6335 = Decimal('0')
+    total_accrued = Decimal('0')
+
+    # Write employee rows
+    for snapshot in snapshots:
+        # Extract location and department from cost_allocation
+        location = 'N/A'
+        department = 'N/A'
+        if snapshot.cost_allocation:
+            for loc_code, depts in snapshot.cost_allocation.items():
+                location = loc_code
+                for dept_code in depts.keys():
+                    department = dept_code
+                    break
+                break
+
+        # Determine source label
+        if snapshot.accrual_source == 'tanda_auto_pay':
+            source = 'Auto Pay'
+        elif snapshot.accrual_source == 'tanda_shift_cost':
+            source = 'Tanda'
+        else:
+            source = 'Default'
+
+        writer.writerow([
+            snapshot.employee_code,
+            snapshot.employee_name,
+            snapshot.accrual_employee_type or snapshot.employment_status,
+            department,
+            location,
+            float(snapshot.gl_6345_salaries),
+            float(snapshot.gl_6300),
+            float(snapshot.gl_6370_superannuation),
+            float(snapshot.gl_6380),
+            float(snapshot.gl_6335),
+            float(snapshot.accrual_total),
+            source
+        ])
+
+        # Accumulate totals
+        total_6345 += snapshot.gl_6345_salaries
+        total_6300 += snapshot.gl_6300
+        total_6370 += snapshot.gl_6370_superannuation
+        total_6380 += snapshot.gl_6380
+        total_6335 += snapshot.gl_6335
+        total_accrued += snapshot.accrual_total
+
+    # Write totals row
+    writer.writerow([
+        'TOTAL', '', '', '', '',
+        float(total_6345),
+        float(total_6300),
+        float(total_6370),
+        float(total_6380),
+        float(total_6335),
+        float(total_accrued),
+        ''
+    ])
+
+    return response
+
+
 def download_accrual_sage_journal(request, pay_period_id):
     """
     Download Sage Intacct format journal for accrual wages

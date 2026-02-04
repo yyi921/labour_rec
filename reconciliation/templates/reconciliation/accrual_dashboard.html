@@ -59,6 +59,9 @@
     <a href="{% url 'reconciliation:download_accrual_journal' pay_period.period_id %}" class="btn btn-primary">
         📥 Download Sage Journal
     </a>
+    <a href="{% url 'reconciliation:download_employee_accrual_breakdown' pay_period.period_id %}" class="btn btn-success">
+        📥 Download Employee Breakdown CSV
+    </a>
     <a href="{% url 'reconciliation:pay_period_list' %}" class="btn btn-secondary">
         ← Back to Pay Periods
     </a>
@@ -240,6 +243,17 @@
 
 .btn-secondary:hover {
     background: #5a6268;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-success {
+    background: #17a2b8;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #138496;
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
