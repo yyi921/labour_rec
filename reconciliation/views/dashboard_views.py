@@ -1673,3 +1673,365 @@ def get_department_employee_changes(request):
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+def monthly_snapshot_dashboard(request):
+    """
+    Monthly snapshot dashboard showing aggregated employee payroll data
+    for all pay periods where period_end falls in the selected month.
+    """
+    from django.db.models.functions import TruncMonth
+    from reconciliation.models import SageLocation, SageDepartment
+
+    selected_month = request.GET.get('month')
+
+    # Get distinct months from pay periods with snapshots
+    months_with_data = PayPeriod.objects.filter(
+        process_type='actual_pay_period',
+        employee_snapshots__isnull=False
+    ).annotate(
+        month=TruncMonth('period_end')
+    ).values('month').distinct().order_by('-month')
+
+    month_options = []
+    for m in months_with_data:
+        if m['month']:
+            month_options.append({
+                'value': m['month'].strftime('%Y-%m'),
+                'label': m['month'].strftime('%B %Y')
+            })
+
+    # Cache location/department names
+    location_cache = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}
+    dept_cache = {dept.department_id: dept.department_name for dept in SageDepartment.objects.all()}
+
+    context = {
+        'month_options': month_options,
+        'selected_month': selected_month,
+    }
+
+    if selected_month:
+        year, month = map(int, selected_month.split('-'))
+
+        # Get pay periods for selected month
+        pay_periods = PayPeriod.objects.filter(
+            period_end__year=year,
+            period_end__month=month,
+            process_type='actual_pay_period'
+        ).order_by('period_end')
+
+        pay_period_list = list(pay_periods)
+        pay_period_ids = [pp.period_id for pp in pay_period_list]
+
+        # Get all snapshots for these periods
+        snapshots = EmployeePayPeriodSnapshot.objects.filter(
+            pay_period__in=pay_periods
+        ).select_related('pay_period').order_by('employee_code')
+
+        # Aggregate by employee
+        employee_data = defaultdict(lambda: {
+            'employee_code': '',
+            'employee_name': '',
+            'employment_status': '',
+            'periods': [],
+            'gl_6345_salaries': Decimal('0'),
+            'gl_6370_superannuation': Decimal('0'),
+            'gl_6300': Decimal('0'),
+            'gl_6355_sick_leave': Decimal('0'),
+            'gl_6305': Decimal('0'),
+            'gl_6335': Decimal('0'),
+            'gl_6380': Decimal('0'),
+            'total_cost': Decimal('0'),
+            'total_hours': Decimal('0'),
+            'cost_allocation': {},
+            'primary_location': '',
+            'primary_department': '',
+            'allocation_summary': '',
+        })
+
+        for snapshot in snapshots:
+            emp = employee_data[snapshot.employee_code]
+            emp['employee_code'] = snapshot.employee_code
+            emp['employee_name'] = snapshot.employee_name
+            emp['employment_status'] = snapshot.employment_status or ''
+            emp['periods'].append(snapshot.pay_period.period_id)
+
+            # Sum GL fields
+            emp['gl_6345_salaries'] += snapshot.gl_6345_salaries or Decimal('0')
+            emp['gl_6370_superannuation'] += snapshot.gl_6370_superannuation or Decimal('0')
+            emp['gl_6300'] += snapshot.gl_6300 or Decimal('0')
+            emp['gl_6355_sick_leave'] += snapshot.gl_6355_sick_leave or Decimal('0')
+            emp['gl_6305'] += snapshot.gl_6305 or Decimal('0')
+            emp['gl_6335'] += snapshot.gl_6335 or Decimal('0')
+            emp['gl_6380'] += snapshot.gl_6380 or Decimal('0')
+            emp['total_cost'] += snapshot.total_cost or Decimal('0')
+            emp['total_hours'] += snapshot.total_hours or Decimal('0')
+
+            # Keep latest allocation
+            if snapshot.cost_allocation:
+                emp['cost_allocation'] = snapshot.cost_allocation
+
+        # Extract primary location/department for each employee
+        for emp_code, emp in employee_data.items():
+            if emp['cost_allocation']:
+                max_pct = Decimal('0')
+                summary_parts = []
+
+                for location, departments in emp['cost_allocation'].items():
+                    for dept, pct in departments.items():
+                        pct_decimal = Decimal(str(pct))
+                        loc_name = location_cache.get(location, location)
+                        dept_name = dept_cache.get(dept, dept)
+                        summary_parts.append(f"{location}-{dept}: {pct}%")
+
+                        if pct_decimal > max_pct:
+                            max_pct = pct_decimal
+                            emp['primary_location'] = location
+                            emp['primary_department'] = dept
+
+                emp['allocation_summary'] = "; ".join(sorted(summary_parts))
+
+        # Convert to list and sort by employee code
+        employee_list = sorted(employee_data.values(), key=lambda x: x['employee_code'])
+
+        # Calculate summary totals
+        summary = {
+            'total_employees': len(employee_list),
+            'pay_periods_count': len(pay_period_list),
+            'pay_periods': pay_period_ids,
+            'total_6345': sum(e['gl_6345_salaries'] for e in employee_list),
+            'total_6370': sum(e['gl_6370_superannuation'] for e in employee_list),
+            'total_6300': sum(e['gl_6300'] for e in employee_list),
+            'total_6355': sum(e['gl_6355_sick_leave'] for e in employee_list),
+            'total_6305': sum(e['gl_6305'] for e in employee_list),
+            'total_6335': sum(e['gl_6335'] for e in employee_list),
+            'total_6380': sum(e['gl_6380'] for e in employee_list),
+            'total_cost': sum(e['total_cost'] for e in employee_list),
+            'total_hours': sum(e['total_hours'] for e in employee_list),
+        }
+
+        from datetime import datetime
+        context['selected_month_label'] = datetime(year, month, 1).strftime('%B %Y')
+        context['employee_data'] = employee_list
+        context['summary'] = summary
+        context['pay_periods'] = pay_period_list
+
+    return render(request, 'reconciliation/monthly_snapshot_dashboard.html', context)
+
+
+@require_http_methods(["GET"])
+def download_monthly_snapshot(request):
+    """
+    Download monthly snapshot data as CSV.
+    Supports both summary (one row per employee) and detailed (one row per employee-period) formats.
+    """
+    from reconciliation.models import SageLocation, SageDepartment
+
+    selected_month = request.GET.get('month')
+    download_format = request.GET.get('format', 'summary')  # 'summary' or 'detailed'
+
+    if not selected_month:
+        return JsonResponse({'error': 'Month parameter is required'}, status=400)
+
+    year, month = map(int, selected_month.split('-'))
+
+    # Get pay periods for selected month
+    pay_periods = PayPeriod.objects.filter(
+        period_end__year=year,
+        period_end__month=month,
+        process_type='actual_pay_period'
+    ).order_by('period_end')
+
+    # Get all snapshots for these periods
+    snapshots = EmployeePayPeriodSnapshot.objects.filter(
+        pay_period__in=pay_periods
+    ).select_related('pay_period').order_by('employee_code', 'pay_period__period_end')
+
+    # Cache location/department names
+    location_cache = {loc.location_id: loc.location_name for loc in SageLocation.objects.all()}
+    dept_cache = {dept.department_id: dept.department_name for dept in SageDepartment.objects.all()}
+
+    # Prepare CSV response
+    response = HttpResponse(content_type='text/csv')
+    filename = f"Monthly_Snapshot_{selected_month}_{download_format}.csv"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+
+    if download_format == 'detailed':
+        # Detailed format: one row per employee-period
+        writer.writerow([
+            'Employee Code', 'Employee Name', 'Employment Status',
+            'Pay Period ID', 'Period Start', 'Period End',
+            'Primary Location', 'Primary Department', 'Allocation Summary',
+            'GL 6345 Salaries', 'GL 6370 Superannuation', 'GL 6300 Annual Leave',
+            'GL 6355 Sick Leave', 'GL 6305 Bonuses', 'GL 6335 Payroll Tax',
+            'GL 6380 Workcover', 'Total Cost', 'Total Hours'
+        ])
+
+        for snapshot in snapshots:
+            # Extract primary location/department
+            primary_loc = ''
+            primary_dept = ''
+            allocation_summary = ''
+
+            if snapshot.cost_allocation:
+                max_pct = Decimal('0')
+                summary_parts = []
+
+                for location, departments in snapshot.cost_allocation.items():
+                    for dept, pct in departments.items():
+                        pct_decimal = Decimal(str(pct))
+                        summary_parts.append(f"{location}-{dept}: {pct}%")
+
+                        if pct_decimal > max_pct:
+                            max_pct = pct_decimal
+                            primary_loc = location
+                            primary_dept = dept
+
+                allocation_summary = "; ".join(sorted(summary_parts))
+
+            writer.writerow([
+                snapshot.employee_code,
+                snapshot.employee_name,
+                snapshot.employment_status or '',
+                snapshot.pay_period.period_id,
+                snapshot.pay_period.period_start.strftime('%Y-%m-%d') if snapshot.pay_period.period_start else '',
+                snapshot.pay_period.period_end.strftime('%Y-%m-%d') if snapshot.pay_period.period_end else '',
+                primary_loc,
+                primary_dept,
+                allocation_summary,
+                float(snapshot.gl_6345_salaries or 0),
+                float(snapshot.gl_6370_superannuation or 0),
+                float(snapshot.gl_6300 or 0),
+                float(snapshot.gl_6355_sick_leave or 0),
+                float(snapshot.gl_6305 or 0),
+                float(snapshot.gl_6335 or 0),
+                float(snapshot.gl_6380 or 0),
+                float(snapshot.total_cost or 0),
+                float(snapshot.total_hours or 0),
+            ])
+
+    else:
+        # Summary format: one row per employee (aggregated)
+        writer.writerow([
+            'Employee Code', 'Employee Name', 'Employment Status',
+            'Period Count', 'Period IDs',
+            'Primary Location', 'Primary Department', 'Allocation Summary',
+            'GL 6345 Salaries', 'GL 6370 Superannuation', 'GL 6300 Annual Leave',
+            'GL 6355 Sick Leave', 'GL 6305 Bonuses', 'GL 6335 Payroll Tax',
+            'GL 6380 Workcover', 'Total Cost', 'Total Hours'
+        ])
+
+        # Aggregate by employee
+        employee_data = defaultdict(lambda: {
+            'employee_code': '',
+            'employee_name': '',
+            'employment_status': '',
+            'periods': [],
+            'gl_6345_salaries': Decimal('0'),
+            'gl_6370_superannuation': Decimal('0'),
+            'gl_6300': Decimal('0'),
+            'gl_6355_sick_leave': Decimal('0'),
+            'gl_6305': Decimal('0'),
+            'gl_6335': Decimal('0'),
+            'gl_6380': Decimal('0'),
+            'total_cost': Decimal('0'),
+            'total_hours': Decimal('0'),
+            'cost_allocation': {},
+        })
+
+        for snapshot in snapshots:
+            emp = employee_data[snapshot.employee_code]
+            emp['employee_code'] = snapshot.employee_code
+            emp['employee_name'] = snapshot.employee_name
+            emp['employment_status'] = snapshot.employment_status or ''
+            emp['periods'].append(snapshot.pay_period.period_id)
+
+            emp['gl_6345_salaries'] += snapshot.gl_6345_salaries or Decimal('0')
+            emp['gl_6370_superannuation'] += snapshot.gl_6370_superannuation or Decimal('0')
+            emp['gl_6300'] += snapshot.gl_6300 or Decimal('0')
+            emp['gl_6355_sick_leave'] += snapshot.gl_6355_sick_leave or Decimal('0')
+            emp['gl_6305'] += snapshot.gl_6305 or Decimal('0')
+            emp['gl_6335'] += snapshot.gl_6335 or Decimal('0')
+            emp['gl_6380'] += snapshot.gl_6380 or Decimal('0')
+            emp['total_cost'] += snapshot.total_cost or Decimal('0')
+            emp['total_hours'] += snapshot.total_hours or Decimal('0')
+
+            if snapshot.cost_allocation:
+                emp['cost_allocation'] = snapshot.cost_allocation
+
+        # Write rows
+        for emp_code in sorted(employee_data.keys()):
+            emp = employee_data[emp_code]
+
+            # Extract primary location/department
+            primary_loc = ''
+            primary_dept = ''
+            allocation_summary = ''
+
+            if emp['cost_allocation']:
+                max_pct = Decimal('0')
+                summary_parts = []
+
+                for location, departments in emp['cost_allocation'].items():
+                    for dept, pct in departments.items():
+                        pct_decimal = Decimal(str(pct))
+                        summary_parts.append(f"{location}-{dept}: {pct}%")
+
+                        if pct_decimal > max_pct:
+                            max_pct = pct_decimal
+                            primary_loc = location
+                            primary_dept = dept
+
+                allocation_summary = "; ".join(sorted(summary_parts))
+
+            writer.writerow([
+                emp['employee_code'],
+                emp['employee_name'],
+                emp['employment_status'],
+                len(emp['periods']),
+                ', '.join(emp['periods']),
+                primary_loc,
+                primary_dept,
+                allocation_summary,
+                float(emp['gl_6345_salaries']),
+                float(emp['gl_6370_superannuation']),
+                float(emp['gl_6300']),
+                float(emp['gl_6355_sick_leave']),
+                float(emp['gl_6305']),
+                float(emp['gl_6335']),
+                float(emp['gl_6380']),
+                float(emp['total_cost']),
+                float(emp['total_hours']),
+            ])
+
+        # Write totals row
+        totals = {
+            'gl_6345_salaries': sum(e['gl_6345_salaries'] for e in employee_data.values()),
+            'gl_6370_superannuation': sum(e['gl_6370_superannuation'] for e in employee_data.values()),
+            'gl_6300': sum(e['gl_6300'] for e in employee_data.values()),
+            'gl_6355_sick_leave': sum(e['gl_6355_sick_leave'] for e in employee_data.values()),
+            'gl_6305': sum(e['gl_6305'] for e in employee_data.values()),
+            'gl_6335': sum(e['gl_6335'] for e in employee_data.values()),
+            'gl_6380': sum(e['gl_6380'] for e in employee_data.values()),
+            'total_cost': sum(e['total_cost'] for e in employee_data.values()),
+            'total_hours': sum(e['total_hours'] for e in employee_data.values()),
+        }
+
+        writer.writerow([
+            'TOTAL', '', '',
+            '', '',
+            '', '', '',
+            float(totals['gl_6345_salaries']),
+            float(totals['gl_6370_superannuation']),
+            float(totals['gl_6300']),
+            float(totals['gl_6355_sick_leave']),
+            float(totals['gl_6305']),
+            float(totals['gl_6335']),
+            float(totals['gl_6380']),
+            float(totals['total_cost']),
+            float(totals['total_hours']),
+        ])
+
+    return response

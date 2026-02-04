@@ -1,0 +1,429 @@
+{% extends 'reconciliation/base.html' %}
+{% load humanize %}
+
+{% block title %}Monthly Snapshot Dashboard - Labour Reconciliation{% endblock %}
+
+{% block extra_head %}
+<style>
+    .dashboard-section {
+        background: white;
+        padding: 25px;
+        margin-bottom: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .section-title {
+        margin-top: 0;
+        margin-bottom: 20px;
+        color: #2c3e50;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 10px;
+    }
+
+    .filter-row {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        align-items: end;
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 250px;
+        max-width: 400px;
+    }
+
+    .filter-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #555;
+    }
+
+    .filter-group select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    button {
+        background: #3498db;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    button:hover {
+        background: #2980b9;
+    }
+
+    .download-btn {
+        background: #27ae60;
+        margin-right: 10px;
+    }
+
+    .download-btn:hover {
+        background: #229954;
+    }
+
+    .download-btn.secondary {
+        background: #17a2b8;
+    }
+
+    .download-btn.secondary:hover {
+        background: #138496;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
+    }
+
+    .stat-card {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 6px;
+        border-left: 4px solid #3498db;
+    }
+
+    .stat-card.highlight {
+        border-left-color: #27ae60;
+        background: #d4edda;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        color: #777;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+
+    .periods-list {
+        margin-top: 15px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 6px;
+    }
+
+    .periods-list h4 {
+        margin-top: 0;
+        margin-bottom: 10px;
+        color: #555;
+    }
+
+    .period-badge {
+        display: inline-block;
+        background: #3498db;
+        color: white;
+        padding: 5px 12px;
+        border-radius: 4px;
+        margin: 3px;
+        font-size: 13px;
+    }
+
+    .gl-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+
+    .gl-table th,
+    .gl-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .gl-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #555;
+    }
+
+    .gl-table td.amount {
+        text-align: right;
+        font-family: monospace;
+        font-size: 14px;
+    }
+
+    .gl-table tfoot {
+        font-weight: bold;
+        background: #e8f4f8;
+    }
+
+    .table-container {
+        overflow-x: auto;
+        margin-top: 15px;
+    }
+
+    .employee-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .employee-table th,
+    .employee-table td {
+        padding: 10px 8px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+        white-space: nowrap;
+    }
+
+    .employee-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #555;
+        position: sticky;
+        top: 0;
+    }
+
+    .employee-table th.amount,
+    .employee-table td.amount {
+        text-align: right;
+    }
+
+    .employee-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .employee-table tfoot {
+        font-weight: bold;
+        background: #e8f4f8;
+    }
+
+    .allocation-cell {
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .allocation-cell:hover {
+        white-space: normal;
+        overflow: visible;
+    }
+
+    .btn-group {
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <header>
+        <div class="breadcrumb">
+            <a href="{% url 'reconciliation:pay_period_list' %}">Pay Periods</a> /
+            Monthly Snapshot
+        </div>
+        <h1>Monthly Snapshot Dashboard</h1>
+        <p>Aggregated employee payroll data by month</p>
+    </header>
+
+    <!-- Month Selection -->
+    <div class="dashboard-section">
+        <h2 class="section-title">Select Month</h2>
+        <form method="get">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="month">Month:</label>
+                    <select id="month" name="month">
+                        <option value="">-- Select Month --</option>
+                        {% for opt in month_options %}
+                        <option value="{{ opt.value }}" {% if opt.value == selected_month %}selected{% endif %}>
+                            {{ opt.label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <button type="submit">View Snapshot</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if employee_data %}
+    <!-- Summary Statistics -->
+    <div class="dashboard-section">
+        <h2 class="section-title">Summary - {{ selected_month_label }}</h2>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Employees</div>
+                <div class="stat-value">{{ summary.total_employees }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Pay Periods</div>
+                <div class="stat-value">{{ summary.pay_periods_count }}</div>
+            </div>
+            <div class="stat-card highlight">
+                <div class="stat-label">Total Cost</div>
+                <div class="stat-value">${{ summary.total_cost|floatformat:2|intcomma }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Hours</div>
+                <div class="stat-value">{{ summary.total_hours|floatformat:2|intcomma }}</div>
+            </div>
+        </div>
+
+        <div class="periods-list">
+            <h4>Pay Periods Included:</h4>
+            {% for period in pay_periods %}
+            <span class="period-badge">{{ period.period_id }} ({{ period.period_start|date:"d M" }} - {{ period.period_end|date:"d M Y" }})</span>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- GL Breakdown -->
+    <div class="dashboard-section">
+        <h2 class="section-title">GL Account Breakdown</h2>
+        <table class="gl-table">
+            <thead>
+                <tr>
+                    <th>GL Account</th>
+                    <th style="text-align: right;">Total Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>6345 - Salaries</td>
+                    <td class="amount">${{ summary.total_6345|floatformat:2|intcomma }}</td>
+                </tr>
+                <tr>
+                    <td>6370 - Superannuation</td>
+                    <td class="amount">${{ summary.total_6370|floatformat:2|intcomma }}</td>
+                </tr>
+                <tr>
+                    <td>6300 - Annual Leave</td>
+                    <td class="amount">${{ summary.total_6300|floatformat:2|intcomma }}</td>
+                </tr>
+                <tr>
+                    <td>6355 - Sick Leave</td>
+                    <td class="amount">${{ summary.total_6355|floatformat:2|intcomma }}</td>
+                </tr>
+                <tr>
+                    <td>6305 - Bonuses</td>
+                    <td class="amount">${{ summary.total_6305|floatformat:2|intcomma }}</td>
+                </tr>
+                <tr>
+                    <td>6335 - Payroll Tax</td>
+                    <td class="amount">${{ summary.total_6335|floatformat:2|intcomma }}</td>
+                </tr>
+                <tr>
+                    <td>6380 - Workcover</td>
+                    <td class="amount">${{ summary.total_6380|floatformat:2|intcomma }}</td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td><strong>TOTAL</strong></td>
+                    <td class="amount"><strong>${{ summary.total_cost|floatformat:2|intcomma }}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Employee Table -->
+    <div class="dashboard-section">
+        <h2 class="section-title">Employee Details</h2>
+
+        <div class="btn-group">
+            <button onclick="downloadSnapshot('summary')" class="download-btn">
+                Download Summary CSV (1 row per employee)
+            </button>
+            <button onclick="downloadSnapshot('detailed')" class="download-btn secondary">
+                Download Detailed CSV (1 row per period)
+            </button>
+        </div>
+
+        <div class="table-container">
+            <table class="employee-table">
+                <thead>
+                    <tr>
+                        <th>Employee Code</th>
+                        <th>Employee Name</th>
+                        <th>Status</th>
+                        <th>Periods</th>
+                        <th>Location</th>
+                        <th>Department</th>
+                        <th class="amount">6345 Salaries</th>
+                        <th class="amount">6370 Super</th>
+                        <th class="amount">6300 AL</th>
+                        <th class="amount">Total Cost</th>
+                        <th class="amount">Hours</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in employee_data %}
+                    <tr>
+                        <td>{{ emp.employee_code }}</td>
+                        <td>{{ emp.employee_name }}</td>
+                        <td>{{ emp.employment_status }}</td>
+                        <td>{{ emp.periods|length }}</td>
+                        <td>{{ emp.primary_location }}</td>
+                        <td>{{ emp.primary_department }}</td>
+                        <td class="amount">${{ emp.gl_6345_salaries|floatformat:2|intcomma }}</td>
+                        <td class="amount">${{ emp.gl_6370_superannuation|floatformat:2|intcomma }}</td>
+                        <td class="amount">${{ emp.gl_6300|floatformat:2|intcomma }}</td>
+                        <td class="amount">${{ emp.total_cost|floatformat:2|intcomma }}</td>
+                        <td class="amount">{{ emp.total_hours|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="11" style="text-align: center; padding: 40px; color: #999;">
+                            No employee data found for this month
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="6"><strong>TOTAL ({{ summary.total_employees }} employees)</strong></td>
+                        <td class="amount"><strong>${{ summary.total_6345|floatformat:2|intcomma }}</strong></td>
+                        <td class="amount"><strong>${{ summary.total_6370|floatformat:2|intcomma }}</strong></td>
+                        <td class="amount"><strong>${{ summary.total_6300|floatformat:2|intcomma }}</strong></td>
+                        <td class="amount"><strong>${{ summary.total_cost|floatformat:2|intcomma }}</strong></td>
+                        <td class="amount"><strong>{{ summary.total_hours|floatformat:2 }}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    {% elif selected_month %}
+    <div class="dashboard-section">
+        <p style="text-align: center; padding: 40px; color: #999;">
+            No pay periods with employee data found for {{ selected_month_label }}.
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function downloadSnapshot(format) {
+    const month = '{{ selected_month }}';
+    if (!month) {
+        alert('Please select a month first');
+        return;
+    }
+    window.location.href = '{% url "reconciliation:download_monthly_snapshot" %}?month=' + month + '&format=' + format;
+}
+</script>
+{% endblock %}
