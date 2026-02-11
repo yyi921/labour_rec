@@ -364,8 +364,8 @@
   "pk": 120,
   "fields": {
     "source_account": "SPL-PIZA",
-    "target_account": "458-50",
-    "percentage": "0.2000",
+    "target_account": "423-50",
+    "percentage": "0.1500",
     "is_active": true,
     "created_at": "2025-11-28T10:41:50.196Z",
     "modified_at": "2025-11-28T10:41:50.196Z"
@@ -376,8 +376,8 @@
   "pk": 121,
   "fields": {
     "source_account": "SPL-PIZA",
-    "target_account": "444-50",
-    "percentage": "0.4000",
+    "target_account": "427-50",
+    "percentage": "0.1000",
     "is_active": true,
     "created_at": "2025-11-28T10:41:50.196Z",
     "modified_at": "2025-11-28T10:41:50.196Z"
@@ -388,8 +388,8 @@
   "pk": 122,
   "fields": {
     "source_account": "SPL-PIZA",
-    "target_account": "488-50",
-    "percentage": "0.1000",
+    "target_account": "444-50",
+    "percentage": "0.1500",
     "is_active": true,
     "created_at": "2025-11-28T10:41:50.196Z",
     "modified_at": "2025-11-28T10:41:50.196Z"
@@ -412,7 +412,7 @@
   "pk": 124,
   "fields": {
     "source_account": "SPL-PIZA",
-    "target_account": "450-50",
+    "target_account": "449-50",
     "percentage": "0.1000",
     "is_active": true,
     "created_at": "2025-11-28T10:41:50.196Z",
@@ -424,7 +424,31 @@
   "pk": 125,
   "fields": {
     "source_account": "SPL-PIZA",
-    "target_account": "449-50",
+    "target_account": "450-50",
+    "percentage": "0.2500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 203,
+  "fields": {
+    "source_account": "SPL-PIZA",
+    "target_account": "458-50",
+    "percentage": "0.0500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.196Z",
+    "modified_at": "2025-11-28T10:41:50.196Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 204,
+  "fields": {
+    "source_account": "SPL-PIZA",
+    "target_account": "488-50",
     "percentage": "0.1000",
     "is_active": true,
     "created_at": "2025-11-28T10:41:50.196Z",
@@ -472,8 +496,8 @@
   "pk": 129,
   "fields": {
     "source_account": "SPL-STEW",
-    "target_account": "460-50",
-    "percentage": "0.0500",
+    "target_account": "421-50",
+    "percentage": "0.0800",
     "is_active": true,
     "created_at": "2025-11-28T10:41:50.197Z",
     "modified_at": "2025-11-28T10:41:50.197Z"
@@ -484,8 +508,8 @@
   "pk": 130,
   "fields": {
     "source_account": "SPL-STEW",
-    "target_account": "458-50",
-    "percentage": "0.2000",
+    "target_account": "422-50",
+    "percentage": "0.0800",
     "is_active": true,
     "created_at": "2025-11-28T10:41:50.197Z",
     "modified_at": "2025-11-28T10:41:50.197Z"
@@ -496,8 +520,8 @@
   "pk": 131,
   "fields": {
     "source_account": "SPL-STEW",
-    "target_account": "444-50",
-    "percentage": "0.2000",
+    "target_account": "423-50",
+    "percentage": "0.0800",
     "is_active": true,
     "created_at": "2025-11-28T10:41:50.197Z",
     "modified_at": "2025-11-28T10:41:50.197Z"
@@ -508,8 +532,8 @@
   "pk": 132,
   "fields": {
     "source_account": "SPL-STEW",
-    "target_account": "454-50",
-    "percentage": "0.2000",
+    "target_account": "427-50",
+    "percentage": "0.0800",
     "is_active": true,
     "created_at": "2025-11-28T10:41:50.197Z",
     "modified_at": "2025-11-28T10:41:50.197Z"
@@ -520,8 +544,8 @@
   "pk": 133,
   "fields": {
     "source_account": "SPL-STEW",
-    "target_account": "488-50",
-    "percentage": "0.0750",
+    "target_account": "444-50",
+    "percentage": "0.1500",
     "is_active": true,
     "created_at": "2025-11-28T10:41:50.197Z",
     "modified_at": "2025-11-28T10:41:50.197Z"
@@ -533,7 +557,7 @@
   "fields": {
     "source_account": "SPL-STEW",
     "target_account": "446-50",
-    "percentage": "0.0750",
+    "percentage": "0.0500",
     "is_active": true,
     "created_at": "2025-11-28T10:41:50.197Z",
     "modified_at": "2025-11-28T10:41:50.197Z"
@@ -544,7 +568,7 @@
   "pk": 135,
   "fields": {
     "source_account": "SPL-STEW",
-    "target_account": "450-50",
+    "target_account": "449-50",
     "percentage": "0.1000",
     "is_active": true,
     "created_at": "2025-11-28T10:41:50.197Z",
@@ -556,8 +580,44 @@
   "pk": 136,
   "fields": {
     "source_account": "SPL-STEW",
-    "target_account": "449-50",
+    "target_account": "450-50",
     "percentage": "0.1000",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 200,
+  "fields": {
+    "source_account": "SPL-STEW",
+    "target_account": "458-50",
+    "percentage": "0.1500",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 201,
+  "fields": {
+    "source_account": "SPL-STEW",
+    "target_account": "460-50",
+    "percentage": "0.0550",
+    "is_active": true,
+    "created_at": "2025-11-28T10:41:50.197Z",
+    "modified_at": "2025-11-28T10:41:50.197Z"
+  }
+},
+{
+  "model": "reconciliation.costcentersplit",
+  "pk": 202,
+  "fields": {
+    "source_account": "SPL-STEW",
+    "target_account": "488-50",
+    "percentage": "0.0750",
     "is_active": true,
     "created_at": "2025-11-28T10:41:50.197Z",
     "modified_at": "2025-11-28T10:41:50.197Z"

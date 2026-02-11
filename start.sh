@@ -11,8 +11,8 @@ fi
 # Populate location and department mappings
 python manage.py populate_mappings
 
-# Load cost center splits (only if not already loaded)
-python manage.py load_costcenter_splits || echo "Cost center splits already loaded or error occurred"
+# Load cost center splits only if table is empty (preserve admin changes)
+python manage.py shell -c "from reconciliation.models import CostCenterSplit; exit(0 if CostCenterSplit.objects.exists() else 1)" 2>/dev/null && echo "Cost center splits already loaded, skipping" || python manage.py load_costcenter_splits
 
 # Collect static files
 python manage.py collectstatic --noinput
