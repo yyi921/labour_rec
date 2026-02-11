@@ -135,6 +135,10 @@ def generate_journal(request, pay_period_id):
 
     # Process each unique GL account
     for gl_account, recon_entries_for_gl in gl_groups.items():
+        # Skip GL 4880 (Rent) - handled within net wages, not a separate journal entry
+        if gl_account == '4880':
+            continue
+
         # Use the first entry's metadata (all should have same include_in_total_cost for same GL)
         first_entry = recon_entries_for_gl[0]
         gl_desc = first_entry.description
@@ -640,6 +644,10 @@ def download_journal_sage(request, pay_period_id):
 
     # Process each unique GL account
     for gl_account, recon_entries_for_gl in gl_groups.items():
+        # Skip GL 4880 (Rent) - handled within net wages, not a separate journal entry
+        if gl_account == '4880':
+            continue
+
         # Use the first entry's metadata (all should have same include_in_total_cost for same GL)
         first_entry = recon_entries_for_gl[0]
         gl_desc = first_entry.description
