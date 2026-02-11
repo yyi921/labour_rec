@@ -807,36 +807,36 @@ def download_journal_sage(request, pay_period_id):
 
             # Standard non-prorated processing from Micropay Journal
             # (GL 4880 Rent is handled via GL Batch like other non-prorated GLs)
-                for journal in journal_entries_from_db:
-                    ledger_account = journal.ledger_account.strip()
+            for journal in journal_entries_from_db:
+                ledger_account = journal.ledger_account.strip()
 
-                    # Determine GL account
-                    if ledger_account.startswith('-'):
-                        entry_gl = ledger_account[1:]
+                # Determine GL account
+                if ledger_account.startswith('-'):
+                    entry_gl = ledger_account[1:]
+                else:
+                    if '-' in ledger_account:
+                        entry_gl = ledger_account.split('-')[-1]
                     else:
-                        if '-' in ledger_account:
-                            entry_gl = ledger_account.split('-')[-1]
-                        else:
-                            entry_gl = ledger_account
+                        entry_gl = ledger_account
 
-                    # Only process entries matching this GL account
-                    if entry_gl != gl_account:
-                        continue
+                # Only process entries matching this GL account
+                if entry_gl != gl_account:
+                    continue
 
-                    # Calculate net amount (debit - credit)
-                    amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
+                # Calculate net amount (debit - credit)
+                amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
 
-                    # Parse location/dept from ledger_account format: "location-dept-GL"
-                    location_id = ''
-                    dept_id = ''
-                    if '-' in ledger_account and not ledger_account.startswith('-'):
-                        parts = ledger_account.split('-')
-                        if len(parts) == 3:
-                            location_id = parts[0]
-                            dept_id = parts[1]
+                # Parse location/dept from ledger_account format: "location-dept-GL"
+                location_id = ''
+                dept_id = ''
+                if '-' in ledger_account and not ledger_account.startswith('-'):
+                    parts = ledger_account.split('-')
+                    if len(parts) == 3:
+                        location_id = parts[0]
+                        dept_id = parts[1]
 
-                    key = (location_id, dept_id)
-                    non_prorated_entries[key] += amount
+                key = (location_id, dept_id)
+                non_prorated_entries[key] += amount
 
             # If no journal entries found, use journal_net from JournalReconciliation
             if not non_prorated_entries:
@@ -1175,32 +1175,32 @@ def download_journal_xero(request, pay_period_id):
 
             # Standard non-prorated processing from Micropay Journal
             # (GL 4880 Rent is handled via GL Batch like other non-prorated GLs)
-                for journal in journal_entries_from_db:
-                    ledger_account = journal.ledger_account.strip()
+            for journal in journal_entries_from_db:
+                ledger_account = journal.ledger_account.strip()
 
-                    if ledger_account.startswith('-'):
-                        entry_gl = ledger_account[1:]
+                if ledger_account.startswith('-'):
+                    entry_gl = ledger_account[1:]
+                else:
+                    if '-' in ledger_account:
+                        entry_gl = ledger_account.split('-')[-1]
                     else:
-                        if '-' in ledger_account:
-                            entry_gl = ledger_account.split('-')[-1]
-                        else:
-                            entry_gl = ledger_account
+                        entry_gl = ledger_account
 
-                    if entry_gl != gl_account:
-                        continue
+                if entry_gl != gl_account:
+                    continue
 
-                    amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
+                amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
 
-                    location_id = ''
-                    dept_id = ''
-                    if '-' in ledger_account and not ledger_account.startswith('-'):
-                        parts = ledger_account.split('-')
-                        if len(parts) == 3:
-                            location_id = parts[0]
-                            dept_id = parts[1]
+                location_id = ''
+                dept_id = ''
+                if '-' in ledger_account and not ledger_account.startswith('-'):
+                    parts = ledger_account.split('-')
+                    if len(parts) == 3:
+                        location_id = parts[0]
+                        dept_id = parts[1]
 
-                    key = (location_id, dept_id)
-                    non_prorated_entries[key] += amount
+                key = (location_id, dept_id)
+                non_prorated_entries[key] += amount
 
             if not non_prorated_entries:
                 total_net = sum(entry.journal_net for entry in recon_entries_for_gl)
