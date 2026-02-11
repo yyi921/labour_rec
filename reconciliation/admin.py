@@ -6,7 +6,7 @@ from .models import (
     EmployeeReconciliation, JournalReconciliation, LocationMapping,
     ValidationResult, EmployeePayPeriodSnapshot, IQBLeaveBalance,
     LSLProbability, IQBTransactionType, PayCompCodeMapping, JournalDescriptionMapping,
-    IQBDetailV2
+    IQBDetailV2, SageLocation, SageDepartment
 )
 
 
@@ -1184,3 +1184,15 @@ class EmployeePayPeriodSnapshotAdmin(admin.ModelAdmin):
             'fields': ('created_at', 'updated_at')
         }),
     )
+
+
+@admin.register(SageLocation)
+class SageLocationAdmin(admin.ModelAdmin):
+    list_display = ['location_id', 'location_name', 'parent_id', 'parent_name', 'manager']
+    search_fields = ['location_id', 'location_name']
+
+
+@admin.register(SageDepartment)
+class SageDepartmentAdmin(admin.ModelAdmin):
+    list_display = ['department_id', 'department_name']
+    search_fields = ['department_id', 'department_name']
