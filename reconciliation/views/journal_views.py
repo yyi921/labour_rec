@@ -230,6 +230,36 @@ def generate_journal(request, pay_period_id):
                         for key in prorated_entries:
                             prorated_entries[key] -= prorated_entries[key] * adjustment_ratio
 
+            # Add COY "Employee Deduct" entries from GL Batch directly
+            # These are company-level transactions not captured in employee snapshots
+            # Use cost_account for location/dept (same approach as Rent/GL 4880)
+            for journal in journal_entries_from_db:
+                if 'Payroll Liab - Employee Deduct' not in (journal.description or ''):
+                    continue
+                ledger_account = journal.ledger_account.strip()
+                if ledger_account.startswith('-'):
+                    entry_gl = ledger_account[1:]
+                elif '-' in ledger_account:
+                    entry_gl = ledger_account.split('-')[-1]
+                else:
+                    entry_gl = ledger_account
+                if entry_gl != gl_account:
+                    continue
+
+                amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
+                cost_account = (journal.cost_account or '').strip()
+
+                location_id = ''
+                dept_id = ''
+                if '-' in cost_account:
+                    parts = cost_account.split('-')
+                    location_id = parts[0]
+                    dept_id = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
+
+                if location_id:
+                    key = (location_id, dept_id)
+                    prorated_entries[key] += amount
+
             # If no prorated entries were generated, skip this GL entirely
             if not prorated_entries:
                 continue
@@ -726,6 +756,36 @@ def download_journal_sage(request, pay_period_id):
                         adjustment_ratio = iqb_2317_total / total_6372
                         for key in prorated_entries:
                             prorated_entries[key] -= prorated_entries[key] * adjustment_ratio
+
+            # Add COY "Employee Deduct" entries from GL Batch directly
+            # These are company-level transactions not captured in employee snapshots
+            # Use cost_account for location/dept (same approach as Rent/GL 4880)
+            for journal in journal_entries_from_db:
+                if 'Payroll Liab - Employee Deduct' not in (journal.description or ''):
+                    continue
+                ledger_account = journal.ledger_account.strip()
+                if ledger_account.startswith('-'):
+                    entry_gl = ledger_account[1:]
+                elif '-' in ledger_account:
+                    entry_gl = ledger_account.split('-')[-1]
+                else:
+                    entry_gl = ledger_account
+                if entry_gl != gl_account:
+                    continue
+
+                amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
+                cost_account = (journal.cost_account or '').strip()
+
+                location_id = ''
+                dept_id = ''
+                if '-' in cost_account:
+                    parts = cost_account.split('-')
+                    location_id = parts[0]
+                    dept_id = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
+
+                if location_id:
+                    key = (location_id, dept_id)
+                    prorated_entries[key] += amount
 
             # If no prorated entries were generated, skip this GL entirely
             if not prorated_entries:
