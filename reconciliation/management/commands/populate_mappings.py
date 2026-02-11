@@ -46,6 +46,7 @@ class Command(BaseCommand):
             {"location_id": "553", "location_name": "Ville Container Freezer"},
             {"location_id": "600", "location_name": "Ardo (Saltwater)"},
             {"location_id": "700", "location_name": "TECC"},
+            {"location_id": "800", "location_name": "MG - Morris Escapes"},
             {"location_id": "910", "location_name": "Shared Services The Ville"},
         ]
 

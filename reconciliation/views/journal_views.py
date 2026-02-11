@@ -302,61 +302,38 @@ def generate_journal(request, pay_period_id):
             # Group by location-dept from ledger_account
             non_prorated_entries = defaultdict(Decimal)  # {(location, dept): amount}
 
-            # Special handling for GL 4880 - use IQB cost_account_code for location/dept
-            if gl_account == '4880' and iqb_upload:
-                # Get IQB records for pay comp codes that map to GL 4880
-                iqb_4880_records = IQBDetail.objects.filter(
-                    upload=iqb_upload,
-                    pay_comp_code='Rent'  # Rent maps to GL 4880
-                )
-                for iqb_record in iqb_4880_records:
-                    # Negate amount because 4880 is a liability (credit) account
-                    amount = -(iqb_record.amount or Decimal('0'))
-                    cost_account = iqb_record.cost_account_code or ''
+            # Standard non-prorated processing from Micropay Journal
+            # (GL 4880 Rent is handled via GL Batch like other non-prorated GLs)
+            for journal in journal_entries_from_db:
+                ledger_account = journal.ledger_account.strip()
 
-                    # Parse location/dept from cost_account_code format: "location-deptNN"
-                    location_id = ''
-                    dept_id = ''
-                    if '-' in cost_account:
-                        parts = cost_account.split('-')
-                        location_id = parts[0]
-                        # dept is first 2 chars of second part (e.g., "5000" -> "50")
-                        dept_id = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
-
-                    key = (location_id, dept_id)
-                    non_prorated_entries[key] += amount
-            else:
-                # Standard non-prorated processing from Micropay Journal
-                for journal in journal_entries_from_db:
-                    ledger_account = journal.ledger_account.strip()
-
-                    # Determine GL account
-                    if ledger_account.startswith('-'):
-                        entry_gl = ledger_account[1:]
+                # Determine GL account
+                if ledger_account.startswith('-'):
+                    entry_gl = ledger_account[1:]
+                else:
+                    if '-' in ledger_account:
+                        entry_gl = ledger_account.split('-')[-1]
                     else:
-                        if '-' in ledger_account:
-                            entry_gl = ledger_account.split('-')[-1]
-                        else:
-                            entry_gl = ledger_account
+                        entry_gl = ledger_account
 
-                    # Only process entries matching this GL account
-                    if entry_gl != gl_account:
-                        continue
+                # Only process entries matching this GL account
+                if entry_gl != gl_account:
+                    continue
 
-                    # Calculate net amount (debit - credit)
-                    amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
+                # Calculate net amount (debit - credit)
+                amount = (journal.debit or Decimal('0')) - (journal.credit or Decimal('0'))
 
-                    # Parse location/dept from ledger_account format: "location-dept-GL"
-                    location_id = ''
-                    dept_id = ''
-                    if '-' in ledger_account and not ledger_account.startswith('-'):
-                        parts = ledger_account.split('-')
-                        if len(parts) == 3:  # Format: location-dept-GL
-                            location_id = parts[0]
-                            dept_id = parts[1]
+                # Parse location/dept from ledger_account format: "location-dept-GL"
+                location_id = ''
+                dept_id = ''
+                if '-' in ledger_account and not ledger_account.startswith('-'):
+                    parts = ledger_account.split('-')
+                    if len(parts) == 3:  # Format: location-dept-GL
+                        location_id = parts[0]
+                        dept_id = parts[1]
 
-                    key = (location_id, dept_id)
-                    non_prorated_entries[key] += amount
+                key = (location_id, dept_id)
+                non_prorated_entries[key] += amount
 
             # If no journal entries found, use journal_net from JournalReconciliation
             if not non_prorated_entries:
@@ -828,31 +805,8 @@ def download_journal_sage(request, pay_period_id):
             # Non-prorated: use journal entries directly
             non_prorated_entries = defaultdict(Decimal)
 
-            # Special handling for GL 4880 - use IQB cost_account_code for location/dept
-            if gl_account == '4880' and iqb_upload:
-                # Get IQB records for pay comp codes that map to GL 4880
-                iqb_4880_records = IQBDetail.objects.filter(
-                    upload=iqb_upload,
-                    pay_comp_code='Rent'  # Rent maps to GL 4880
-                )
-                for iqb_record in iqb_4880_records:
-                    # Negate amount because 4880 is a liability (credit) account
-                    amount = -(iqb_record.amount or Decimal('0'))
-                    cost_account = iqb_record.cost_account_code or ''
-
-                    # Parse location/dept from cost_account_code format: "location-deptNN"
-                    location_id = ''
-                    dept_id = ''
-                    if '-' in cost_account:
-                        parts = cost_account.split('-')
-                        location_id = parts[0]
-                        # dept is first 2 chars of second part (e.g., "5000" -> "50")
-                        dept_id = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
-
-                    key = (location_id, dept_id)
-                    non_prorated_entries[key] += amount
-            else:
-                # Standard non-prorated processing from Micropay Journal
+            # Standard non-prorated processing from Micropay Journal
+            # (GL 4880 Rent is handled via GL Batch like other non-prorated GLs)
                 for journal in journal_entries_from_db:
                     ledger_account = journal.ledger_account.strip()
 
@@ -1219,31 +1173,8 @@ def download_journal_xero(request, pay_period_id):
         else:
             non_prorated_entries = defaultdict(Decimal)
 
-            # Special handling for GL 4880 - use IQB cost_account_code for location/dept
-            if gl_account == '4880' and iqb_upload:
-                # Get IQB records for pay comp codes that map to GL 4880
-                iqb_4880_records = IQBDetail.objects.filter(
-                    upload=iqb_upload,
-                    pay_comp_code='Rent'  # Rent maps to GL 4880
-                )
-                for iqb_record in iqb_4880_records:
-                    # Negate amount because 4880 is a liability (credit) account
-                    amount = -(iqb_record.amount or Decimal('0'))
-                    cost_account = iqb_record.cost_account_code or ''
-
-                    # Parse location/dept from cost_account_code format: "location-deptNN"
-                    location_id = ''
-                    dept_id = ''
-                    if '-' in cost_account:
-                        parts = cost_account.split('-')
-                        location_id = parts[0]
-                        # dept is first 2 chars of second part (e.g., "5000" -> "50")
-                        dept_id = parts[1][:2] if len(parts[1]) >= 2 else parts[1]
-
-                    key = (location_id, dept_id)
-                    non_prorated_entries[key] += amount
-            else:
-                # Standard non-prorated processing from Micropay Journal
+            # Standard non-prorated processing from Micropay Journal
+            # (GL 4880 Rent is handled via GL Batch like other non-prorated GLs)
                 for journal in journal_entries_from_db:
                     ledger_account = journal.ledger_account.strip()
 
