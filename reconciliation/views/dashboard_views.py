@@ -1291,6 +1291,17 @@ def fne_dashboard(request):
                 ]
             }
 
+        # Top 5 positive and negative variances by location
+        positive_variances = sorted(
+            [loc for loc in location_breakdown_list if loc['variance'] > 0],
+            key=lambda x: x['variance'],
+            reverse=True
+        )[:5]
+        negative_variances = sorted(
+            [loc for loc in location_breakdown_list if loc['variance'] < 0],
+            key=lambda x: x['variance'],
+        )[:5]
+
         context['comparison'] = {
             'comparison_list': comparison_list,
             'period_a_total': period_a_total,
@@ -1301,6 +1312,8 @@ def fne_dashboard(request):
             'location_breakdown': location_breakdown_list,
             'dept_breakdown': dept_breakdown_list,
             'category_breakdown': category_list,
+            'top_positive_variances': positive_variances,
+            'top_negative_variances': negative_variances,
         }
 
         context['headcount'] = {

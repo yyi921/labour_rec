@@ -562,6 +562,80 @@
         </div>
     </div>
 
+    <!-- Top Variances by Location -->
+    {% if comparison.top_positive_variances or comparison.top_negative_variances %}
+    <div class="dashboard-section">
+        <h2 class="section-title">Top Variances by Location</h2>
+        <p class="help-text" style="margin-bottom: 20px;">
+            Locations with the largest cost increases and decreases between the two periods.
+        </p>
+
+        <div class="breakdown-grid">
+            <!-- Top 5 Positive (Cost Increases) -->
+            <div class="breakdown-card" style="border-left: 4px solid #e74c3c;">
+                <h4 style="color: #e74c3c;">Top Cost Increases</h4>
+                {% if comparison.top_positive_variances %}
+                <table class="category-table">
+                    <thead>
+                        <tr>
+                            <th>Location</th>
+                            <th class="text-right">Period A</th>
+                            <th class="text-right">Period B</th>
+                            <th class="text-right">Variance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for loc in comparison.top_positive_variances %}
+                        <tr>
+                            <td>{{ loc.location }}</td>
+                            <td class="text-right">${{ loc.period_a|floatformat:0|intcomma }}</td>
+                            <td class="text-right">${{ loc.period_b|floatformat:0|intcomma }}</td>
+                            <td class="text-right positive" style="font-weight: 600;">
+                                +${{ loc.variance|floatformat:0|intcomma }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color: #999; font-style: italic;">No locations with cost increases.</p>
+                {% endif %}
+            </div>
+
+            <!-- Top 5 Negative (Cost Decreases) -->
+            <div class="breakdown-card" style="border-left: 4px solid #27ae60;">
+                <h4 style="color: #27ae60;">Top Cost Decreases</h4>
+                {% if comparison.top_negative_variances %}
+                <table class="category-table">
+                    <thead>
+                        <tr>
+                            <th>Location</th>
+                            <th class="text-right">Period A</th>
+                            <th class="text-right">Period B</th>
+                            <th class="text-right">Variance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for loc in comparison.top_negative_variances %}
+                        <tr>
+                            <td>{{ loc.location }}</td>
+                            <td class="text-right">${{ loc.period_a|floatformat:0|intcomma }}</td>
+                            <td class="text-right">${{ loc.period_b|floatformat:0|intcomma }}</td>
+                            <td class="text-right negative" style="font-weight: 600;">
+                                ${{ loc.variance|floatformat:0|intcomma }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color: #999; font-style: italic;">No locations with cost decreases.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- AI-Powered Deep Dive Analysis -->
     <div class="dashboard-section">
         <h2 class="section-title">📊 Detailed Cost Analysis</h2>
